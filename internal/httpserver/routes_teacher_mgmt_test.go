@@ -32,9 +32,9 @@ func TestTeacherMgmtPages(t *testing.T) {
 			absent:   []string{"btn-primary", "d-lg-block", "https://"},
 		},
 		{
-			name:     "anonymous",
-			path:     "/teacher/anonymous",
-			title:    "Peserta anonim — Twisty Quiz",
+			name:  "anonymous",
+			path:  "/teacher/anonymous",
+			title: "Peserta anonim — Twisty Quiz",
 			// Plan pin for this screen is "word badges only" — it carries no
 			// primary action, so btn-solid is deliberately NOT asserted here.
 			contains: []string{`lang="id"`, "Peserta anonim", "cookie peserta", "09.15 WIB", `class="table-responsive"`},
