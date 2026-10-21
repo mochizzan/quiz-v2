@@ -39,17 +39,29 @@ func TestHelloRoute(t *testing.T) {
 	app := httpserver.New(config.Config{Addr: ":8080"})
 	req := httptest.NewRequest("GET", "/", nil)
 	resp, err := app.Test(req)
-	if err != nil { t.Fatal(err) }
-	if resp.StatusCode != 200 { t.Fatalf("status = %d, want 200", resp.StatusCode) }
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.StatusCode != 200 {
+		t.Fatalf("status = %d, want 200", resp.StatusCode)
+	}
 	body, _ := io.ReadAll(resp.Body)
-	if !strings.Contains(string(body), `lang="id"`) { t.Error("page must declare lang=id (spec §15.10)") }
-	if !strings.Contains(string(body), "Halo, Dunia!") { t.Error("page must render the hello copy") }
+	if !strings.Contains(string(body), `lang="id"`) {
+		t.Error("page must declare lang=id (spec §15.10)")
+	}
+	if !strings.Contains(string(body), "Halo, Dunia!") {
+		t.Error("page must render the hello copy")
+	}
 }
 
 func TestHealthzRoute(t *testing.T) {
 	app := httpserver.New(config.Config{Addr: ":8080"})
 	req := httptest.NewRequest("GET", "/healthz", nil)
 	resp, err := app.Test(req)
-	if err != nil { t.Fatal(err) }
-	if resp.StatusCode != 200 { t.Fatalf("status = %d, want 200", resp.StatusCode) }
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.StatusCode != 200 {
+		t.Fatalf("status = %d, want 200", resp.StatusCode)
+	}
 }
