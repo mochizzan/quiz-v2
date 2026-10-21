@@ -1,0 +1,152 @@
+{{define "partials/title"}}Kelola siswa — Twisty Quiz{{end}}
+{{define "content"}}
+<div class="d-flex flex-column gap-4">
+
+  <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+    <h1 class="h1 mb-0">Kelola siswa</h1>
+    <button type="button" class="btn btn-solid theme-primary">
+      <svg width="20" height="20" aria-hidden="true"><use href="#i-plus"></use></svg>
+      Tambah siswa
+    </button>
+  </div>
+
+  {{/* Class filter pills + search. */}}
+  <div class="d-flex flex-wrap align-items-center gap-3">
+    <div class="btn-group" role="group" aria-label="Saring kelas">
+      <button type="button" class="btn btn-solid theme-primary" aria-pressed="true">Semua kelas</button>
+      <button type="button" class="btn btn-outline theme-primary" aria-pressed="false">XI IPA 1</button>
+      <button type="button" class="btn btn-outline theme-primary" aria-pressed="false">XI IPA 2</button>
+      <button type="button" class="btn btn-outline theme-primary" aria-pressed="false">XII IPA 2</button>
+      <button type="button" class="btn btn-outline theme-primary" aria-pressed="false">X IPS 3</button>
+    </div>
+    <div class="flex-grow-1" style="min-width: 220px">
+      <label class="visually-hidden" for="stu-search">Cari siswa</label>
+      <input class="form-control" type="search" id="stu-search" placeholder="Cari siswa…">
+    </div>
+  </div>
+
+  {{/* TEACHER-LIST family state demos (spec §15.8) — this page owns them.
+       The empty state ships the page's pinned copy (the shared empty-state
+       partial carries generic copy), the error ships its retry action. */}}
+  <div hidden data-state-demo="loading">
+    <div class="card p-4" aria-busy="true">
+      {{template "partials/skeleton.html" .}}
+    </div>
+  </div>
+  <div hidden data-state-demo="empty">
+    <div class="card p-4 text-center">
+      <span class="d-inline-flex align-items-center justify-content-center rounded-circle mb-2" style="width: 56px; height: 56px; background-color: #F4F6F8; color: #687182">
+        <svg width="28" height="28" aria-hidden="true"><use href="#i-users"></use></svg>
+      </span>
+      <h2 class="h2 mb-1">Belum ada siswa di kelas ini.</h2>
+      <p class="mb-0 fg-secondary" style="font-size: 14px">Tambahkan siswa atau ubah filter kelas.</p>
+    </div>
+  </div>
+  <div hidden data-state-demo="error">
+    <div class="alert theme-danger" role="alert">
+      <strong class="d-block">Gagal memuat daftar siswa.</strong>
+      Periksa koneksi Anda, lalu coba lagi.
+      <button type="button" class="btn btn-outline theme-danger ms-2">Coba lagi</button>
+    </div>
+  </div>
+
+  {{/* Table — status is a WORD badge, actions are icon buttons with
+       aria-labels, wrapped in .table-responsive (spec §15.4). */}}
+  <div class="table-responsive">
+    <table class="table mb-0">
+      <caption class="visually-hidden">Daftar siswa SMA Nusantara</caption>
+      <thead>
+        <tr>
+          <th scope="col">Nama</th>
+          <th scope="col">Kelas</th>
+          <th scope="col">Email</th>
+          <th scope="col">Status</th>
+          <th scope="col"><span class="visually-hidden">Aksi</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="fw-semibold">Ayu Lestari</td>
+          <td>XII IPA 2</td>
+          <td class="fg-secondary" style="font-size: 14px">ayu.lestari@sma-nusantara.sch.id</td>
+          <td><span class="badge theme-success">Aktif</span></td>
+          <td>
+            <span class="d-flex justify-content-end gap-2">
+              <button type="button" class="btn btn-text" aria-label="Ubah Ayu Lestari">
+                <svg width="20" height="20" aria-hidden="true"><use href="#i-pencil"></use></svg>
+              </button>
+              <a class="btn btn-text" href="/teacher/recap" aria-label="Detil Ayu Lestari">
+                <svg width="20" height="20" aria-hidden="true"><use href="#i-eye"></use></svg>
+              </a>
+            </span>
+          </td>
+        </tr>
+        <tr>
+          <td class="fw-semibold">Bayu Prakoso</td>
+          <td>XII IPA 2</td>
+          <td class="fg-secondary" style="font-size: 14px">bayu.prakoso@sma-nusantara.sch.id</td>
+          <td><span class="badge theme-success">Aktif</span></td>
+          <td>
+            <span class="d-flex justify-content-end gap-2">
+              <button type="button" class="btn btn-text" aria-label="Ubah Bayu Prakoso">
+                <svg width="20" height="20" aria-hidden="true"><use href="#i-pencil"></use></svg>
+              </button>
+              <a class="btn btn-text" href="/teacher/recap" aria-label="Detil Bayu Prakoso">
+                <svg width="20" height="20" aria-hidden="true"><use href="#i-eye"></use></svg>
+              </a>
+            </span>
+          </td>
+        </tr>
+        <tr>
+          <td class="fw-semibold">Cindy Halim</td>
+          <td>XI IPA 1</td>
+          <td class="fg-secondary" style="font-size: 14px">cindy.halim@sma-nusantara.sch.id</td>
+          <td><span class="badge theme-success">Aktif</span></td>
+          <td>
+            <span class="d-flex justify-content-end gap-2">
+              <button type="button" class="btn btn-text" aria-label="Ubah Cindy Halim">
+                <svg width="20" height="20" aria-hidden="true"><use href="#i-pencil"></use></svg>
+              </button>
+              <a class="btn btn-text" href="/teacher/recap" aria-label="Detil Cindy Halim">
+                <svg width="20" height="20" aria-hidden="true"><use href="#i-eye"></use></svg>
+              </a>
+            </span>
+          </td>
+        </tr>
+        <tr>
+          <td class="fw-semibold">Dimas Ardiansyah</td>
+          <td>X IPS 3</td>
+          <td class="fg-secondary" style="font-size: 14px">dimas.ardiansyah@sma-nusantara.sch.id</td>
+          <td><span class="badge" style="background-color: #F4F6F8; color: #121721">Nonaktif</span></td>
+          <td>
+            <span class="d-flex justify-content-end gap-2">
+              <button type="button" class="btn btn-text" aria-label="Ubah Dimas Ardiansyah">
+                <svg width="20" height="20" aria-hidden="true"><use href="#i-pencil"></use></svg>
+              </button>
+              <a class="btn btn-text" href="/teacher/recap" aria-label="Detil Dimas Ardiansyah">
+                <svg width="20" height="20" aria-hidden="true"><use href="#i-eye"></use></svg>
+              </a>
+            </span>
+          </td>
+        </tr>
+        <tr>
+          <td class="fw-semibold">Eka Nuraini</td>
+          <td>XI IPA 1</td>
+          <td class="fg-secondary" style="font-size: 14px">eka.nuraini@sma-nusantara.sch.id</td>
+          <td><span class="badge theme-success">Aktif</span></td>
+          <td>
+            <span class="d-flex justify-content-end gap-2">
+              <button type="button" class="btn btn-text" aria-label="Ubah Eka Nuraini">
+                <svg width="20" height="20" aria-hidden="true"><use href="#i-pencil"></use></svg>
+              </button>
+              <a class="btn btn-text" href="/teacher/recap" aria-label="Detil Eka Nuraini">
+                <svg width="20" height="20" aria-hidden="true"><use href="#i-eye"></use></svg>
+              </a>
+            </span>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+{{end}}

@@ -1,0 +1,77 @@
+{{define "partials/title"}}Kelola guru — Twisty Quiz{{end}}
+{{define "content"}}
+<div class="d-flex flex-column gap-4">
+
+  <h1 class="h1 mb-0">Kelola guru</h1>
+
+  {{/* Menunggu persetujuan — destructive-ish confirm goes through the shared
+       confirm dialog, never window.confirm (spec §9). */}}
+  <div class="card p-4 d-flex flex-column gap-3">
+    <h2 class="h2 mb-0">Menunggu persetujuan (1)</h2>
+    <ul class="list-group">
+      <li class="list-group-item d-flex flex-wrap align-items-center justify-content-between gap-3 p-3">
+        <span class="d-flex align-items-center gap-3">
+          <span class="badge" style="background-color: #EEF4FA; color: #293681">DS</span>
+          <span>
+            <span class="d-block fw-semibold">Dewi Safitri</span>
+            <span class="d-block fg-secondary" style="font-size: 13px">dewi.safitri@sma-nusantara.sch.id · Matematika</span>
+          </span>
+        </span>
+        <span class="d-flex flex-wrap align-items-center gap-2">
+          <span class="badge theme-warning">Menunggu persetujuan</span>
+          <button type="button" class="btn btn-solid theme-primary" data-bs-toggle="dialog" data-bs-target="#dialog-confirm">Setujui</button>
+          <button type="button" class="btn btn-outline theme-primary" data-bs-toggle="dialog" data-bs-target="#dialog-confirm">Tolak</button>
+        </span>
+      </li>
+    </ul>
+  </div>
+
+  {{/* Guru aktif — word status badges + nonaktifkan action. */}}
+  <div class="card p-4 d-flex flex-column gap-3">
+    <h2 class="h2 mb-0">Guru aktif (3)</h2>
+    <ul class="list-group">
+      <li class="list-group-item d-flex flex-wrap align-items-center justify-content-between gap-3 p-3">
+        <span class="d-flex align-items-center gap-3">
+          <span class="badge" style="background-color: #EEF4FA; color: #293681">RW</span>
+          <span>
+            <span class="d-block fw-semibold">Ratna Wijaya</span>
+            <span class="d-block fg-secondary" style="font-size: 13px">ratna.wijaya@sma-nusantara.sch.id · Biologi &amp; Genetika</span>
+          </span>
+        </span>
+        <span class="d-flex flex-wrap align-items-center gap-2">
+          <span class="badge theme-success">Guru aktif</span>
+          <button type="button" class="btn btn-outline theme-primary" data-bs-toggle="dialog" data-bs-target="#dialog-confirm">Nonaktifkan</button>
+        </span>
+      </li>
+      <li class="list-group-item d-flex flex-wrap align-items-center justify-content-between gap-3 p-3">
+        <span class="d-flex align-items-center gap-3">
+          <span class="badge" style="background-color: #EEF4FA; color: #293681">AP</span>
+          <span>
+            <span class="d-block fw-semibold">Agus Pratama</span>
+            <span class="d-block fg-secondary" style="font-size: 13px">agus.pratama@sma-nusantara.sch.id · Fisika</span>
+          </span>
+        </span>
+        <span class="d-flex flex-wrap align-items-center gap-2">
+          <span class="badge theme-success">Guru aktif</span>
+          <button type="button" class="btn btn-outline theme-primary" data-bs-toggle="dialog" data-bs-target="#dialog-confirm">Nonaktifkan</button>
+        </span>
+      </li>
+      <li class="list-group-item d-flex flex-wrap align-items-center justify-content-between gap-3 p-3">
+        <span class="d-flex align-items-center gap-3">
+          <span class="badge" style="background-color: #EEF4FA; color: #293681">SM</span>
+          <span>
+            <span class="d-block fw-semibold">Siti Marlina</span>
+            <span class="d-block fg-secondary" style="font-size: 13px">siti.marlina@sma-nusantara.sch.id · Sejarah</span>
+          </span>
+        </span>
+        <span class="d-flex flex-wrap align-items-center gap-2">
+          <span class="badge" style="background-color: #F4F6F8; color: #121721">Nonaktif</span>
+          <button type="button" class="btn btn-outline theme-primary">Aktifkan</button>
+        </span>
+      </li>
+    </ul>
+  </div>
+
+  {{template "partials/dialogs.html" .}}
+</div>
+{{end}}

@@ -1,0 +1,72 @@
+{{define "partials/title"}}Jurusan — Twisty Quiz{{end}}
+{{define "content"}}
+<div class="d-flex flex-column gap-4">
+
+  <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+    <h1 class="h1 mb-0">Jurusan</h1>
+    <button type="button" class="btn btn-solid theme-primary">
+      <svg width="20" height="20" aria-hidden="true"><use href="#i-plus"></use></svg>
+      Tambah jurusan
+    </button>
+  </div>
+
+  <ul class="list-group">
+    <li class="list-group-item d-flex flex-wrap align-items-center justify-content-between gap-3 p-3">
+      <span class="d-flex align-items-center gap-3">
+        <span class="d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 40px; height: 40px; background-color: #EEF4FA; color: #293681">
+          <svg width="20" height="20" aria-hidden="true"><use href="#i-clipboard"></use></svg>
+        </span>
+        <span>
+          <span class="d-block fw-semibold">IPA</span>
+          <span class="d-block fg-secondary" style="font-size: 13px; font-variant-numeric: tabular-nums">32 siswa</span>
+        </span>
+      </span>
+      <button type="button" class="btn btn-text" aria-label="Ubah jurusan IPA">
+        <svg width="20" height="20" aria-hidden="true"><use href="#i-pencil"></use></svg>
+      </button>
+    </li>
+    <li class="list-group-item d-flex flex-wrap align-items-center justify-content-between gap-3 p-3">
+      <span class="d-flex align-items-center gap-3">
+        <span class="d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 40px; height: 40px; background-color: #EEF4FA; color: #293681">
+          <svg width="20" height="20" aria-hidden="true"><use href="#i-clipboard"></use></svg>
+        </span>
+        <span>
+          <span class="d-block fw-semibold">IPS</span>
+          <span class="d-block fg-secondary" style="font-size: 13px; font-variant-numeric: tabular-nums">28 siswa</span>
+        </span>
+      </span>
+      <button type="button" class="btn btn-text" aria-label="Ubah jurusan IPS">
+        <svg width="20" height="20" aria-hidden="true"><use href="#i-pencil"></use></svg>
+      </button>
+    </li>
+    <li class="list-group-item d-flex flex-wrap align-items-center justify-content-between gap-3 p-3">
+      <span class="d-flex align-items-center gap-3">
+        <span class="d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 40px; height: 40px; background-color: #EEF4FA; color: #293681">
+          <svg width="20" height="20" aria-hidden="true"><use href="#i-clipboard"></use></svg>
+        </span>
+        <span>
+          <span class="d-block fw-semibold">Bahasa</span>
+          <span class="d-block fg-secondary" style="font-size: 13px; font-variant-numeric: tabular-nums">24 siswa</span>
+        </span>
+      </span>
+      <button type="button" class="btn btn-text" aria-label="Ubah jurusan Bahasa">
+        <svg width="20" height="20" aria-hidden="true"><use href="#i-pencil"></use></svg>
+      </button>
+    </li>
+    <li class="list-group-item d-flex flex-wrap align-items-center justify-content-between gap-3 p-3">
+      <span class="d-flex align-items-center gap-3">
+        <span class="d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 40px; height: 40px; background-color: #EEF4FA; color: #293681">
+          <svg width="20" height="20" aria-hidden="true"><use href="#i-clipboard"></use></svg>
+        </span>
+        <span>
+          <span class="d-block fw-semibold">Kejuruan</span>
+          <span class="d-block fg-secondary" style="font-size: 13px; font-variant-numeric: tabular-nums">18 siswa</span>
+        </span>
+      </span>
+      <button type="button" class="btn btn-text" aria-label="Ubah jurusan Kejuruan">
+        <svg width="20" height="20" aria-hidden="true"><use href="#i-pencil"></use></svg>
+      </button>
+    </li>
+  </ul>
+</div>
+{{end}}
