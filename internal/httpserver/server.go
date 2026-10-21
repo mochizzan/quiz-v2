@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/middleware/static"
 
 	"quiz-v2/internal/config"
 )
@@ -45,6 +46,13 @@ func New(cfg config.Config) *fiber.App {
 func NewWithStore(cfg config.Config, pinger Pinger) *fiber.App {
 	app := fiber.New()
 	views := NewViewLoader(defaultTemplatesDir)
+
+	// Serve the vendored carrier assets (Bootstrap 6, jQuery 4, Plus Jakarta
+	// Sans, app.js) with a one-day cache. Fiber v3 has no app.Static: the
+	// in-module static middleware intercepts only /static/* and calls
+	// c.Next() for a missing file, so a 404 catch-all registered later still
+	// sees unresolved /static paths.
+	app.Use("/static", static.New("./static", static.Config{MaxAge: 86400}))
 
 	app.Get("/", func(c fiber.Ctx) error {
 		var buf bytes.Buffer

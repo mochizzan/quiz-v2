@@ -14,6 +14,7 @@ FROM alpine:3.20
 RUN adduser -D -u 10001 app
 COPY --from=build --chown=app:app /out/server /app/server
 COPY --chown=app:app templates /app/templates
+COPY --chown=app:app static /app/static
 USER app
 WORKDIR /app
 EXPOSE 8080
