@@ -1,0 +1,53 @@
+{{define "partials/title"}}Riwayat kuis — Twisty Quiz{{end}}
+{{define "content"}}
+<div class="d-flex flex-column gap-4">
+
+  <h1 class="h1 mb-0">Riwayat kuis</h1>
+
+  {{/* Filter pills. */}}
+  <div class="btn-group" role="group" aria-label="Saring riwayat">
+    <button type="button" class="btn btn-solid theme-primary" aria-pressed="true">Semua</button>
+    <button type="button" class="btn btn-outline theme-primary" aria-pressed="false">Bulan ini</button>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table mb-0">
+      <caption class="visually-hidden">Riwayat kuis yang telah dikerjakan</caption>
+      <thead>
+        <tr>
+          <th scope="col">Kuis</th>
+          <th scope="col">Tanggal</th>
+          <th scope="col">Skor</th>
+          <th scope="col">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="fw-semibold">Biologi Sel — Kuis 4</td>
+          <td class="fg-secondary" style="font-size: 14px; font-variant-numeric: tabular-nums">20 Okt 2026</td>
+          <td style="font-variant-numeric: tabular-nums">84</td>
+          <td><span class="badge theme-success">Selesai</span></td>
+        </tr>
+        <tr>
+          <td class="fw-semibold">Kimia Organik — Kuis 2</td>
+          <td class="fg-secondary" style="font-size: 14px; font-variant-numeric: tabular-nums">15 Okt 2026</td>
+          <td style="font-variant-numeric: tabular-nums">92</td>
+          <td><span class="badge theme-success">Selesai</span></td>
+        </tr>
+        <tr>
+          <td class="fw-semibold">Fisika Kinematika — Kuis 3</td>
+          <td class="fg-secondary" style="font-size: 14px; font-variant-numeric: tabular-nums">10 Okt 2026</td>
+          <td style="font-variant-numeric: tabular-nums">78</td>
+          <td><span class="badge theme-success">Selesai</span></td>
+        </tr>
+        <tr>
+          <td class="fw-semibold">Sejarah Indonesia — Kuis 1</td>
+          <td class="fg-secondary" style="font-size: 14px; font-variant-numeric: tabular-nums">3 Okt 2026</td>
+          <td style="font-variant-numeric: tabular-nums">88</td>
+          <td><span class="badge theme-success">Selesai</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+{{end}}

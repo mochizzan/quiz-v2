@@ -1,0 +1,49 @@
+{{define "partials/title"}}Profil — Twisty Quiz{{end}}
+{{define "content"}}
+<div class="d-flex flex-column gap-4">
+
+  <h1 class="h1 mb-0">Profil</h1>
+
+  {{/* Profile card — initials avatar, canonical identity. */}}
+  <div class="card p-4 d-flex flex-column gap-3">
+    <div class="d-flex flex-wrap align-items-center gap-3">
+      <span class="d-inline-flex align-items-center justify-content-center rounded-circle fw-semibold" style="width: 56px; height: 56px; background-color: #293681; color: #FFFFFF">AL</span>
+      <div>
+        <span class="d-block fw-semibold">Ayu Lestari</span>
+        <span class="d-block fg-secondary" style="font-size: 13px">XII IPA 2 · IPA · ayu.lestari@sma-nusantara.sch.id</span>
+        <span class="d-block fg-secondary" style="font-size: 13px">SMA Nusantara</span>
+      </div>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+      <a class="btn btn-outline theme-primary" href="/change-password">Ubah kata sandi</a>
+      <a class="btn btn-outline theme-primary" href="/login">
+        <svg width="20" height="20" aria-hidden="true"><use href="#i-signout"></use></svg>
+        Keluar
+      </a>
+    </div>
+  </div>
+
+  {{/* Edit form — name and class are read-only for students; the reason is
+       stated in text, not implied. */}}
+  <form class="card p-4 d-flex flex-column gap-3" action="/profile" method="post">
+    <h2 class="h2 mb-0">Data diri</h2>
+    <div>
+      <label class="form-label" for="pf-name">Nama lengkap</label>
+      <input class="form-control" type="text" id="pf-name" name="name" value="Ayu Lestari" disabled>
+      <div class="form-text">Ubah data lewat admin sekolah.</div>
+    </div>
+    <div>
+      <label class="form-label" for="pf-class">Kelas</label>
+      <input class="form-control" type="text" id="pf-class" name="class" value="XII IPA 2" disabled>
+    </div>
+    <div>
+      <label class="form-label" for="pf-major">Jurusan</label>
+      <input class="form-control" type="text" id="pf-major" name="major" value="IPA" disabled>
+    </div>
+    <div>
+      <label class="form-label" for="pf-email">Email</label>
+      <input class="form-control" type="email" id="pf-email" name="email" value="ayu.lestari@sma-nusantara.sch.id" disabled>
+    </div>
+  </form>
+</div>
+{{end}}
