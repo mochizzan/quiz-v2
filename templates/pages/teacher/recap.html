@@ -1,0 +1,102 @@
+{{define "partials/title"}}Rekap percobaan — Twisty Quiz{{end}}
+{{define "content"}}
+<div class="d-flex flex-column gap-4">
+
+  <h1 class="h1 mb-0">Rekap percobaan — Ayu Lestari</h1>
+
+  {{/* RECAP family state demos. */}}
+  <div hidden data-state-demo="error">
+    {{template "partials/banner-error" .}}
+  </div>
+  <div hidden data-state-demo="locked">
+    {{template "partials/banner-locked" .}}
+  </div>
+
+  {{/* Header card: quiz metadata + big tabular score + word badge. */}}
+  <div class="card p-4 d-flex flex-wrap align-items-center justify-content-between gap-4">
+    <div class="d-flex flex-column gap-1">
+      <span class="fw-semibold">Biologi Sel — Kuis 4</span>
+      <span class="fg-secondary" style="font-size: 13px">XII IPA 2 · mulai 09.15 WIB · durasi 45 menit</span>
+      <span class="d-flex align-items-center gap-2 mt-1">
+        <span class="badge theme-success">Selesai</span>
+        <span class="badge" style="background-color: #FDF0ED; color: #B42318">Fokus hilang: 2 kali</span>
+      </span>
+    </div>
+    <div class="d-flex flex-column align-items-center">
+      <span class="fw-bold" style="font-size: 32px; line-height: 38px; font-variant-numeric: tabular-nums">84</span>
+      <span class="fg-secondary" style="font-size: 13px">skor akhir</span>
+    </div>
+  </div>
+
+  {{/* Per-question recap rows — each verdict is a WORD badge. */}}
+  <div class="card p-4 d-flex flex-column gap-3">
+    <h2 class="h2 mb-0">Rincian per soal</h2>
+    <ul class="list-group">
+      <li class="list-group-item d-flex flex-wrap align-items-center justify-content-between gap-3 p-3">
+        <span class="d-flex align-items-start gap-3">
+          <span class="badge" style="background-color: #F4F6F8; color: #121721; font-variant-numeric: tabular-nums">1</span>
+          <span>
+            <span class="d-block">Organel apa yang berperan dalam respirasi sel?</span>
+            <span class="d-block fg-secondary" style="font-size: 13px">Jawaban: Mitokondria · Kunci: Mitokondria · 10 poin</span>
+          </span>
+        </span>
+        <span class="d-flex align-items-center gap-2">
+          <span class="badge theme-success">Benar</span>
+        </span>
+      </li>
+      <li class="list-group-item d-flex flex-wrap align-items-center justify-content-between gap-3 p-3">
+        <span class="d-flex align-items-start gap-3">
+          <span class="badge" style="background-color: #F4F6F8; color: #121721; font-variant-numeric: tabular-nums">2</span>
+          <span>
+            <span class="d-block">Jelaskan fungsi membran plasma dalam transport zat.</span>
+            <span class="d-block fg-secondary" style="font-size: 13px">Esai dinilai manual · 20 poin</span>
+          </span>
+        </span>
+        <span class="d-flex align-items-center gap-2">
+          <span class="badge theme-warning">Menunggu</span>
+        </span>
+      </li>
+      <li class="list-group-item d-flex flex-wrap align-items-center justify-content-between gap-3 p-3">
+        <span class="d-flex align-items-start gap-3">
+          <span class="badge" style="background-color: #F4F6F8; color: #121721; font-variant-numeric: tabular-nums">3</span>
+          <span>
+            <span class="d-block">Kapan pembelahan meiosis terjadi?</span>
+            <span class="d-block fg-secondary" style="font-size: 13px">Jawaban: Pembentukan sel gamet · Kunci: Pembentukan sel gamet · 10 poin</span>
+          </span>
+        </span>
+        <span class="d-flex align-items-center gap-2">
+          <span class="badge theme-success">Benar</span>
+        </span>
+      </li>
+      <li class="list-group-item d-flex flex-wrap align-items-center justify-content-between gap-3 p-3">
+        <span class="d-flex align-items-start gap-3">
+          <span class="badge" style="background-color: #F4F6F8; color: #121721; font-variant-numeric: tabular-nums">4</span>
+          <span>
+            <span class="d-block">Apa perbedaan mitosis dan meiosis?</span>
+            <span class="d-block fg-secondary" style="font-size: 13px">Jawaban: Mitosis mempertahankan jumlah kromosom · Kunci sama · 10 poin</span>
+          </span>
+        </span>
+        <span class="d-flex align-items-center gap-2">
+          <span class="badge theme-success">Benar</span>
+        </span>
+      </li>
+      <li class="list-group-item d-flex flex-wrap align-items-center justify-content-between gap-3 p-3">
+        <span class="d-flex align-items-start gap-3">
+          <span class="badge" style="background-color: #F4F6F8; color: #121721; font-variant-numeric: tabular-nums">5</span>
+          <span>
+            <span class="d-block">Diskusikan peran enzim dalam reaksi biokimia.</span>
+            <span class="d-block fg-secondary" style="font-size: 13px">Esai dinilai manual · 20 poin</span>
+          </span>
+        </span>
+        <span class="d-flex align-items-center gap-2">
+          <span class="badge theme-warning">Menunggu</span>
+        </span>
+      </li>
+    </ul>
+  </div>
+
+  <div class="d-flex flex-wrap justify-content-end gap-2">
+    <a class="btn btn-solid theme-primary" href="/teacher/grading">Kembali ke penilaian</a>
+  </div>
+</div>
+{{end}}
