@@ -28,11 +28,12 @@ type Pinger interface {
 	Ping(context.Context) error
 }
 
-// New builds a Fiber app with the routes for this task registered:
-// GET / renders templates/hello.html through the view loader (render error →
-// 500) and GET /healthz returns plain "ok" while its pinger reports healthy.
-// The app is returned unstarted so tests can drive it with app.Test; cfg is
-// consumed by the process entrypoint that calls Listen.
+// New builds a Fiber app with the routes for this task registered: every
+// route in the package registry (routes.go, one routes_<group>.go file per
+// page group) plus GET /healthz returning plain "ok" while its pinger reports
+// healthy, and a final 404 catch-all. The app is returned unstarted so tests
+// can drive it with app.Test; cfg is consumed by the process entrypoint that
+// calls Listen.
 // New is NewWithStore with a pinger that always returns nil, so a caller
 // without a database keeps the plain 200 /healthz.
 func New(cfg config.Config) *fiber.App {
@@ -54,13 +55,21 @@ func NewWithStore(cfg config.Config, pinger Pinger) *fiber.App {
 	// sees unresolved /static paths.
 	app.Use("/static", static.New("./static", static.Config{MaxAge: 86400}))
 
-	app.Get("/", func(c fiber.Ctx) error {
-		var buf bytes.Buffer
-		if err := views.Render(&buf, "hello.html", nil); err != nil {
-			return c.Status(fiber.StatusInternalServerError).SendString("internal server error")
+	// The page registry (routes.go) is turned into Fiber routes: one handler
+	// per registered PageRoute, closed over its own route value. Pages live in
+	// one routes_<group>.go file each and self-register from init(), so
+	// parallel page tasks never contend on this file.
+	for _, route := range RegisteredPages() {
+		r := route
+		handler := func(c fiber.Ctx) error {
+			return renderPage(c, views, r)
 		}
-		return c.Status(fiber.StatusOK).Type("html").Send(buf.Bytes())
-	})
+		if r.Method == fiber.MethodPost {
+			app.Post(r.Path, handler)
+			continue
+		}
+		app.Get(r.Path, handler)
+	}
 
 	app.Get("/healthz", func(c fiber.Ctx) error {
 		ctx, cancel := context.WithTimeout(c.Context(), healthzTimeout)
@@ -69,6 +78,19 @@ func NewWithStore(cfg config.Config, pinger Pinger) *fiber.App {
 			return c.Status(fiber.StatusServiceUnavailable).SendString("db unavailable")
 		}
 		return c.Status(fiber.StatusOK).SendString("ok")
+	})
+
+	// 404 catch-all. Registered LAST (after /healthz and every page) so it
+	// only sees requests no route claimed — a Use middleware registered
+	// earlier would shadow them. It renders the styled error page when that
+	// template exists; while Task 6 has not landed pages/error/404.html yet,
+	// the render fails and the plain-text fallback keeps the app functional.
+	app.Use(func(c fiber.Ctx) error {
+		var buf bytes.Buffer
+		if err := views.Render(&buf, "pages/error/404.html", PageData{}); err == nil {
+			return c.Status(fiber.StatusNotFound).Type("html").Send(buf.Bytes())
+		}
+		return c.Status(fiber.StatusNotFound).SendString("halaman tidak ditemukan")
 	})
 
 	_ = cfg // Addr is used by the caller (main), not the app itself.

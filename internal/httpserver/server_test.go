@@ -37,9 +37,11 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
+// TestHelloRoute pins the registered /hello page (the home route now
+// redirects to /login — see routes_test.go).
 func TestHelloRoute(t *testing.T) {
 	app := httpserver.New(config.Config{Addr: ":8080"})
-	req := httptest.NewRequest("GET", "/", nil)
+	req := httptest.NewRequest("GET", "/hello", nil)
 	resp, err := app.Test(req)
 	if err != nil {
 		t.Fatal(err)
