@@ -1,6 +1,8 @@
 package httpserver_test
 
 import (
+	"context"
+	"errors"
 	"io"
 	"net/http/httptest"
 	"os"
@@ -63,5 +65,20 @@ func TestHealthzRoute(t *testing.T) {
 	}
 	if resp.StatusCode != 200 {
 		t.Fatalf("status = %d, want 200", resp.StatusCode)
+	}
+}
+
+type deadPinger struct{}
+
+func (deadPinger) Ping(context.Context) error { return errors.New("db down") }
+
+func TestHealthzReturns503WhenDBDown(t *testing.T) {
+	app := httpserver.NewWithStore(config.Config{Addr: ":8080"}, deadPinger{})
+	resp, err := app.Test(httptest.NewRequest("GET", "/healthz", nil))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.StatusCode != 503 {
+		t.Fatalf("status = %d, want 503", resp.StatusCode)
 	}
 }
