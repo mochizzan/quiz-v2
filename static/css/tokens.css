@@ -1,0 +1,209 @@
+/* Twisty Quiz token stylesheet — the single stylesheet besides Bootstrap
+   6.0.0-alpha.1 (spec §15.11). Maps the docs/DESIGN.md §2.1 palette onto the
+   dist's --bs-* theme custom properties. Selectors are a CLOSED list:
+   :root/:host, the ten state rules and the fourteen component overrides of
+   spec §15.11 — nothing else. Every declaration sets a custom property only;
+   the sole exception is `color-scheme: light` below, which forces the light
+   branch of the dist's light-dark() tokens (this system is light-only). */
+
+:root, :host {
+  /* Force light mode — belt-and-braces beside <html data-bs-theme="light">. */
+  color-scheme: light;
+
+  /* -- Palette -> theme roles (DESIGN §2.1). Verified names: every token
+       below exists in the vendored dist. rgba() rings use only RGB
+       components drawn from palette hexes. -- */
+
+  /* primary family — #293681 navy (single action colour; hover #1E2864
+     arrives via the closed state rules) */
+  --bs-primary-base: #293681;
+  --bs-primary-bg: #293681;
+  --bs-primary-fg: #293681;
+  --bs-primary-fg-emphasis: #1E2864;
+  --bs-primary-bg-subtle: #EEF4FA;
+  --bs-primary-bg-muted: #F4F6F8;
+  --bs-primary-border: #293681;
+  --bs-primary-contrast: #FFFFFF;
+  --bs-primary-focus-ring: rgba(41, 54, 129, .36);
+
+  /* secondary family — #4274D9 (secondary actions, progress fills,
+     informational emphasis). --bs-secondary-fg is NOT co-opted: it stays
+     #687182, the .fg-secondary muted-text role (item 3). */
+  --bs-secondary-base: #4274D9;
+  --bs-secondary-bg: #4274D9;
+  --bs-secondary-fg: #687182;
+  --bs-secondary-fg-emphasis: #121721;
+  --bs-secondary-bg-subtle: #EEF4FA;
+  --bs-secondary-bg-muted: #EAF6FA;
+  --bs-secondary-border: #4274D9;
+  --bs-secondary-contrast: #FFFFFF;
+  --bs-secondary-focus-ring: rgba(66, 116, 217, .36);
+
+  /* accent family — #E24A21 coral, tint #FDF0ED (sparse warm accent) */
+  --bs-accent-base: #E24A21;
+  --bs-accent-bg: #E24A21;
+  --bs-accent-fg: #E24A21;
+  --bs-accent-fg-emphasis: #E24A21;
+  --bs-accent-bg-subtle: #FDF0ED;
+  --bs-accent-bg-muted: #FDF0ED;
+  --bs-accent-border: #E24A21;
+  --bs-accent-contrast: #FFFFFF;
+  --bs-accent-focus-ring: rgba(226, 74, 33, .36);
+
+  /* success / warning / danger — semantic fills (white text per DESIGN §2.3)
+     with pale/neutral subtle surfaces where DESIGN defines no tint */
+  --bs-success-base: #237A57;
+  --bs-success-bg: #237A57;
+  --bs-success-fg: #237A57;
+  --bs-success-fg-emphasis: #237A57;
+  --bs-success-bg-subtle: #D0E7E6;
+  --bs-success-bg-muted: #D0E7E6;
+  --bs-success-border: #237A57;
+  --bs-success-contrast: #FFFFFF;
+  --bs-success-focus-ring: rgba(35, 122, 87, .36);
+
+  --bs-warning-base: #966000;
+  --bs-warning-bg: #966000;
+  --bs-warning-fg: #966000;
+  --bs-warning-fg-emphasis: #966000;
+  --bs-warning-bg-subtle: #F4F6F8;
+  --bs-warning-bg-muted: #F4F6F8;
+  --bs-warning-border: #966000;
+  --bs-warning-contrast: #FFFFFF;
+  --bs-warning-focus-ring: rgba(150, 96, 0, .36);
+
+  --bs-danger-base: #B42318;
+  --bs-danger-bg: #B42318;
+  --bs-danger-fg: #B42318;
+  --bs-danger-fg-emphasis: #B42318;
+  --bs-danger-bg-subtle: #FDF0ED;
+  --bs-danger-bg-muted: #FDF0ED;
+  --bs-danger-border: #B42318;
+  --bs-danger-contrast: #FFFFFF;
+  --bs-danger-focus-ring: rgba(180, 35, 24, .36);
+
+  /* info — #95CCDD soft surface; DESIGN §2.3 pairs it with #121721 text
+     (10.22:1), so fg/contrast are dark, not white */
+  --bs-info-base: #95CCDD;
+  --bs-info-bg: #95CCDD;
+  --bs-info-fg: #121721;
+  --bs-info-fg-emphasis: #121721;
+  --bs-info-bg-subtle: #EAF6FA;
+  --bs-info-bg-muted: #EAF6FA;
+  --bs-info-border: #95CCDD;
+  --bs-info-contrast: #121721;
+  --bs-info-focus-ring: rgba(85, 137, 195, .36);
+
+  /* -- Foreground / surface chain (item 3): override the ROOT token, not
+       the consumer. -- */
+  --bs-fg-body: #121721;
+  --bs-fg-1: #121721;
+  --bs-fg-2: #687182;
+  --bs-fg-3: #687182;
+  --bs-fg-4: #94A3B8;
+  /* --bs-bg-body is the CARD white, never the canvas: the dist paints
+     `.card{--bs-card-bg:var(--bs-bg-body)}` — a canvas value here would
+     render every card, toast and control grey. The canvas (#EDF0F4) arrives
+     via --bs-bg-4 / the layouts' frame. */
+  --bs-bg-body: #FFFFFF;
+  --bs-bg-1: #FFFFFF;
+  --bs-bg-2: #F4F6F8;
+  --bs-bg-3: #E2E7EC;
+  --bs-bg-4: #EDF0F4;
+  --bs-border-color: #E2E6EB;
+  --bs-border-subtle: #ECEFF2;
+  --bs-link-color: #293681;
+  --bs-link-hover-color: #1E2864;
+
+  /* -- Type (DESIGN §3): fixed scale replaces the dist's fluid clamp()
+       values; heading weight 600 arrives via --bs-heading-font-weight
+       (the dist consumes it with a 500 fallback and never declares it). -- */
+  --bs-body-font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --bs-body-font-size: 14px;
+  --bs-body-line-height: 20px;
+  --bs-font-size-3xl: 24px;
+  --bs-font-size-2xl: 20px;
+  --bs-heading-font-weight: 600;
+
+  /* -- Radius (item 5 / DESIGN §6): the dist default is 50rem; component
+       radii arrive via the closed component-override list below. -- */
+  --bs-radius-pill: 9999px;
+
+  /* -- Elevation (item 6 / DESIGN §5). Verified: the dist declares exactly
+       --bs-box-shadow, -xs, -sm, -lg, -xl, -inset — there is NO
+       --bs-box-shadow-card. Mapping: flat -> xs, card -> sm, floating -> lg,
+       tooltip -> xl; the base --bs-box-shadow equals the card value so any
+       consumer without a specific token still matches DESIGN. -- */
+  --bs-box-shadow-xs: 0 1px 2px rgba(18, 23, 33, .02);
+  --bs-box-shadow-sm: 0 10px 25px -4px rgba(18, 23, 33, .04);
+  --bs-box-shadow-lg: 0 14px 35px -6px rgba(18, 23, 33, .08);
+  --bs-box-shadow-xl: 0 4px 12px rgba(18, 23, 33, .12);
+  --bs-box-shadow: 0 10px 25px -4px rgba(18, 23, 33, .04);
+}
+
+/* -- Component token overrides (item 5, closed list of spec §15.11).
+       DESIGN radii are not on the v6 numeric scale, so each component's own
+       element-level radius token is rebound here. -- */
+.card { --bs-card-border-radius: 24px }
+.dialog { --bs-dialog-border-radius: 24px }
+.drawer { --bs-drawer-border-radius: 24px }
+.alert { --bs-alert-border-radius: 24px }
+.popover { --bs-popover-border-radius: 24px; --bs-popover-transition-duration: 0.3s }
+.list-group { --bs-list-group-border-radius: 18px }
+.btn { --bs-btn-border-radius: 9999px }
+.badge { --bs-badge-border-radius: 9999px }
+.pagination { --bs-pagination-border-radius: 9999px }
+.form-control { --bs-control-border-radius: 18px }
+.form-control:not(textarea) { --bs-control-border-radius: 9999px }
+.h1 { --bs-heading-line-height: 1.25 }
+.h2 { --bs-heading-line-height: 1.3 }
+.spinner-border { --bs-spinner-animation-speed: 1.5s }
+
+/* -- State rules (item 7, closed list of spec §15.11): custom properties
+       only, to palette values. Verified paint facts: hover/active read
+       --bs-btn-hover-bg / --bs-btn-active-bg (never --bs-btn-bg);
+       .btn-solid:focus-visible paints outline-color from
+       --bs-theme-focus-ring and the generic outline from --bs-focus-ring
+       (width solid --bs-focus-ring-color). NOTE (plan defect ruled on):
+       the plan's draft `--bs-btn-focus-ring-color/-width/-opacity` tokens do
+       NOT exist in the dist — they would be dead no-ops, so this rule sets
+       the tokens the dist actually consumes instead. -- */
+.btn-solid.theme-primary:hover { --bs-btn-hover-bg: #1E2864 }
+.btn-solid.theme-primary:active { --bs-btn-active-bg: #1E2864 }
+.btn-solid.theme-primary:focus-visible { --bs-theme-focus-ring: rgba(66, 116, 217, .36); --bs-focus-ring-color: rgba(66, 116, 217, .36) }
+.btn-close:hover { --bs-btn-close-hover-opacity: 1 }
+
+/* .menu-item:hover paints var(--bs-theme-bg-subtle, var(--bs-menu-item-hover-bg))
+   and .menu-item.active paints var(--bs-theme-bg, var(--bs-menu-item-active-bg))
+   with var(--bs-theme-contrast, var(--bs-menu-item-active-color)) — set BOTH
+   halves of each pair or the override is a no-op. */
+.menu-item:hover { --bs-theme-bg-subtle: #E2E7EC; --bs-menu-item-hover-bg: #E2E7EC }
+.menu-item.active { --bs-theme-bg: #EEF4FA; --bs-theme-fg: #293681; --bs-theme-contrast: #293681; --bs-menu-item-active-bg: #EEF4FA; --bs-menu-item-active-color: #293681 }
+
+/* Focus rings: the dist pairs outline: var(--bs-focus-ring) with the theme
+   ring, so each rule sets the generic ring token together with
+   --bs-theme-focus-ring (DESIGN ring: rgba(66, 116, 217, .36) = #4274D9). */
+.form-control:focus-visible { --bs-control-box-shadow: var(--bs-focus-ring); --bs-control-border-color: #4274D9; --bs-focus-ring-color: rgba(66, 116, 217, .36) }
+.check:focus-visible { --bs-theme-focus-ring: rgba(66, 116, 217, .36); --bs-focus-ring-color: rgba(66, 116, 217, .36) }
+.radio:focus-visible { --bs-theme-focus-ring: rgba(66, 116, 217, .36); --bs-focus-ring-color: rgba(66, 116, 217, .36) }
+.switch:focus-within { --bs-theme-focus-ring: rgba(66, 116, 217, .36); --bs-focus-ring-color: rgba(66, 116, 217, .36) }
+
+/* -- Motion gate (item 8 / DESIGN §11): under reduce the transition and
+       animation durations collapse to 0.01ms. Custom properties only, :root
+       only. (The dist additionally gates its own transition declarations
+       behind prefers-reduced-motion: no-preference, so those never apply
+       under reduce; this block is the DESIGN-pinned explicit collapse.) -- */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --bs-transition-fade-duration: 0.01ms;
+    --bs-transition-collapse-duration: 0.01ms;
+    --bs-btn-transition-duration: 0.01ms;
+    --bs-control-transition-duration: 0.01ms;
+    --bs-menu-transition-duration: 0.01ms;
+    --bs-toast-transition-duration: 0.01ms;
+    --bs-dialog-transition-duration: 0.01ms;
+    --bs-drawer-transition-duration: 0.01ms;
+    --bs-popover-transition-duration: 0.01ms;
+    --bs-spinner-animation-speed: 0.01ms;
+  }
+}
