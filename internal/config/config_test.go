@@ -7,6 +7,7 @@ import (
 )
 
 func TestLoadDefaults(t *testing.T) {
+	t.Setenv("COOKIE_SECURE", "")
 	t.Setenv("APP_ADDR", "")
 	t.Setenv("DB_DSN", "")
 	cfg := config.Load()
