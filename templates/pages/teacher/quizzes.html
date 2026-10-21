@@ -1,0 +1,99 @@
+{{define "partials/title"}}Daftar kuis — Twisty Quiz{{end}}
+{{define "content"}}
+<div class="d-flex flex-column gap-4">
+
+  <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+    <h1 class="h1 mb-0">Daftar kuis</h1>
+    <a class="btn btn-solid theme-primary" href="/teacher/quizzes/edit">
+      <svg width="20" height="20" aria-hidden="true"><use href="#i-plus"></use></svg>
+      Buat kuis baru
+    </a>
+  </div>
+
+  {{/* Filters (segmented pills) + search. */}}
+  <div class="d-flex flex-wrap align-items-center gap-3">
+    <div class="btn-group" role="group" aria-label="Saring kuis">
+      <button type="button" class="btn btn-solid theme-primary" aria-pressed="true">Semua</button>
+      <button type="button" class="btn btn-outline theme-primary" aria-pressed="false">Aktif</button>
+      <button type="button" class="btn btn-outline theme-primary" aria-pressed="false">Draf</button>
+      <button type="button" class="btn btn-outline theme-primary" aria-pressed="false">Selesai</button>
+    </div>
+    <div class="flex-grow-1" style="min-width: 220px">
+      <label class="visually-hidden" for="quiz-search">Cari kuis</label>
+      <input class="form-control" type="search" id="quiz-search" placeholder="Cari kuis…">
+    </div>
+  </div>
+
+  {{/* Teacher-list family EMPTY state demo (spec §15.8). */}}
+  <div hidden data-state-demo="empty">
+    {{template "partials/empty-state.html" .}}
+  </div>
+
+  {{/* The 4 canonical quizzes as full rows. Status badges are never
+       colour-only: each carries its word. */}}
+  <ul class="list-group">
+    <li class="list-group-item d-flex flex-wrap align-items-center justify-content-between gap-3 p-3">
+      <span class="d-flex align-items-center gap-3">
+        <span class="d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 40px; height: 40px; background-color: #EEF4FA; color: #293681">
+          <svg width="20" height="20" aria-hidden="true"><use href="#i-quiz"></use></svg>
+        </span>
+        <span>
+          <span class="d-block fw-semibold">Biologi Sel — Kuis 4</span>
+          <span class="d-block fg-secondary" style="font-size: 13px">25 soal · 45 menit · XII IPA 2 · kode QUIZ-7F2K</span>
+        </span>
+      </span>
+      <span class="d-flex flex-wrap align-items-center gap-2">
+        <span class="badge theme-primary">Aktif</span>
+        <a class="btn btn-outline theme-primary" href="/teacher/monitor">Pantau</a>
+        <a class="btn btn-solid theme-primary" href="/teacher/quizzes/edit">Kelola</a>
+      </span>
+    </li>
+    <li class="list-group-item d-flex flex-wrap align-items-center justify-content-between gap-3 p-3">
+      <span class="d-flex align-items-center gap-3">
+        <span class="d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 40px; height: 40px; background-color: #F4F6F8; color: #121721">
+          <svg width="20" height="20" aria-hidden="true"><use href="#i-pencil"></use></svg>
+        </span>
+        <span>
+          <span class="d-block fw-semibold">Kimia Organik — Kuis 2</span>
+          <span class="d-block fg-secondary" style="font-size: 13px">20 soal · 40 menit · XI IPA 1</span>
+        </span>
+      </span>
+      <span class="d-flex flex-wrap align-items-center gap-2">
+        <span class="badge" style="background-color: #F4F6F8; color: #121721">Draf</span>
+        <a class="btn btn-outline theme-primary" href="/teacher/quizzes/edit">Kelola</a>
+      </span>
+    </li>
+    <li class="list-group-item d-flex flex-wrap align-items-center justify-content-between gap-3 p-3">
+      <span class="d-flex align-items-center gap-3">
+        <span class="d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 40px; height: 40px; background-color: #F4F6F8; color: #121721">
+          <svg width="20" height="20" aria-hidden="true"><use href="#i-check"></use></svg>
+        </span>
+        <span>
+          <span class="d-block fw-semibold">Fisika Kinematika — Kuis 3</span>
+          <span class="d-block fg-secondary" style="font-size: 13px">25 soal · 45 menit · X IPS 3 · selesai 18 Okt 2026</span>
+        </span>
+      </span>
+      <span class="d-flex flex-wrap align-items-center gap-2">
+        <span class="badge" style="background-color: #121721; color: #FFFFFF">Selesai</span>
+        <a class="btn btn-outline theme-primary" href="/teacher/recap">Rekap</a>
+      </span>
+    </li>
+    <li class="list-group-item d-flex flex-wrap align-items-center justify-content-between gap-3 p-3">
+      <span class="d-flex align-items-center gap-3">
+        <span class="d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 40px; height: 40px; background-color: #F4F6F8; color: #121721">
+          <svg width="20" height="20" aria-hidden="true"><use href="#i-clipboard"></use></svg>
+        </span>
+        <span>
+          <span class="d-block fw-semibold">Sejarah Indonesia — Kuis 1</span>
+          <span class="d-block fg-secondary" style="font-size: 13px">30 soal · 60 menit · XI IPA 2 · 12 esai menunggu</span>
+        </span>
+      </span>
+      <span class="d-flex flex-wrap align-items-center gap-2">
+        <span class="badge theme-warning">Menunggu penilaian</span>
+        <a class="btn btn-solid theme-primary" href="/teacher/grading">Nilai</a>
+      </span>
+    </li>
+  </ul>
+
+</div>
+{{end}}

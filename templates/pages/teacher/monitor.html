@@ -1,0 +1,123 @@
+{{define "partials/title"}}Monitor kuis — Twisty Quiz{{end}}
+{{define "content"}}
+<div class="d-flex flex-column gap-4">
+
+  <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+    <div class="d-flex flex-wrap align-items-center gap-3">
+      <h1 class="h1 mb-0">Monitor langsung — Biologi Sel — Kuis 4</h1>
+      <span class="badge theme-primary">Langsung</span>
+    </div>
+    <span class="badge" style="background-color: #FFFFFF; color: #293681; font-variant-numeric: tabular-nums">Sisa 28 menit</span>
+  </div>
+
+  {{/* LIVE-MONITOR family state demos (spec §15.8): loading / error / stale /
+       locked live here as hidden containers; empty sits with the participant
+       list below. */}}
+  <div hidden data-state-demo="loading">
+    <div class="card p-4" aria-busy="true">
+      {{template "partials/skeleton.html" .}}
+    </div>
+  </div>
+  <div hidden data-state-demo="error">
+    {{template "partials/banner-error" .}}
+  </div>
+  <div hidden data-state-demo="stale">
+    {{template "partials/banner-stale" .}}
+  </div>
+  <div hidden data-state-demo="locked">
+    {{template "partials/banner-locked" .}}
+  </div>
+  <div hidden data-state-demo="empty">
+    {{template "partials/empty-state.html" .}}
+  </div>
+
+  {{/* Progress rail: answered/unanswered counts, the answered region is
+       aria-live=polite (spec §15.5). */}}
+  <div class="card p-4 d-flex flex-column gap-2">
+    <div class="d-flex align-items-center justify-content-between gap-3">
+      <span class="fw-semibold">Kemajuan peserta</span>
+      <span class="fg-secondary" aria-live="polite" style="font-size: 14px">Terjawab: 96 dari 125 jawaban (76,8%)</span>
+    </div>
+    {{template "partials/progress-bar.html" 77}}
+    <div class="d-flex justify-content-between fg-secondary" style="font-size: 13px">
+      <span>96 terjawab</span>
+      <span>29 belum dijawab</span>
+    </div>
+  </div>
+
+  {{/* Participant list — 5 canonical students; status is a word, never
+       colour alone. Focus-loss tally carries its word too. */}}
+  <div class="card p-4 d-flex flex-column gap-3">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+      <h2 class="h2 mb-0">Peserta (142)</h2>
+      <span class="badge" style="background-color: #FDF0ED; color: #B42318">Fokus hilang: 2</span>
+    </div>
+
+    <ul class="list-group">
+      <li class="list-group-item d-flex flex-wrap align-items-center justify-content-between gap-3 p-3">
+        <span class="d-flex align-items-center gap-3">
+          <span class="badge" style="background-color: #EEF4FA; color: #293681">AL</span>
+          <span>
+            <span class="d-block fw-semibold">Ayu Lestari</span>
+            <span class="d-block fg-secondary" style="font-size: 13px">XII IPA 2 · 17 dari 25 soal</span>
+          </span>
+        </span>
+        <span class="d-flex align-items-center gap-2">
+          <span class="badge theme-primary">Mengerjakan</span>
+        </span>
+      </li>
+      <li class="list-group-item d-flex flex-wrap align-items-center justify-content-between gap-3 p-3">
+        <span class="d-flex align-items-center gap-3">
+          <span class="badge" style="background-color: #EEF4FA; color: #293681">BP</span>
+          <span>
+            <span class="d-block fw-semibold">Bayu Prakoso</span>
+            <span class="d-block fg-secondary" style="font-size: 13px">XII IPA 2 · 22 dari 25 soal</span>
+          </span>
+        </span>
+        <span class="d-flex align-items-center gap-2">
+          <span class="badge theme-primary">Mengerjakan</span>
+        </span>
+      </li>
+      <li class="list-group-item d-flex flex-wrap align-items-center justify-content-between gap-3 p-3">
+        <span class="d-flex align-items-center gap-3">
+          <span class="badge" style="background-color: #EEF4FA; color: #293681">CH</span>
+          <span>
+            <span class="d-block fw-semibold">Cindy Halim</span>
+            <span class="d-block fg-secondary" style="font-size: 13px">XI IPA 1 · 25 dari 25 soal</span>
+          </span>
+        </span>
+        <span class="d-flex align-items-center gap-2">
+          <span class="badge theme-success">Selesai</span>
+        </span>
+      </li>
+      <li class="list-group-item d-flex flex-wrap align-items-center justify-content-between gap-3 p-3">
+        <span class="d-flex align-items-center gap-3">
+          <span class="badge" style="background-color: #EEF4FA; color: #293681">DA</span>
+          <span>
+            <span class="d-block fw-semibold">Dimas Ardiansyah</span>
+            <span class="d-block fg-secondary" style="font-size: 13px">X IPS 3 · 9 dari 25 soal</span>
+          </span>
+        </span>
+        <span class="d-flex align-items-center gap-2">
+          <span class="badge theme-primary">Mengerjakan</span>
+        </span>
+      </li>
+      <li class="list-group-item d-flex flex-wrap align-items-center justify-content-between gap-3 p-3">
+        <span class="d-flex align-items-center gap-3">
+          <span class="badge" style="background-color: #EEF4FA; color: #293681">EN</span>
+          <span>
+            <span class="d-block fw-semibold">Eka Nuraini</span>
+            <span class="d-block fg-secondary" style="font-size: 13px">XI IPA 1 · 25 dari 25 soal</span>
+          </span>
+        </span>
+        <span class="d-flex align-items-center gap-2">
+          <span class="badge theme-success">Selesai</span>
+        </span>
+      </li>
+    </ul>
+
+    <p class="mb-0 fg-secondary" style="font-size: 13px">Daftar ini diperbarui otomatis selama kuis berlangsung.</p>
+  </div>
+
+</div>
+{{end}}
