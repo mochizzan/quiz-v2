@@ -1,0 +1,33 @@
+services:
+  db:
+    image: mariadb:12.3
+    environment:
+      MARIADB_ROOT_PASSWORD: quizroot
+      MARIADB_DATABASE: quiz
+      MARIADB_USER: quiz
+      MARIADB_PASSWORD: quiz
+    volumes:
+      - dbdata:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+  app:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      APP_ADDR: ":8080"
+      DB_DSN: "quiz:quiz@tcp(db:3306)/quiz?parseTime=true"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/healthz"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+volumes:
+  dbdata:
