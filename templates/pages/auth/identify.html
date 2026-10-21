@@ -1,0 +1,48 @@
+{{define "partials/title"}}Identitas peserta — Twisty Quiz{{end}}
+{{define "content"}}
+<div class="d-flex flex-column gap-4">
+  <div>
+    <h1 class="h1 mb-1">Identitas peserta</h1>
+    <p class="mb-0 fg-secondary">Lengkapi data berikut sebelum kuis dimulai.</p>
+  </div>
+
+  {{/* Auth family LOCKED/EXPIRED state demo (spec §15.8): a warning banner
+       plus disabled inputs. */}}
+  <div hidden data-state-demo="locked">
+    <div class="alert theme-warning mb-0" role="alert">
+      <strong class="d-block">Kuis ini sudah berakhir.</strong>
+      Jawaban tidak dapat dikumpulkan lagi. Hubungi guru Anda untuk informasi lebih lanjut.
+    </div>
+  </div>
+
+  <form class="d-flex flex-column gap-3" action="/identify" method="post">
+    <div>
+      <label class="form-label" for="id-name">Nama lengkap</label>
+      <input class="form-control" type="text" id="id-name" name="name" autocomplete="name" placeholder="Nama Anda" required>
+    </div>
+    <div>
+      <label class="form-label" for="id-class">Kelas</label>
+      <select class="form-control" id="id-class" name="class" required>
+        <option value="" selected>Pilih kelas</option>
+        <option>XI IPA 1</option>
+        <option>XI IPA 2</option>
+        <option>XII IPA 2</option>
+        <option>X IPS 3</option>
+      </select>
+    </div>
+    <div>
+      <label class="form-label" for="id-major">Jurusan</label>
+      <select class="form-control" id="id-major" name="major" required>
+        <option value="" selected>Pilih jurusan</option>
+        <option>IPA</option>
+        <option>IPS</option>
+        <option>Bahasa</option>
+        <option>Kejuruan</option>
+      </select>
+    </div>
+    <button type="submit" class="btn btn-solid theme-primary w-100" style="min-height: 44px">Mulai kuis</button>
+  </form>
+
+  <p class="mb-0 fg-secondary" style="font-size: 13px">Nama Anda hanya ditampilkan kepada guru yang mengawasi kuis ini.</p>
+</div>
+{{end}}
