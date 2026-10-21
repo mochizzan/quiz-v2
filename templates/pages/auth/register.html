@@ -1,0 +1,89 @@
+{{define "partials/title"}}Daftar akun — Twisty Quiz{{end}}
+{{define "content"}}
+<div class="d-flex flex-column gap-4">
+  <div>
+    <h1 class="h1 mb-1">Buat akun baru</h1>
+    <p class="mb-0 fg-secondary">Daftar untuk mengajar atau belajar di Twisty Quiz.</p>
+  </div>
+
+  {{/* Role toggle (demo state — Guru default). */}}
+  <div class="btn-group w-100" role="group" aria-label="Pilih peran">
+    <button type="button" class="btn btn-solid theme-primary flex-fill" aria-pressed="true">Guru</button>
+    <button type="button" class="btn btn-outline theme-primary flex-fill" aria-pressed="false">Siswa</button>
+  </div>
+
+  <form class="d-flex flex-column gap-3" action="/register" method="post">
+    <div>
+      <label class="form-label" for="reg-name">Nama lengkap</label>
+      <input class="form-control" type="text" id="reg-name" name="name" autocomplete="name" placeholder="Nama Anda" required>
+    </div>
+    <div>
+      <label class="form-label" for="reg-email">Email</label>
+      <input class="form-control" type="email" id="reg-email" name="email" autocomplete="email" placeholder="nama@sekolah.sch.id" required>
+    </div>
+    <div>
+      <label class="form-label" for="reg-school">Sekolah</label>
+      <input class="form-control" type="text" id="reg-school" name="school" placeholder="SMA Nusantara" required>
+    </div>
+
+    {{/* Student-only fields, shown for the demo per the plan. */}}
+    <div class="d-flex gap-3">
+      <div class="flex-grow-1">
+        <label class="form-label" for="reg-class">Kelas</label>
+        <select class="form-control" id="reg-class" name="class">
+          <option value="" selected>Pilih kelas</option>
+          <option>XI IPA 1</option>
+          <option>XI IPA 2</option>
+          <option>XII IPA 2</option>
+          <option>X IPS 3</option>
+        </select>
+      </div>
+      <div class="flex-grow-1">
+        <label class="form-label" for="reg-major">Jurusan</label>
+        <select class="form-control" id="reg-major" name="major">
+          <option value="" selected>Pilih jurusan</option>
+          <option>IPA</option>
+          <option>IPS</option>
+          <option>Bahasa</option>
+          <option>Kejuruan</option>
+        </select>
+      </div>
+    </div>
+
+    <div>
+      <label class="form-label" for="reg-password">Kata sandi</label>
+      <div class="position-relative">
+        <input class="form-control pe-5" type="password" id="reg-password" name="password" autocomplete="new-password" placeholder="Minimal 8 karakter" required>
+        <button type="button" class="btn btn-text position-absolute top-50 end-0 translate-middle-y me-1" aria-label="Tampilkan kata sandi">
+          <svg width="20" height="20" aria-hidden="true"><use href="#i-eye"></use></svg>
+        </button>
+      </div>
+    </div>
+    <div>
+      <label class="form-label" for="reg-confirm">Konfirmasi kata sandi</label>
+      <div class="position-relative">
+        <input class="form-control pe-5" type="password" id="reg-confirm" name="confirm" autocomplete="new-password" placeholder="Ulangi kata sandi" required>
+        <button type="button" class="btn btn-text position-absolute top-50 end-0 translate-middle-y me-1" aria-label="Tampilkan kata sandi">
+          <svg width="20" height="20" aria-hidden="true"><use href="#i-eye"></use></svg>
+        </button>
+      </div>
+    </div>
+
+    <label class="check">
+      <input type="checkbox" name="rules" value="1" required>
+      <span>Saya menyetujui aturan penggunaan Twisty Quiz.</span>
+    </label>
+
+    <button type="submit" class="btn btn-solid theme-primary w-100" style="min-height: 44px">Daftar akun</button>
+  </form>
+
+  <div class="alert theme-info mb-0">
+    Akun guru perlu persetujuan admin sekolah. <a href="/auth/pending">Pelajari lebih lanjut</a>.
+  </div>
+
+  <a class="d-flex align-items-center justify-content-between gap-2 text-decoration-none" href="/login">
+    <span>Sudah punya akun? Masuk</span>
+    <svg width="20" height="20" aria-hidden="true"><use href="#i-chev-right"></use></svg>
+  </a>
+</div>
+{{end}}
