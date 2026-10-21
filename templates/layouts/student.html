@@ -1,0 +1,17 @@
+{{define "layouts/student.html"}}<!doctype html>
+<html lang="id" data-bs-theme="light">
+<head>
+{{template "partials/head.html" .}}</head>
+{{/* App frame (DESIGN §4), student flavour: identical canvas frame to the
+     teacher layout with the student navbar and NO teacher drawer. */}}
+<body style="background-color: #838EA0">
+{{template "partials/icons.html" .}}
+<div class="container px-7 py-7">
+  <div style="background-color: #EDF0F4; border-radius: 32px">
+    {{template "partials/navbar-student.html" .}}
+    {{template "content" .}}
+  </div>
+</div>
+{{template "partials/foot.html" .}}
+</body>
+</html>{{end}}

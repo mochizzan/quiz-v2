@@ -1,0 +1,21 @@
+{{define "layouts/error.html"}}<!doctype html>
+<html lang="id" data-bs-theme="light">
+<head>
+{{template "partials/head.html" .}}</head>
+{{/* Centred error shell: a .card inside the v6 responsive-prefix column
+     col-12 md:col-8 mx-auto (col-md-8 is a v5 name and a defect), vertically
+     centred in the viewport on the #FFFFFF body background. */}}
+<body>
+{{template "partials/icons.html" .}}
+<main class="d-flex align-items-center justify-content-center min-vh-100 p-4">
+  <div class="row g-0 w-100 justify-content-center">
+    <div class="col-12 md:col-8 mx-auto">
+      <div class="card p-4 md:p-5">
+        {{template "content" .}}
+      </div>
+    </div>
+  </div>
+</main>
+{{template "partials/foot.html" .}}
+</body>
+</html>{{end}}

@@ -1,0 +1,35 @@
+{{define "layouts/auth.html"}}<!doctype html>
+<html lang="id" data-bs-theme="light">
+<head>
+{{template "partials/head.html" .}}</head>
+<body>
+{{template "partials/icons.html" .}}
+{{/* Split screen (DESIGN §4): atmospheric brand panel beside the centred auth
+     card. Below md the row becomes a single column and the brand panel
+     collapses to a compact header row (decorative chips + tagline hidden).
+     DEVIATION (documented in the plan): the prototype's brand gradient would
+     need inline background-image, which is OUTSIDE the spec §15.11 inline
+     closed list — the panel paints SOLID #293681 via the legal
+     background-color property instead. */}}
+<div class="row g-0 min-vh-100">
+  <div class="col-12 md:col-5 d-flex flex-column justify-content-between gap-4 p-4 md:p-5" style="background-color: #293681; color: #FFFFFF">
+    <span class="d-inline-flex align-items-center gap-2 fw-bold">
+      <svg width="28" height="28" aria-hidden="true"><use href="#i-star"></use></svg>
+      <span style="font-size: 16px; line-height: 22px">TWISTY QUIZ</span>
+    </span>
+    <div class="d-flex flex-column align-items-start gap-2 d-none md:d-flex">
+      <span class="badge" style="background-color: #1E2864; color: #FFFFFF">3 kuis aktif</span>
+      <span class="badge" style="background-color: #1E2864; color: #FFFFFF">142 peserta</span>
+      <span class="badge" style="background-color: #1E2864; color: #FFFFFF">1.480 soal bank</span>
+    </div>
+    <p class="d-none md:d-block mb-0" style="color: #EEF4FA; font-size: 14px; line-height: 20px">Ujian sekolah yang tenang, cepat, dan mudah diikuti.</p>
+  </div>
+  <div class="col-12 md:col-7 d-flex align-items-center justify-content-center p-4 md:p-5">
+    <div class="card" style="width: min(100%, 30rem)">
+      {{template "content" .}}
+    </div>
+  </div>
+</div>
+{{template "partials/foot.html" .}}
+</body>
+</html>{{end}}

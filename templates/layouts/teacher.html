@@ -1,0 +1,21 @@
+{{define "layouts/teacher.html"}}<!doctype html>
+<html lang="id" data-bs-theme="light">
+<head>
+{{template "partials/head.html" .}}</head>
+{{/* App frame (DESIGN §4): the viewport behind the frame is #838EA0 (legal
+     inline background-color on body), the canvas (#EDF0F4, 32px radius via
+     legal inline border-radius) fills a centred .container. px-7/py-7 supply
+     DESIGN's minimum 24px outer margin around the canvas. Inside the canvas:
+     the teacher navbar, the mobile drawer, then the page content. */}}
+<body style="background-color: #838EA0">
+{{template "partials/icons.html" .}}
+<div class="container px-7 py-7">
+  <div style="background-color: #EDF0F4; border-radius: 32px">
+    {{template "partials/navbar-teacher.html" .}}
+    {{template "partials/drawer-teacher.html" .}}
+    {{template "content" .}}
+  </div>
+</div>
+{{template "partials/foot.html" .}}
+</body>
+</html>{{end}}
