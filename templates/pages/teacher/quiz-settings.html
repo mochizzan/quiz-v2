@@ -1,0 +1,87 @@
+{{define "partials/title"}}Pengaturan kuis — Twisty Quiz{{end}}
+{{define "content"}}
+<div class="d-flex flex-column gap-4">
+
+  {{template "partials/breadcrumb.html" .}}
+  {{template "partials/stepper.html" 3}}
+
+  <h1 class="h1 mb-0">Pengaturan kuis</h1>
+
+  {{/* AUTHORING family SAVED + LOCKED demos on this page. */}}
+  <div hidden data-state-demo="saved">
+    <div class="toast-container position-fixed bottom-0 end-0 p-4">
+      <div class="toast theme-success show" role="status" aria-live="polite" style="background-color: #121721; color: #FFFFFF">
+        <div class="toast-body d-flex align-items-center justify-content-between gap-3">
+          <span>Pengaturan kuis berhasil disimpan.</span>
+          <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Tutup notifikasi"></button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div hidden data-state-demo="locked">
+    {{template "partials/banner-locked" .}}
+  </div>
+
+  {{/* Advanced settings — every option is a word + switch; disabled ones
+       carry their reason as text. */}}
+  <form class="card p-4 d-flex flex-column gap-3" action="/teacher/quizzes/settings" method="post">
+    <h2 class="h2 mb-0">Pengaturan lanjutan</h2>
+
+    <label class="d-flex align-items-center justify-content-between gap-3 p-3" style="background-color: #F4F6F8; border-radius: 18px">
+      <span>
+        <span class="d-block fw-semibold">Acak soal</span>
+        <span class="d-block fg-secondary" style="font-size: 13px">Urutan soal berbeda untuk tiap peserta.</span>
+      </span>
+      <input class="switch" type="checkbox" name="shuffleQuestions" checked>
+    </label>
+    <label class="d-flex align-items-center justify-content-between gap-3 p-3" style="background-color: #F4F6F8; border-radius: 18px">
+      <span>
+        <span class="d-block fw-semibold">Acak opsi jawaban</span>
+        <span class="d-block fg-secondary" style="font-size: 13px">Pilihan A–D diacak ulang per peserta.</span>
+      </span>
+      <input class="switch" type="checkbox" name="shuffleOptions">
+    </label>
+    <label class="d-flex align-items-center justify-content-between gap-3 p-3" style="background-color: #F4F6F8; border-radius: 18px">
+      <span>
+        <span class="d-block fw-semibold">Tampilkan skor langsung</span>
+        <span class="d-block fg-secondary" style="font-size: 13px">Peserta melihat skor begitu mengumpulkan.</span>
+      </span>
+      <input class="switch" type="checkbox" name="showScore" checked>
+    </label>
+    <label class="d-flex align-items-center justify-content-between gap-3 p-3" style="background-color: #F4F6F8; border-radius: 18px">
+      <span>
+        <span class="d-block fw-semibold">Kunci setelah submit</span>
+        <span class="d-block fg-secondary" style="font-size: 13px">Jawaban tidak dapat diubah setelah dikumpulkan.</span>
+      </span>
+      <input class="switch" type="checkbox" name="lockAfterSubmit" checked>
+    </label>
+    <div class="d-flex align-items-center justify-content-between gap-3 p-3" style="background-color: #ECEFF2; border-radius: 18px">
+      <span>
+        <span class="d-block fw-semibold">Izinkan kembali</span>
+        <span class="d-block fg-secondary" style="font-size: 13px">Tidak tersedia untuk v1</span>
+      </span>
+      <input class="switch" type="checkbox" name="allowRetry" disabled aria-label="Izinkan kembali (tidak tersedia untuk v1)">
+    </div>
+
+    <div class="d-flex flex-wrap gap-3 pt-2">
+      <div class="flex-grow-1" style="min-width: 200px">
+        <label class="form-label" for="set-essay-min">Minimal panjang esai (karakter)</label>
+        <input class="form-control" type="number" id="set-essay-min" name="essayMin" value="80" min="0" style="font-variant-numeric: tabular-nums">
+      </div>
+      <div class="flex-grow-1" style="min-width: 180px">
+        <label class="form-label" for="set-open">Jam buka</label>
+        <input class="form-control" type="text" id="set-open" name="openAt" value="08.00 WIB" style="font-variant-numeric: tabular-nums">
+      </div>
+      <div class="flex-grow-1" style="min-width: 180px">
+        <label class="form-label" for="set-close">Jam tutup</label>
+        <input class="form-control" type="text" id="set-close" name="closeAt" value="10.00 WIB" style="font-variant-numeric: tabular-nums">
+      </div>
+    </div>
+
+    <div class="d-flex flex-wrap justify-content-end gap-2 pt-2">
+      <a class="btn btn-outline theme-primary" href="/teacher/quizzes/edit">Batal</a>
+      <button type="submit" class="btn btn-solid theme-primary">Simpan pengaturan</button>
+    </div>
+  </form>
+</div>
+{{end}}
