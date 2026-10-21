@@ -1,0 +1,47 @@
+{{define "partials/title"}}Hasil kuis — Twisty Quiz{{end}}
+{{define "content"}}
+<div class="d-flex flex-column align-items-center text-center gap-3">
+
+  <span class="d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 56px; height: 56px; background-color: #EEF4FA; color: #237A57">
+    <svg width="28" height="28" aria-hidden="true"><use href="#i-check"></use></svg>
+  </span>
+
+  <h1 class="h1 mb-0">Jawaban berhasil dikumpulkan!</h1>
+  <p class="mb-0 fg-secondary">Terima kasih, Ayu. Jawaban Anda untuk Kuis Pengetahuan Umum — Sesi 1 sudah tersimpan.</p>
+
+  {{/* ATTEMPT family state demos on the result screen. */}}
+  <div hidden data-state-demo="error">
+    {{template "partials/banner-error" .}}
+  </div>
+  <div hidden data-state-demo="locked">
+    {{template "partials/banner-locked" .}}
+  </div>
+
+  {{/* 3 summary tiles — tabular numbers. */}}
+  <div class="row g-4 row-cols-1 md:row-cols-3 w-100 mt-1">
+    <div class="col">
+      <div class="card p-3 h-100">
+        <span class="fg-secondary" style="font-size: 13px">Total soal</span>
+        <span class="fw-bold" style="font-size: 32px; line-height: 38px; font-variant-numeric: tabular-nums">5</span>
+      </div>
+    </div>
+    <div class="col">
+      <div class="card p-3 h-100">
+        <span class="fg-secondary" style="font-size: 13px">Terjawab</span>
+        <span class="fw-bold" style="font-size: 32px; line-height: 38px; font-variant-numeric: tabular-nums">4</span>
+      </div>
+    </div>
+    <div class="col">
+      <div class="card p-3 h-100">
+        <span class="fg-secondary" style="font-size: 13px">Kosong</span>
+        <span class="fw-bold" style="font-size: 32px; line-height: 38px; font-variant-numeric: tabular-nums">1</span>
+      </div>
+    </div>
+  </div>
+
+  <p class="mb-0 fg-secondary" style="font-size: 13px; font-variant-numeric: tabular-nums">Dikumpulkan Rabu, 21 Oktober 2026, 09.42 WIB.</p>
+  <p class="mb-0 fg-secondary" style="font-size: 13px">Skor dihitung setelah guru menyelesaikan penilaian.</p>
+
+  <a class="btn btn-solid theme-primary mt-2" href="/student">Kembali ke dasbor</a>
+</div>
+{{end}}

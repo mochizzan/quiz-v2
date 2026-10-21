@@ -1,0 +1,96 @@
+{{define "partials/title"}}Tinjau jawaban — Twisty Quiz{{end}}
+{{define "content"}}
+<div class="d-flex flex-column gap-4">
+
+  <h1 class="h1 mb-0">Tinjau jawaban Anda</h1>
+
+  {{/* Unanswered warning — canonical pattern: 1 kosong, nomor 5. */}}
+  <div class="alert theme-warning mb-0" role="alert">
+    <strong class="d-block">Anda memiliki 1 soal yang belum dijawab.</strong>
+    1 kosong: nomor 5. Kumpulkan tetap bisa — jawaban kosong dinilai 0.
+  </div>
+
+  {{/* Review rows — each verdict is a word badge. */}}
+  <div class="card p-4 d-flex flex-column gap-3">
+    <ul class="list-group">
+      <li class="list-group-item d-flex flex-wrap align-items-center justify-content-between gap-3 p-3">
+        <span class="d-flex align-items-start gap-3">
+          <span class="badge" style="background-color: #F4F6F8; color: #121721; font-variant-numeric: tabular-nums">1</span>
+          <span>
+            <span class="d-block fg-secondary" style="font-size: 13px">Pilihan Ganda</span>
+            <span class="d-block">Planet manakah yang dikenal sebagai Planet Merah?</span>
+            <span class="d-block fg-secondary" style="font-size: 13px">Jawaban: Mars</span>
+          </span>
+        </span>
+        <span class="d-flex align-items-center gap-2">
+          <span class="badge theme-primary">Terjawab</span>
+          <a class="btn btn-text" href="/attempt" aria-label="Ubah jawaban nomor 1">Ubah</a>
+        </span>
+      </li>
+      <li class="list-group-item d-flex flex-wrap align-items-center justify-content-between gap-3 p-3">
+        <span class="d-flex align-items-start gap-3">
+          <span class="badge" style="background-color: #F4F6F8; color: #121721; font-variant-numeric: tabular-nums">2</span>
+          <span>
+            <span class="d-block fg-secondary" style="font-size: 13px">Pilihan Ganda</span>
+            <span class="d-block">Berapa hasil dari 12 × 8?</span>
+            <span class="d-block fg-secondary" style="font-size: 13px">Jawaban: 96</span>
+          </span>
+        </span>
+        <span class="d-flex align-items-center gap-2">
+          <span class="badge theme-primary">Terjawab</span>
+          <a class="btn btn-text" href="/attempt" aria-label="Ubah jawaban nomor 2">Ubah</a>
+        </span>
+      </li>
+      <li class="list-group-item d-flex flex-wrap align-items-center justify-content-between gap-3 p-3">
+        <span class="d-flex align-items-start gap-3">
+          <span class="badge" style="background-color: #F4F6F8; color: #121721; font-variant-numeric: tabular-nums">3</span>
+          <span>
+            <span class="d-block fg-secondary" style="font-size: 13px">Benar-Salah</span>
+            <span class="d-block">Ibukota Indonesia adalah Jakarta.</span>
+            <span class="d-block fg-secondary" style="font-size: 13px">Jawaban: Benar</span>
+          </span>
+        </span>
+        <span class="d-flex align-items-center gap-2">
+          <span class="badge theme-primary">Terjawab</span>
+          <a class="btn btn-text" href="/attempt" aria-label="Ubah jawaban nomor 3">Ubah</a>
+        </span>
+      </li>
+      <li class="list-group-item d-flex flex-wrap align-items-center justify-content-between gap-3 p-3">
+        <span class="d-flex align-items-start gap-3">
+          <span class="badge" style="background-color: #F4F6F8; color: #121721; font-variant-numeric: tabular-nums">4</span>
+          <span>
+            <span class="d-block fg-secondary" style="font-size: 13px">Isian</span>
+            <span class="d-block">Satuan SI untuk gaya adalah …</span>
+            <span class="d-block fg-secondary" style="font-size: 13px">Jawaban: newton</span>
+          </span>
+        </span>
+        <span class="d-flex align-items-center gap-2">
+          <span class="badge theme-primary">Terjawab</span>
+          <a class="btn btn-text" href="/attempt" aria-label="Ubah jawaban nomor 4">Ubah</a>
+        </span>
+      </li>
+      <li class="list-group-item d-flex flex-wrap align-items-center justify-content-between gap-3 p-3">
+        <span class="d-flex align-items-start gap-3">
+          <span class="badge" style="background-color: #F4F6F8; color: #121721; font-variant-numeric: tabular-nums">5</span>
+          <span>
+            <span class="d-block fg-secondary" style="font-size: 13px">Esai</span>
+            <span class="d-block">Jelaskan proses terbentuknya pelangi.</span>
+            <span class="d-block fg-secondary" style="font-size: 13px">Jawaban: —</span>
+          </span>
+        </span>
+        <span class="d-flex align-items-center gap-2">
+          <span class="badge" style="background-color: #F4F6F8; color: #121721">Belum</span>
+          <a class="btn btn-text" href="/attempt" aria-label="Ubah jawaban nomor 5">Ubah</a>
+        </span>
+      </li>
+    </ul>
+  </div>
+
+  <div class="d-flex flex-wrap justify-content-end gap-2">
+    <a class="btn btn-outline theme-primary" href="/attempt">Kembali ke soal</a>
+    <button type="button" class="btn btn-solid theme-primary" data-bs-toggle="dialog" data-bs-target="#dialog-confirm">Kumpulkan jawaban</button>
+  </div>
+
+  {{template "partials/dialogs.html" .}}
+</div>
+{{end}}

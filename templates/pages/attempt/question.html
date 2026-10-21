@@ -1,0 +1,216 @@
+{{define "partials/title"}}Kuis Pengetahuan Umum — Twisty Quiz{{end}}
+{{define "content"}}
+
+{{/* Sticky top bar: brand glyph, quiz title, student chip, progress. */}}
+<div class="card p-3 mb-4 d-flex flex-column gap-2" style="position: sticky; top: 0; z-index: 1020">
+  <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+    <div class="d-flex align-items-center gap-2">
+      <svg width="20" height="20" aria-hidden="true"><use href="#i-quiz"></use></svg>
+      <span class="fw-semibold">Kuis Pengetahuan Umum — Sesi 1</span>
+    </div>
+    <span class="badge" style="background-color: #EEF4FA; color: #293681">Ayu Lestari · XII IPA 2</span>
+  </div>
+
+  {{/* Inline progress markup: answered region is aria-live=polite. */}}
+  <div class="d-flex align-items-center gap-3">
+    <span role="progressbar" aria-valuenow="20" aria-valuemin="0" aria-valuemax="100" aria-label="Kemajuan kuis" class="flex-grow-1" style="height: 8px; background-color: #E2E6EB; border-radius: 9999px; overflow: hidden">
+      <span style="display: block; width: 20%; height: 100%; background-color: #293681; border-radius: 9999px"></span>
+    </span>
+    <span class="fg-secondary" style="font-size: 13px; font-variant-numeric: tabular-nums">Soal 1 dari 5</span>
+    <span class="fg-secondary" aria-live="polite" style="font-size: 13px; font-variant-numeric: tabular-nums">Terjawab: 0/5</span>
+  </div>
+</div>
+
+{{/* ATTEMPT family state demos (spec §15.8): error, saving, saved,
+     locked/expired. NOTE: attempt surfaces carry NO loading state. */}}
+<div hidden data-state-demo="error">
+  <div class="alert theme-danger" role="alert">
+    <strong class="d-block">Gagal menyimpan jawaban. Periksa koneksi Anda.</strong>
+    Jawaban Anda tetap tersimpan di perangkat ini sampai tersambung kembali.
+    <button type="button" class="btn btn-outline theme-danger ms-2">Coba lagi</button>
+  </div>
+</div>
+<div hidden data-state-demo="saving">
+  <div class="d-flex align-items-center gap-2 fg-secondary" role="status">
+    <span class="spinner-border" role="status"><span class="visually-hidden">Memuat…</span></span>
+    <span>Menyimpan jawaban…</span>
+  </div>
+</div>
+<div hidden data-state-demo="saved">
+  <div class="toast-container position-fixed bottom-0 end-0 p-4">
+    <div class="toast theme-success show" role="status" aria-live="polite" style="background-color: #121721; color: #FFFFFF">
+      <div class="toast-body d-flex align-items-center justify-content-between gap-3">
+        <span>Jawaban tersimpan otomatis.</span>
+        <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Tutup notifikasi"></button>
+      </div>
+    </div>
+  </div>
+</div>
+<div hidden data-state-demo="locked">
+  {{template "partials/banner-locked" .}}
+</div>
+
+<div class="d-flex flex-column gap-4">
+
+  {{/* Desktop navigator (hidden on small screens via the ribbon below). */}}
+  <nav class="card p-4 d-none xl:d-flex flex-column gap-2" aria-label="Navigasi soal">
+    <h2 class="h2 mb-0">Navigasi soal</h2>
+    <ul class="list-group">
+      <li class="list-group-item d-flex align-items-center justify-content-between gap-3 p-3">
+        <span class="d-flex align-items-center gap-3">
+          <span class="d-inline-flex align-items-center justify-content-center rounded-circle fw-semibold" style="width: 32px; height: 32px; background-color: #293681; color: #FFFFFF; font-variant-numeric: tabular-nums">1</span>
+          <span>Pilihan Ganda</span>
+        </span>
+        <span class="badge theme-primary">Aktif</span>
+      </li>
+      <li class="list-group-item d-flex align-items-center justify-content-between gap-3 p-3">
+        <span class="d-flex align-items-center gap-3">
+          <span class="d-inline-flex align-items-center justify-content-center rounded-circle fw-semibold" style="width: 32px; height: 32px; background-color: #FFFFFF; color: #121721; font-variant-numeric: tabular-nums">2</span>
+          <span>Pilihan Ganda</span>
+        </span>
+        <span class="badge" style="background-color: #F4F6F8; color: #121721">Belum dijawab</span>
+      </li>
+      <li class="list-group-item d-flex align-items-center justify-content-between gap-3 p-3">
+        <span class="d-flex align-items-center gap-3">
+          <span class="d-inline-flex align-items-center justify-content-center rounded-circle fw-semibold" style="width: 32px; height: 32px; background-color: #FFFFFF; color: #121721; font-variant-numeric: tabular-nums">3</span>
+          <span>Benar-Salah</span>
+        </span>
+        <span class="badge" style="background-color: #F4F6F8; color: #121721">Belum dijawab</span>
+      </li>
+      <li class="list-group-item d-flex align-items-center justify-content-between gap-3 p-3">
+        <span class="d-flex align-items-center gap-3">
+          <span class="d-inline-flex align-items-center justify-content-center rounded-circle fw-semibold" style="width: 32px; height: 32px; background-color: #FFFFFF; color: #121721; font-variant-numeric: tabular-nums">4</span>
+          <span>Isian</span>
+        </span>
+        <span class="badge" style="background-color: #F4F6F8; color: #121721">Belum dijawab</span>
+      </li>
+      <li class="list-group-item d-flex align-items-center justify-content-between gap-3 p-3">
+        <span class="d-flex align-items-center gap-3">
+          <span class="d-inline-flex align-items-center justify-content-center rounded-circle fw-semibold" style="width: 32px; height: 32px; background-color: #FFFFFF; color: #121721; font-variant-numeric: tabular-nums">5</span>
+          <span>Esai</span>
+        </span>
+        <span class="badge" style="background-color: #F4F6F8; color: #121721">Belum dijawab</span>
+      </li>
+    </ul>
+    <p class="mb-0 fg-secondary" style="font-size: 13px">Aktif · Terjawab · Belum dijawab — status ditandai kata, bukan warna saja.</p>
+  </nav>
+
+  {{/* Mobile ribbon + drawer navigator (native dialog, keyboard-closable). */}}
+  <div class="d-flex xl:d-none align-items-center justify-content-between gap-3">
+    <div class="d-flex gap-2" aria-label="Navigasi soal">
+      <span class="d-inline-flex align-items-center justify-content-center rounded-circle fw-semibold" style="width: 32px; height: 32px; background-color: #293681; color: #FFFFFF; font-variant-numeric: tabular-nums">1</span>
+      <span class="d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 32px; height: 32px; background-color: #FFFFFF; color: #121721; font-variant-numeric: tabular-nums; border: 1px solid #E2E6EB">2</span>
+      <span class="d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 32px; height: 32px; background-color: #FFFFFF; color: #121721; font-variant-numeric: tabular-nums; border: 1px solid #E2E6EB">3</span>
+      <span class="d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 32px; height: 32px; background-color: #FFFFFF; color: #121721; font-variant-numeric: tabular-nums; border: 1px solid #E2E6EB">4</span>
+      <span class="d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 32px; height: 32px; background-color: #FFFFFF; color: #121721; font-variant-numeric: tabular-nums; border: 1px solid #E2E6EB">5</span>
+    </div>
+    <button type="button" class="btn btn-outline theme-primary" data-bs-toggle="dialog" data-bs-target="#nav-drawer">Lihat semua</button>
+  </div>
+
+  {{/* Question card. */}}
+  <div class="card p-4 d-flex flex-column gap-3">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+      <span class="fg-secondary" style="font-size: 13px; font-variant-numeric: tabular-nums">SOAL 1 DARI 5</span>
+      <span class="badge theme-primary">Pilihan Ganda</span>
+    </div>
+
+    <p class="mb-0" style="font-size: 16px">Planet manakah yang dikenal sebagai Planet Merah karena kandungan besi oksida di permukaannya?</p>
+
+    {{/* Option rows: selected state = #EEF4FA surface + word check mark. */}}
+    <label class="d-flex align-items-center gap-3 p-3" style="background-color: #EEF4FA; border-radius: 18px">
+      <span class="d-inline-flex align-items-center justify-content-center rounded-circle fw-semibold" style="width: 32px; height: 32px; background-color: #293681; color: #FFFFFF">A</span>
+      <span class="flex-grow-1">Mars</span>
+      <span class="d-flex align-items-center gap-2">
+        <span class="badge theme-primary">Dipilih</span>
+        <svg width="20" height="20" aria-hidden="true"><use href="#i-check"></use></svg>
+        <input class="radio" type="radio" name="answer" value="a" checked aria-label="Jawaban A: Mars">
+      </span>
+    </label>
+    <label class="d-flex align-items-center gap-3 p-3" style="background-color: #F4F6F8; border-radius: 18px">
+      <span class="d-inline-flex align-items-center justify-content-center rounded-circle fw-semibold" style="width: 32px; height: 32px; background-color: #FFFFFF; color: #121721">B</span>
+      <span class="flex-grow-1">Venus</span>
+      <input class="radio" type="radio" name="answer" value="b" aria-label="Jawaban B: Venus">
+    </label>
+    <label class="d-flex align-items-center gap-3 p-3" style="background-color: #F4F6F8; border-radius: 18px">
+      <span class="d-inline-flex align-items-center justify-content-center rounded-circle fw-semibold" style="width: 32px; height: 32px; background-color: #FFFFFF; color: #121721">C</span>
+      <span class="flex-grow-1">Jupiter</span>
+      <input class="radio" type="radio" name="answer" value="c" aria-label="Jawaban C: Jupiter">
+    </label>
+    <label class="d-flex align-items-center gap-3 p-3" style="background-color: #F4F6F8; border-radius: 18px">
+      <span class="d-inline-flex align-items-center justify-content-center rounded-circle fw-semibold" style="width: 32px; height: 32px; background-color: #FFFFFF; color: #121721">D</span>
+      <span class="flex-grow-1">Saturnus</span>
+      <input class="radio" type="radio" name="answer" value="d" aria-label="Jawaban D: Saturnus">
+    </label>
+
+    {{/* Autosave indicator (toggled by app.js on essay questions). */}}
+    <span id="autosave-indicator" class="show fg-secondary d-flex align-items-center gap-2" style="font-size: 13px">
+      <svg width="20" height="20" aria-hidden="true"><use href="#i-check"></use></svg>
+      Jawaban tersimpan otomatis
+    </span>
+  </div>
+
+  {{/* Desktop navigation buttons. */}}
+  <div class="d-none xl:d-flex flex-wrap justify-content-between gap-2">
+    <button type="button" class="btn btn-outline theme-primary" aria-disabled="true" disabled>Sebelumnya</button>
+    <div class="d-flex gap-2">
+      <a class="btn btn-outline theme-primary" href="/attempt/review">Tinjau jawaban</a>
+      <button type="button" class="btn btn-solid theme-primary">Selanjutnya</button>
+    </div>
+  </div>
+
+  {{/* Mobile sticky bottom bar. */}}
+  <div class="d-flex xl:d-none gap-2 fixed-bottom p-3" style="background-color: #FFFFFF; padding-bottom: calc(12px + env(safe-area-inset-bottom))">
+    <button type="button" class="btn btn-outline theme-primary flex-fill" aria-disabled="true" disabled>Sebelumnya</button>
+    <button type="button" class="btn btn-solid theme-primary flex-fill">Selanjutnya</button>
+  </div>
+</div>
+
+{{/* Mobile navigator drawer — native dialog, keyboard-closable. */}}
+<dialog class="drawer drawer-bottom" id="nav-drawer" aria-label="Semua soal">
+  <div class="drawer-header d-flex align-items-center justify-content-between gap-3">
+    <h2 class="h2 mb-0">Semua soal</h2>
+    <button type="button" class="btn btn-text" data-bs-dismiss="dialog" aria-label="Tutup navigasi">
+      <svg width="20" height="20" aria-hidden="true"><use href="#i-x"></use></svg>
+    </button>
+  </div>
+  <div class="drawer-body">
+    <ul class="list-group">
+      <li class="list-group-item d-flex align-items-center justify-content-between gap-3 p-3">
+        <span class="d-flex align-items-center gap-3">
+          <span class="d-inline-flex align-items-center justify-content-center rounded-circle fw-semibold" style="width: 32px; height: 32px; background-color: #293681; color: #FFFFFF; font-variant-numeric: tabular-nums">1</span>
+          <span>Pilihan Ganda</span>
+        </span>
+        <span class="badge theme-primary">Aktif</span>
+      </li>
+      <li class="list-group-item d-flex align-items-center justify-content-between gap-3 p-3">
+        <span class="d-flex align-items-center gap-3">
+          <span class="d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 32px; height: 32px; background-color: #FFFFFF; color: #121721; font-variant-numeric: tabular-nums; border: 1px solid #E2E6EB">2</span>
+          <span>Pilihan Ganda</span>
+        </span>
+        <span class="badge" style="background-color: #F4F6F8; color: #121721">Belum</span>
+      </li>
+      <li class="list-group-item d-flex align-items-center justify-content-between gap-3 p-3">
+        <span class="d-flex align-items-center gap-3">
+          <span class="d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 32px; height: 32px; background-color: #FFFFFF; color: #121721; font-variant-numeric: tabular-nums; border: 1px solid #E2E6EB">3</span>
+          <span>Benar-Salah</span>
+        </span>
+        <span class="badge" style="background-color: #F4F6F8; color: #121721">Belum</span>
+      </li>
+      <li class="list-group-item d-flex align-items-center justify-content-between gap-3 p-3">
+        <span class="d-flex align-items-center gap-3">
+          <span class="d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 32px; height: 32px; background-color: #FFFFFF; color: #121721; font-variant-numeric: tabular-nums; border: 1px solid #E2E6EB">4</span>
+          <span>Isian</span>
+        </span>
+        <span class="badge" style="background-color: #F4F6F8; color: #121721">Belum</span>
+      </li>
+      <li class="list-group-item d-flex align-items-center justify-content-between gap-3 p-3">
+        <span class="d-flex align-items-center gap-3">
+          <span class="d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 32px; height: 32px; background-color: #FFFFFF; color: #121721; font-variant-numeric: tabular-nums; border: 1px solid #E2E6EB">5</span>
+          <span>Esai</span>
+        </span>
+        <span class="badge" style="background-color: #F4F6F8; color: #121721">Belum</span>
+      </li>
+    </ul>
+  </div>
+</dialog>
+{{end}}
