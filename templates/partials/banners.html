@@ -1,0 +1,5 @@
+{{/* banners.html — shared alert primitives with fixed Indonesian copy; pages
+     embed the variant they need wholesale. */}}
+{{define "partials/banner-error"}}<div class="alert theme-danger" role="alert"><span class="fw-semibold">Gagal memuat data.</span> Periksa koneksi Anda lalu coba lagi. <button type="button" class="btn btn-outline theme-danger ms-2">Coba lagi</button></div>{{end}}
+{{define "partials/banner-stale"}}<div class="alert theme-warning" role="alert"><span class="fw-semibold">Pembaruan langsung terhenti.</span> Data pada layar ini mungkin sudah usang. Muat ulang halaman untuk menyegarkannya.</div>{{end}}
+{{define "partials/banner-locked"}}<div class="alert theme-warning" role="alert"><span class="fw-semibold">Kuis terkunci.</span> Kuis ini sudah berakhir atau dikunci guru, sehingga jawaban dan isian tidak lagi dapat diubah.</div>{{end}}

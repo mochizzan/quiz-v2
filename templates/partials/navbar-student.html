@@ -1,0 +1,16 @@
+{{define "partials/navbar-student.html"}}<nav class="navbar d-flex align-items-center justify-content-between flex-wrap gap-3 py-3 px-4" aria-label="Navigasi utama">
+  <a class="navbar-brand d-inline-flex align-items-center gap-2 text-decoration-none" href="/student">
+    <span class="d-inline-flex align-items-center justify-content-center fw-bold px-2 py-1" style="background-color: #293681; color: #FFFFFF; border-radius: 8px" aria-hidden="true">T</span>
+    <span class="fw-bold" style="color: #121721">TWISTY QUIZ</span>
+    <span class="d-block rounded-circle p-1" style="background-color: #E24A21" aria-hidden="true"></span>
+  </a>
+  <ul class="nav flex-wrap gap-1">
+    <li class="nav-item"><a class="nav-link d-inline-flex align-items-center gap-2{{if eq .Active "dasbor"}} active{{end}}" href="/student"{{if eq .Active "dasbor"}} aria-current="page"{{end}}><svg width="20" height="20" aria-hidden="true"><use href="#i-dashboard"></use></svg>Dasbor</a></li>
+    <li class="nav-item"><a class="nav-link d-inline-flex align-items-center gap-2{{if eq .Active "riwayat"}} active{{end}}" href="/student/history"{{if eq .Active "riwayat"}} aria-current="page"{{end}}><svg width="20" height="20" aria-hidden="true"><use href="#i-history"></use></svg>Riwayat</a></li>
+    <li class="nav-item"><a class="nav-link d-inline-flex align-items-center gap-2{{if eq .Active "profil"}} active{{end}}" href="/profile"{{if eq .Active "profil"}} aria-current="page"{{end}}><svg width="20" height="20" aria-hidden="true"><use href="#i-person"></use></svg>Profil</a></li>
+  </ul>
+  <span class="d-inline-flex align-items-center gap-2">
+    <span class="d-inline-flex align-items-center justify-content-center rounded-circle" style="background-color: #4274D9; color: #FFFFFF; font-size: 13px; line-height: 18px" aria-hidden="true">AL</span>
+    <span class="d-none md:d-inline fw-semibold">Ayu Lestari</span>
+  </span>
+</nav>{{end}}

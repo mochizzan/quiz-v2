@@ -1,0 +1,19 @@
+{{define "partials/head.html"}}<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{template "partials/title" .}}</title>
+<link rel="stylesheet" href="/static/bootstrap/bootstrap.min.css">
+<link rel="stylesheet" href="/static/css/tokens.css">
+<style>
+/* Plus Jakarta Sans variable font — latin subset, weight axis 400-700 (one
+   variable binary). Licensed under the SIL Open Font License 1.1; see
+   /static/fonts/plus-jakarta-sans/OFL.txt */
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  src: url('/static/fonts/plus-jakarta-sans/PlusJakartaSans-latin.woff2') format('woff2');
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
+</style>
+{{end}}
+{{define "partials/title"}}Twisty Quiz{{end}}

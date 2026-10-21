@@ -1,0 +1,13 @@
+{{/* stepper.html — authoring step indicator, parameterized by the current step
+     as a literal, e.g. {{template "partials/stepper.html" 1}} (step 1 of 4).
+     Current step = .badge .theme-primary with aria-current="step"; the other
+     steps are neutral .badge. */}}
+{{define "partials/stepper.html"}}<ol class="nav flex-wrap gap-2 align-items-center" aria-label="Langkah penyusunan kuis">
+  <li class="nav-item"><span class="{{if eq . 1}}badge theme-primary{{else}}badge{{end}}"{{if eq . 1}} aria-current="step"{{end}}>1 Data kuis</span></li>
+  <li class="nav-item" aria-hidden="true"><svg width="20" height="20" aria-hidden="true"><use href="#i-chev-right"></use></svg></li>
+  <li class="nav-item"><span class="{{if eq . 2}}badge theme-primary{{else}}badge{{end}}"{{if eq . 2}} aria-current="step"{{end}}>2 Soal</span></li>
+  <li class="nav-item" aria-hidden="true"><svg width="20" height="20" aria-hidden="true"><use href="#i-chev-right"></use></svg></li>
+  <li class="nav-item"><span class="{{if eq . 3}}badge theme-primary{{else}}badge{{end}}"{{if eq . 3}} aria-current="step"{{end}}>3 Pengaturan</span></li>
+  <li class="nav-item" aria-hidden="true"><svg width="20" height="20" aria-hidden="true"><use href="#i-chev-right"></use></svg></li>
+  <li class="nav-item"><span class="{{if eq . 4}}badge theme-primary{{else}}badge{{end}}"{{if eq . 4}} aria-current="step"{{end}}>4 Terbitkan</span></li>
+</ol>{{end}}
