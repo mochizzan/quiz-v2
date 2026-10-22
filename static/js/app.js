@@ -24,4 +24,21 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
   }
+
+  // Role switch (Guru/Siswa segmented control, plan §15.7): clicking a side
+  // moves aria-pressed and swaps the btn-solid/btn-outline skin between the
+  // two buttons. Inert on pages that don't carry a .role-switch group.
+  document.querySelectorAll(".role-switch").forEach((group) => {
+    const buttons = Array.from(group.querySelectorAll("button[aria-pressed]"));
+    buttons.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        buttons.forEach((other) => {
+          const on = other === btn;
+          other.setAttribute("aria-pressed", on ? "true" : "false");
+          other.classList.toggle("btn-solid", on);
+          other.classList.toggle("btn-outline", !on);
+        });
+      });
+    });
+  });
 });

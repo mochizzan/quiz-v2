@@ -53,10 +53,14 @@
   </div>
 
   <div class="form-options">
-    <label class="check">
-      <input type="checkbox" name="remember" value="1">
-      <span>Ingat saya</span>
-    </label>
+    {{/* v6 checkbox: .check is the class of the INPUT (the framework hides
+         the native box and draws its own 1.25rem square); the text label is
+         a SIBLING after it — wrapping both in <label class="check"> squeezes
+         the copy into the 20px box (the "tiny text" bug). */}}
+    <span class="d-flex align-items-center gap-2">
+      <input class="check" type="checkbox" id="login-remember" name="remember" value="1">
+      <label for="login-remember">Ingat saya</label>
+    </span>
     <a href="/login" class="fg-secondary">Lupa kata sandi?</a>
   </div>
 
