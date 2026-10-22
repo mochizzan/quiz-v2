@@ -6,59 +6,166 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 
 	"quiz-v2/internal/config"
 	"quiz-v2/internal/httpserver"
+	"quiz-v2/internal/httpserver/fixtures"
 )
 
-// conformance_test.go is Task 15: the whole-frontend gate every later plan
-// must keep. It walks the rendered pages plus the template/CSS/JS sources and
-// fails on any deviation from docs/DESIGN.md and spec §15. It runs from the
-// repository root (TestMain in server_test.go chdirs there), so the relative
-// paths below resolve against ./templates, ./static.
+// conformance_test.go is the whole-frontend gate for the typed-data build. It
+// pins the exact 72-route surface from the design contract, renders every GET
+// page and exercises every POST action, and walks the template/CSS/JS sources
+// for the design bans. TestMain (server_test.go) chdirs to the repository root,
+// so ./templates and ./static resolve correctly.
 
 var (
-	// paletteHexes (tokens_test.go) is the closed 24-colour palette, stored
-	// lower-cased; reHex captures mixed-case so compare strings.ToLower.
 	reStyleElem = regexp.MustCompile(`(?s)<style[^>]*>(.*?)</style>`)
 	reHex       = regexp.MustCompile(`#[0-9A-Fa-f]{6}\b`)
 	reIconRef   = regexp.MustCompile(`href="#(i-[^"]+)"`)
 	reClassAttr = regexp.MustCompile(`class="([^"]*)"`)
 	reSymbolID  = regexp.MustCompile(`<symbol id="(i-[^"]+)"`)
 	reTitle     = regexp.MustCompile(`(?s)<title[^>]*>(.*?)</title>`)
+	reTagStrip  = regexp.MustCompile(`<[^>]*>`)
+	reForm      = regexp.MustCompile(`(?is)<form\b[^>]*method="post"[^>]*>(.*?)</form>`)
+	reOnHandler = regexp.MustCompile(`\son(click|change|submit|input|focus|blur|load|error)\s*=`)
 )
 
-// bannedClassTokens are Bootstrap v5 class spellings that must not appear in
-// any class="…" attribute. Regex bans cover the v5 prefix-responsive families
-// (grid/display/spacing/...): v6 spells EVERY utility family BREAKPOINT:utility
-// (md:col-6, md:p-5, md:flex-row), so any v5 prefix form is a leak.
-var bannedClassTokens = map[string]bool{
-	"btn-primary": true, "btn-outline-primary": true, "text-primary": true,
-	"text-muted": true, "text-white": true, "text-bg-primary": true,
-	"form-select": true, "form-check-input": true,
-	"modal": true, "modal-dialog": true, "modal-content": true,
-	"offcanvas": true, "offcanvas-header": true, "offcanvas-body": true,
-	"dropdown-menu": true, "dropdown-item": true, "dropdown-toggle": true,
-	"placeholder-glow": true,
-	"d-lg-block":       true, "d-md-block": true, "d-md-flex": true,
-	"d-sm-block": true, "d-xl-flex": true, "d-md-none": true, "d-lg-none": true,
-	"fs-1": true, "fs-2": true, "fs-3": true, "fs-4": true, "fs-5": true, "fs-6": true,
-	"sr-only": true, "text-body": true, "btn-block": true,
-	"font-weight-bold": true, "font-italic": true,
-	"bg-opacity-10": true, "text-opacity-75": true, "border-opacity-25": true,
-	"bg-body-secondary": true, "bg-body-tertiary": true,
-	"accordion-button": true, "accordion-collapse": true, // v6 accordion is details-based
-	"link-underline": true, "ratio": true, "spinner-border-sm": true,
-}
-
-var bannedClassRegexps = []*regexp.Regexp{
+var v5ResponsiveRe = []*regexp.Regexp{
 	regexp.MustCompile(`^col-(sm|md|lg|xl)-`),
 	regexp.MustCompile(`^row-cols-(sm|md|lg|xl)-`),
 	regexp.MustCompile(`^d-(sm|md|lg|xl)-(block|flex|inline)`),
 	regexp.MustCompile(`^(p|m|pt|pb|ps|pe|px|py|mt|mb|ms|me|mx|my|gap)-(sm|md|lg|xl)-`),
 	regexp.MustCompile(`^(flex|justify-content|align-items|text|w|h)-(sm|md|lg|xl)-`),
+}
+
+// route is one method + path pair in the design contract.
+type route struct{ method, path string }
+
+func r(method, path string) route { return route{method: method, path: path} }
+
+// contractRoutes is the exact 72-entry surface from the design contract:
+// public/auth 18, student 9, attempt 6, teacher core/authoring 18, grading 4,
+// management 15, error 2.
+var contractRoutes = []route{
+	// Public and auth (18).
+	r("GET", "/"),
+	r("GET", "/login"), r("POST", "/login"),
+	r("GET", "/register/teacher"), r("POST", "/register/teacher"),
+	r("GET", "/register/student"), r("POST", "/register/student"),
+	r("GET", "/reset-password"), r("POST", "/reset-password"),
+	r("GET", "/change-password"), r("POST", "/change-password"),
+	r("GET", "/auth/pending"),
+	r("GET", "/join"), r("POST", "/join"),
+	r("GET", "/invite/:token"),
+	r("GET", "/join/identify"), r("POST", "/join/identify"),
+	r("POST", "/logout"),
+
+	// Student (9).
+	r("GET", "/student"),
+	r("GET", "/student/history"),
+	r("GET", "/student/history/:quizID"),
+	r("GET", "/profile"), r("POST", "/profile"),
+	r("GET", "/quiz/:id"),
+	r("POST", "/quiz/:id/register"),
+	r("POST", "/quiz/:id/cancel"),
+	r("POST", "/quiz/:id/attempts"),
+
+	// Attempt (6).
+	r("GET", "/attempt/:id"),
+	r("POST", "/attempt/:id/answer"),
+	r("GET", "/attempt/:id/review"),
+	r("POST", "/attempt/:id/submit"),
+	r("GET", "/attempt/:id/result"),
+	r("POST", "/attempt/:id/beacon"),
+
+	// Teacher core + authoring + monitor (18).
+	r("GET", "/teacher"),
+	r("GET", "/teacher/quizzes"),
+	r("GET", "/teacher/quizzes/new"),
+	r("POST", "/teacher/quizzes"),
+	r("GET", "/teacher/quizzes/:id"),
+	r("POST", "/teacher/quizzes/:id"),
+	r("POST", "/teacher/quizzes/:id/publish"),
+	r("POST", "/teacher/quizzes/:id/close"),
+	r("POST", "/teacher/quizzes/:id/delete"),
+	r("GET", "/teacher/quizzes/:id/results"),
+	r("GET", "/teacher/quizzes/:id/questions/new"),
+	r("POST", "/teacher/quizzes/:id/questions"),
+	r("GET", "/teacher/quizzes/:id/questions/:qid"),
+	r("POST", "/teacher/quizzes/:id/questions/:qid"),
+	r("POST", "/teacher/quizzes/:id/questions/:qid/delete"),
+	r("POST", "/teacher/quizzes/:id/questions/reorder"),
+	r("GET", "/teacher/quizzes/:id/monitor"),
+	r("GET", "/teacher/quizzes/:id/stream"),
+
+	// Grading + recap (4).
+	r("GET", "/teacher/grading"),
+	r("GET", "/teacher/grading/:answerID"),
+	r("POST", "/teacher/grading/:answerID"),
+	r("GET", "/teacher/recap/:attemptID"),
+
+	// Management (15).
+	r("GET", "/teacher/students"),
+	r("GET", "/teacher/students/:id"),
+	r("POST", "/teacher/students/:id"),
+	r("POST", "/teacher/students/:id/delete"),
+	r("POST", "/teacher/students/:id/reset-token"),
+	r("GET", "/teacher/anonymous"),
+	r("GET", "/teacher/anonymous/:id"),
+	r("POST", "/teacher/anonymous/:id"),
+	r("POST", "/teacher/anonymous/:id/delete"),
+	r("GET", "/teacher/majors"),
+	r("POST", "/teacher/majors"),
+	r("POST", "/teacher/majors/:id"),
+	r("POST", "/teacher/majors/:id/delete"),
+	r("GET", "/teacher/teachers"),
+	r("POST", "/teacher/teachers/:id/approve"),
+
+	// Error pages (2; the 404 catch-all is additionally tested below).
+	r("GET", "/error/404"),
+	r("GET", "/error/500"),
+}
+
+// samplePath substitutes concrete demo ids for path parameters.
+func samplePath(path string) string {
+	if path == "/teacher/anonymous/:id" || path == "/teacher/anonymous/:id/delete" ||
+		path == "/teacher/anonymous/:id/edit" {
+		return strings.ReplaceAll(path, ":id", anonymousRegistrationID())
+	}
+	repl := map[string]string{
+		":token":     "bio4-7f2k",
+		":quizID":    "1",
+		":answerID":  "400604",
+		":attemptID": "1001",
+		":qid":       "101",
+		":id":        "1",
+	}
+	for token, value := range repl {
+		path = strings.ReplaceAll(path, token, value)
+	}
+	switch path {
+	case "/attempt/1":
+		return "/attempt/1009"
+	case "/attempt/1/review":
+		return "/attempt/1009/review"
+	case "/attempt/1/result":
+		return "/attempt/1001/result"
+	case "/attempt/1/answer", "/attempt/1/submit", "/attempt/1/beacon":
+		return strings.Replace(path, "/attempt/1/", "/attempt/1009/", 1)
+	}
+	return path
+}
+
+func anonymousRegistrationID() string {
+	for _, reg := range fixtures.Default().Registrations {
+		if reg.Anonymous {
+			return strconv.FormatInt(reg.ID, 10)
+		}
+	}
+	return "1"
 }
 
 // walkTemplates returns every file under ./templates (slash-normalised).
@@ -86,124 +193,208 @@ func walkTemplates(t *testing.T) map[string]string {
 	return files
 }
 
-// TestEveryRegisteredPageRenders (plan Task 15 Step 1): every registered GET
-// page answers 200 with the shared chrome, a per-page title, and exactly one
-// style element (@font-face plus any page-scoped internal CSS slot).
-func TestEveryRegisteredPageRenders(t *testing.T) {
+// TestRouteSurface pins the exact 72 method+path pairs. Membership equality is
+// used, not slice order, because registration order is an implementation detail
+// (server.go sorts a copy).
+func TestRouteSurface(t *testing.T) {
+	want := map[string]bool{}
+	for _, rt := range contractRoutes {
+		key := rt.method + " " + rt.path
+		if want[key] {
+			t.Fatalf("duplicate route in contract fixture: %s", key)
+		}
+		want[key] = true
+	}
+	if len(want) != 72 {
+		t.Fatalf("contract fixture = %d routes, want 72", len(want))
+	}
+
+	seen := map[string]int{}
+	for _, p := range httpserver.RegisteredPages() {
+		seen[p.Method+" "+p.Path]++
+	}
+	for key, n := range seen {
+		if !want[key] {
+			t.Errorf("unexpected registered route %s", key)
+		}
+		if n != 1 {
+			t.Errorf("route %s registered %d times", key, n)
+		}
+	}
+	for key := range want {
+		if seen[key] == 0 {
+			t.Errorf("missing registered route %s", key)
+		}
+	}
+	if len(seen) != len(want) {
+		t.Errorf("registered surface = %d routes, want %d", len(seen), len(want))
+	}
+}
+
+// TestEveryRegisteredGetPageRenders renders every GET page with demo ids and
+// asserts the shared chrome, a real title, one <style> block, and the
+// production-mode absence of demo affordances.
+func TestEveryRegisteredGetPageRenders(t *testing.T) {
 	app := httpserver.New(config.Config{Addr: ":8080"})
-	pages := httpserver.RegisteredPages()
-
-	// Every redirect target must itself be a registered path.
-	registered := map[string]bool{}
-	for _, p := range pages {
-		registered[p.Path] = true
-	}
-	for _, p := range pages {
-		if p.Redirect != "" && !registered[p.Redirect] {
-			t.Errorf("route %s redirects to %s, which is not a registered path", p.Path, p.Redirect)
-		}
-	}
-
-	// Paths owned by this milestone: the layout contract below is asserted on
-	// these. A sibling test in this package (routes_test.go) appends its own
-	// /__test fixture route to the shared registry with no cleanup, so the loop
-	// must not treat that fixture as a milestone screen.
-	milestone := map[string]bool{
-		"/":      true, // redirect; its target is asserted separately
-		"/login": true, "/join": true, "/identify": true,
-		"/register": true, "/auth/pending": true, "/change-password": true,
-		"/teacher": true, "/teacher/quizzes": true, "/teacher/monitor": true,
-		"/teacher/quizzes/edit": true, "/teacher/questions": true,
-		"/teacher/questions/image": true, "/teacher/quizzes/settings": true,
-		"/teacher/grading": true, "/teacher/recap": true,
-		"/teacher/students": true, "/teacher/anonymous": true,
-		"/teacher/majors": true, "/teacher/teachers": true,
-		"/student": true, "/student/history": true, "/profile": true,
-		"/attempt": true, "/attempt/review": true, "/attempt/result": true,
-		"/error/500": true,
-	}
-
-	for _, p := range pages {
-		if p.Redirect != "" {
-			continue // redirect semantics asserted above
-		}
-		// The layout contract applies to milestone-owned screens only. A sibling
-		// test in this package appends its own /__test fixture route to the shared
-		// registry without cleanup, so anything outside the milestone set is not a
-		// screen this suite owns.
-		if !milestone[p.Path] {
+	for _, p := range httpserver.RegisteredPages() {
+		if p.Method != "GET" {
 			continue
 		}
+		p := p
 		t.Run(p.Path, func(t *testing.T) {
-			resp, err := app.Test(httptest.NewRequest("GET", p.Path, nil))
+			path := samplePath(p.Path)
+			resp, err := app.Test(httptest.NewRequest("GET", path, nil))
 			if err != nil {
 				t.Fatal(err)
+			}
+			if p.Redirect != "" || p.Path == "/" {
+				if resp.StatusCode != 303 {
+					t.Fatalf("status = %d, want 303 redirect", resp.StatusCode)
+				}
+				if loc := resp.Header.Get("Location"); loc != p.Redirect && p.Path == "/" {
+					t.Errorf("Location = %q, want %q", loc, p.Redirect)
+				}
+				return
 			}
 			if resp.StatusCode != 200 {
 				t.Fatalf("status = %d, want 200", resp.StatusCode)
 			}
+			if p.Path == "/teacher/quizzes/:id/stream" {
+				if ct := resp.Header.Get("Content-Type"); !strings.Contains(ct, "text/event-stream") {
+					t.Errorf("stream Content-Type = %q, want text/event-stream", ct)
+				}
+			}
 			body, _ := io.ReadAll(resp.Body)
 			html := string(body)
-
+			if p.Path == "/teacher/quizzes/:id/stream" {
+				return
+			}
 			for _, want := range []string{
 				`<html lang="id"`, `data-bs-theme="light"`,
-				`href="/static/bootstrap/bootstrap.min.css"`,
+				`href="/static/vendor/bootstrap/bootstrap.min.css"`,
 				`href="/static/css/tokens.css"`,
-				`type="module" src="/static/bootstrap/bootstrap.bundle.min.js"`,
+				`type="module" src="/static/vendor/bootstrap/bootstrap.bundle.min.js"`,
+				`type="module" src="/static/js/app.js"`,
 			} {
 				if !strings.Contains(html, want) {
 					t.Errorf("page missing %q", want)
 				}
 			}
-
-			// tokens.css link must come AFTER the bootstrap link.
-			if i, j := strings.Index(html, `href="/static/bootstrap/bootstrap.min.css"`),
+			if i, j := strings.Index(html, `href="/static/vendor/bootstrap/bootstrap.min.css"`),
 				strings.Index(html, `href="/static/css/tokens.css"`); i < 0 || j < i {
-				t.Errorf("tokens.css link must appear after the bootstrap link (spec §15.1)")
+				t.Errorf("tokens.css link must appear after the bootstrap link")
 			}
-
-			// Non-empty per-page title, never the legacy "Quiz".
 			m := reTitle.FindStringSubmatch(html)
 			if m == nil || strings.TrimSpace(m[1]) == "" {
 				t.Errorf("page has no <title>")
-			} else if strings.HasPrefix(p.Template, "pages/") && strings.TrimSpace(m[1]) == "Quiz" {
+			} else if strings.TrimSpace(m[1]) == "Quiz" {
 				t.Errorf("legacy title %q on %s", m[1], p.Path)
 			}
-
-			// Exactly ONE <style> element: head.html's @font-face block plus
-			// the page-scoped internal-CSS slot (partials/page-style — user
-			// directive 2026-10-22: pages override component styles from a
-			// single <style> in <head>, never via style="" attributes).
-			// Guards that stay: @font-face present, and no external CSS
-			// fetch (@import / http(s) url()) — fonts stay vendored.
 			styles := reStyleElem.FindAllStringSubmatch(html, -1)
 			if len(styles) != 1 {
 				t.Errorf("want exactly 1 <style> element, got %d", len(styles))
-				return // nothing to inspect; index safely
+			} else {
+				css := styles[0][1]
+				if !strings.Contains(css, "@font-face") {
+					t.Errorf("<style> missing @font-face")
+				}
+				for _, bad := range []string{"@import", "url(http://", "url(https://", "url(//"} {
+					if strings.Contains(css, bad) {
+						t.Errorf("<style> must not fetch external CSS, found %q", bad)
+					}
+				}
 			}
-			css := styles[0][1]
-			if !strings.Contains(css, "@font-face") {
-				t.Errorf("<style> missing @font-face")
-			}
-			for _, bad := range []string{"@import", "url(http://", "url(https://", "url(//"} {
-				if strings.Contains(css, bad) {
-					t.Errorf("<style> must not fetch external CSS, found %q", bad)
+			for _, forbidden := range []string{"data-state-demo", "Mode demo", "theme-neutral", "theme-dark"} {
+				if strings.Contains(html, forbidden) {
+					t.Errorf("production page contains %q", forbidden)
 				}
 			}
 		})
 	}
 }
 
-// TestNoBootstrapV5Names (plan Task 15 Step 2): no v5 class tokens and no
-// banned raw substrings anywhere under templates/.
+// TestEveryRegisteredPostRedirects exercises every POST route. UI-only actions
+// must answer 303 with a relative Location; the beacon answers 204.
+func TestEveryRegisteredPostRedirects(t *testing.T) {
+	app := httpserver.New(config.Config{Addr: ":8080"})
+	for _, p := range httpserver.RegisteredPages() {
+		if p.Method != "POST" {
+			continue
+		}
+		p := p
+		t.Run(p.Path, func(t *testing.T) {
+			req := httptest.NewRequest("POST", samplePath(p.Path), strings.NewReader(""))
+			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+			resp, err := app.Test(req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if p.Path == "/attempt/:id/beacon" {
+				if resp.StatusCode != 204 {
+					t.Fatalf("beacon status = %d, want 204", resp.StatusCode)
+				}
+				return
+			}
+			if resp.StatusCode != 303 {
+				t.Fatalf("status = %d, want 303", resp.StatusCode)
+			}
+			loc := resp.Header.Get("Location")
+			if loc == "" || !strings.HasPrefix(loc, "/") {
+				t.Errorf("Location = %q, want a relative redirect", loc)
+			}
+		})
+	}
+}
+
+// TestDemoModeAddsStrip proves APP_DEMO is the only switch that reveals demo
+// affordances, and that production ignores ?state=.
+func TestDemoModeAddsStrip(t *testing.T) {
+	prod := httpserver.New(config.Config{Addr: ":8080"})
+	resp, err := prod.Test(httptest.NewRequest("GET", "/login", nil))
+	if err != nil {
+		t.Fatal(err)
+	}
+	prodBody, _ := io.ReadAll(resp.Body)
+	if strings.Contains(string(prodBody), `class="demo-strip"`) || strings.Contains(string(prodBody), "Mode demo") {
+		t.Error("production login must not render the demo strip")
+	}
+
+	demo := httpserver.New(config.Config{Addr: ":8080", Demo: true})
+	resp, err = demo.Test(httptest.NewRequest("GET", "/login", nil))
+	if err != nil {
+		t.Fatal(err)
+	}
+	demoBody, _ := io.ReadAll(resp.Body)
+	for _, want := range []string{"demo-strip", "Mode demo", "tidak ada penyimpanan"} {
+		if !strings.Contains(string(demoBody), want) {
+			t.Errorf("demo login missing %q", want)
+		}
+	}
+}
+
+func TestPageRequestStateIsDemoOnly(t *testing.T) {
+	req := httpserver.PageRequest{Query: map[string]string{"state": "empty"}}
+	if got := req.State(); got != "" {
+		t.Errorf("production State() = %q, want empty", got)
+	}
+	req.Demo = true
+	if got := req.State(); got != "empty" {
+		t.Errorf("demo State() = %q, want empty", got)
+	}
+}
+
+// TestNoBootstrapV5Names checks class tokens and raw markup across templates.
 func TestNoBootstrapV5Names(t *testing.T) {
 	for path, body := range walkTemplates(t) {
 		for _, m := range reClassAttr.FindAllStringSubmatch(body, -1) {
 			for _, tok := range strings.Fields(m[1]) {
-				if bannedClassTokens[tok] {
-					t.Errorf("%s: banned v5 class token %q", path, tok)
+				if v5ClassBans[tok] {
+					t.Errorf("%s: banned class token %q", path, tok)
 				}
-				for _, re := range bannedClassRegexps {
+				if theme := themeTokRe.FindStringSubmatch(tok); theme != nil && !allowedThemes[theme[1]] {
+					t.Errorf("%s: theme token %q is outside the closed theme set", path, tok)
+				}
+				for _, re := range v5ResponsiveRe {
 					if re.MatchString(tok) {
 						t.Errorf("%s: banned v5 prefix-responsive class %q", path, tok)
 					}
@@ -215,14 +406,21 @@ func TestNoBootstrapV5Names(t *testing.T) {
 				t.Errorf("%s: banned substring %q", path, bad)
 			}
 		}
+		for _, bad := range []string{"theme-neutral", "theme-dark"} {
+			if strings.Contains(body, bad) {
+				t.Errorf("%s: banned theme token %q", path, bad)
+			}
+		}
+		if reOnHandler.MatchString(body) {
+			t.Errorf("%s: inline event handler found (use static/js/app.js)", path)
+		}
 	}
 }
 
-// TestPaletteHexOnly (plan Task 15 Step 3): every 6-digit hex in templates and
-// static/css is one of the 24 palette values.
+// TestPaletteHexOnly: every 6-digit hex in templates and static/css is one of
+// the 24 palette values.
 func TestPaletteHexOnly(t *testing.T) {
 	check := func(path, body string) {
-		// paletteHexes (tokens_test.go) is lower-cased, so compare folded.
 		for _, hit := range reHex.FindAllString(body, -1) {
 			if !paletteHexes[strings.ToLower(hit)] {
 				t.Errorf("%s: hex %s is not in the 24-colour palette", path, hit)
@@ -246,9 +444,9 @@ func TestPaletteHexOnly(t *testing.T) {
 	}
 }
 
-// TestIconRefsResolve (plan Task 15 Step 4): every referenced sprite id
-// exists; every <svg> carrying a <use> is aria-hidden; every button/link whose
-// only content is such an svg carries an aria-label.
+// TestIconRefsResolve: every referenced sprite id exists; every <svg> carrying
+// a <use> is aria-hidden; every button/link whose only content is such an svg
+// carries an aria-label.
 func TestIconRefsResolve(t *testing.T) {
 	icons := walkTemplates(t)["templates/partials/icons.html"]
 	defined := map[string]bool{}
@@ -258,88 +456,71 @@ func TestIconRefsResolve(t *testing.T) {
 	if len(defined) == 0 {
 		t.Fatal("no sprite symbols found")
 	}
-
 	for path, body := range walkTemplates(t) {
 		for _, m := range reIconRef.FindAllStringSubmatch(body, -1) {
+			if strings.Contains(m[1], "{{") {
+				// Data-driven icon (empty-state); the fixture-source check
+				// below pins every literal value it can receive.
+				continue
+			}
 			if !defined[m[1]] {
 				t.Errorf("%s: icon #%s not defined in the sprite", path, m[1])
 			}
 		}
-		// Every <svg> containing <use> must be aria-hidden="true".
 		for _, svg := range regexp.MustCompile(`(?s)<svg[^>]*>.*?</svg>`).FindAllString(body, -1) {
 			if strings.Contains(svg, "<use ") && !strings.Contains(svg, `aria-hidden="true"`) {
 				t.Errorf("%s: <svg> with <use> missing aria-hidden: %s", path, svg[:min(60, len(svg))])
 			}
 		}
-		// An SVG-ONLY control (no text content) needs an aria-label. A control
-		// that carries visible text alongside the glyph already has an
-		// accessible name, and a decorative accent glyph inside a labelled link
-		// does not make it icon-only.
 		reControl := regexp.MustCompile(`(?s)<(button|a)\b([^>]*)>(.*?)</(button|a)>`)
 		for _, m := range reControl.FindAllStringSubmatch(body, -1) {
 			inner := m[3]
 			if !strings.Contains(inner, "<svg") {
 				continue
 			}
-			text := reTagStrip.ReplaceAllString(inner, "")
-			text = strings.TrimSpace(strings.TrimSpace(text))
+			text := strings.TrimSpace(reTagStrip.ReplaceAllString(inner, ""))
 			if text != "" {
-				continue // has a visible text name
+				continue
 			}
 			if !strings.Contains(m[2], "aria-label=") {
 				t.Errorf("%s: icon-only %s needs aria-label: <%s%s>", path, m[1], m[1], m[2])
 			}
 		}
 	}
-}
 
-// TestStateDemosCoverSurfaceFamilies (plan Task 15 Step 5): the per-family
-// required data-state-demo values each appear inside a hidden container on a
-// page of that family.
-func TestStateDemosCoverSurfaceFamilies(t *testing.T) {
-	families := []struct {
-		family string
-		pages  []string
-		values []string
-	}{
-		{"auth", []string{"templates/pages/auth/login.html", "templates/pages/auth/join.html", "templates/pages/auth/identify.html"}, []string{"error", "saving", "locked"}},
-		{"teacher-lists", []string{"templates/pages/teacher/students.html", "templates/pages/teacher/quizzes.html"}, []string{"loading", "empty", "error"}},
-		{"live-monitor", []string{"templates/pages/teacher/monitor.html"}, []string{"loading", "empty", "error", "stale", "locked"}},
-		{"grading", []string{"templates/pages/teacher/grading.html"}, []string{"loading", "empty", "error", "saving", "saved", "locked"}},
-		{"authoring", []string{"templates/pages/teacher/quiz-edit.html", "templates/pages/teacher/image-upload.html", "templates/pages/teacher/quiz-settings.html"}, []string{"loading", "empty", "error", "saving", "saved", "locked"}},
-		{"attempt", []string{"templates/pages/attempt/question.html"}, []string{"error", "saving", "saved", "locked"}},
-		{"result", []string{"templates/pages/attempt/result.html"}, []string{"error", "locked"}},
-		{"student", []string{"templates/pages/student/dashboard.html"}, []string{"loading", "empty", "error"}},
-	}
-	bodies := walkTemplates(t)
-	for _, fam := range families {
-		for _, value := range fam.values {
-			found := false
-			for _, p := range fam.pages {
-				body, ok := bodies[p]
-				if !ok {
-					t.Errorf("%s: page %s not found", fam.family, p)
-					continue
-				}
-				if strings.Contains(body, `hidden data-state-demo="`+value+`"`) {
-					found = true
-					break
-				}
-			}
-			if !found {
-				t.Errorf("family %s: no hidden data-state-demo=%q on %v", fam.family, value, fam.pages)
+	// EmptyState icons are data-driven, so the sprite check above cannot see
+	// them. Every literal Icon value in the fixtures package must resolve.
+	reFixtureIcon := regexp.MustCompile(`Icon:\s+"([a-z-]+)"`)
+	fixtureFiles, _ := filepath.Glob(filepath.FromSlash("internal/httpserver/fixtures/*.go"))
+	for _, file := range fixtureFiles {
+		src, err := os.ReadFile(file)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, m := range reFixtureIcon.FindAllStringSubmatch(string(src), -1) {
+			if !defined["i-"+m[1]] {
+				t.Errorf("%s: empty-state icon #i-%s not defined in the sprite", file, m[1])
 			}
 		}
 	}
 }
 
-// TestScriptWiring (plan Task 15 Step 6): from a rendered page body, the
-// bundle script is type="module" and precedes jQuery; jQuery is defer and not
-// a module; window.bootstrap is absent.
+// TestEveryPostFormCarriesCSRF: every POST form in a page ships the hidden
+// placeholder token. This is a template contract, not server validation.
+func TestEveryPostFormCarriesCSRF(t *testing.T) {
+	for path, body := range walkTemplates(t) {
+		for _, m := range reForm.FindAllStringSubmatch(body, -1) {
+			if !strings.Contains(m[1], `name="csrf_token"`) {
+				t.Errorf("%s: POST form missing name=\"csrf_token\"", path)
+			}
+		}
+	}
+}
+
+// TestScriptWiring: bundle is a module and precedes jQuery; jQuery is defer
+// and classic; window.bootstrap is absent.
 func TestScriptWiring(t *testing.T) {
 	app := httpserver.New(config.Config{Addr: ":8080"})
-	// "/" is a 303 redirect to /login and carries no body, so read a real
-	// rendered page (the login screen) to inspect the script tags.
 	resp, err := app.Test(httptest.NewRequest("GET", "/login", nil))
 	if err != nil {
 		t.Fatal(err)
@@ -347,8 +528,8 @@ func TestScriptWiring(t *testing.T) {
 	body, _ := io.ReadAll(resp.Body)
 	html := string(body)
 
-	bundle := `type="module" src="/static/bootstrap/bootstrap.bundle.min.js"`
-	jq := `src="/static/jquery/jquery-4.0.0.min.js"`
+	bundle := `type="module" src="/static/vendor/bootstrap/bootstrap.bundle.min.js"`
+	jq := `src="/static/vendor/jquery/jquery-4.0.0.min.js"`
 	i, j := strings.Index(html, bundle), strings.Index(html, jq)
 	if i < 0 {
 		t.Errorf("bundle script tag missing or malformed: %q", bundle)
@@ -359,8 +540,6 @@ func TestScriptWiring(t *testing.T) {
 	if i >= 0 && j >= 0 && i > j {
 		t.Errorf("bundle (module) must appear before jQuery")
 	}
-	// Extract the whole jQuery tag rather than a fixed-width slice of the
-	// preceding markup, which would capture the previous (module) tag.
 	if j >= 0 {
 		end := strings.Index(html[j:], ">")
 		if end < 0 {
@@ -375,20 +554,16 @@ func TestScriptWiring(t *testing.T) {
 		}
 	}
 	if strings.Contains(html, "window.bootstrap") {
-		t.Errorf("window.bootstrap must be absent (no global bootstrap leak)")
+		t.Errorf("window.bootstrap must be absent")
 	}
 }
 
-// TestAppJsHasNoNetworkCalls (plan Task 15 Step 6): app.js must not contain
-// any client network API — those arrive with the backend plan.
+// TestAppJsHasNoNetworkCalls: app.js must not contain any client network API.
 func TestAppJsHasNoNetworkCalls(t *testing.T) {
 	b, err := os.ReadFile(filepath.FromSlash("static/js/app.js"))
 	if err != nil {
 		t.Fatalf("read app.js: %v", err)
 	}
-	// Strip // line comments and block comments so a comment that merely
-	// NAMES a banned API (this file documents the ban) is not a failure; the
-	// rule targets real calls in executable code.
 	src := stripJSComments(string(b))
 	for _, api := range []string{"fetch(", "XMLHttpRequest", "EventSource", "WebSocket", "sendBeacon"} {
 		if strings.Contains(src, api) {
@@ -397,47 +572,8 @@ func TestAppJsHasNoNetworkCalls(t *testing.T) {
 	}
 }
 
-// TestRegisteredRoutesCount is a guardrail: the milestone ships 27 page
-// routes (25 screens + 2 error pages). A drop means a lost route; a silent
-// addition should be a deliberate plan change.
-func TestRegisteredRoutesCount(t *testing.T) {
-	pages := httpserver.RegisteredPages()
-
-	// Membership, not length: a sibling test in this package (routes_test.go)
-	// appends its own /__test fixture route to the shared registry with no
-	// cleanup, so the slice length depends on test order. Counting only the
-	// paths this milestone owns keeps the gate deterministic.
-	owned := []string{
-		"/", "/hello", // home group: redirect + loader-demo page
-		"/login", "/join", "/identify", // auth public
-		"/register", "/auth/pending", "/change-password", // auth account
-		"/teacher", "/teacher/quizzes", "/teacher/monitor", // teacher core
-		"/teacher/quizzes/edit", "/teacher/questions", "/teacher/questions/image", "/teacher/quizzes/settings", // authoring
-		"/teacher/grading", "/teacher/recap", // grading
-		"/teacher/students", "/teacher/anonymous", "/teacher/majors", "/teacher/teachers", // management
-		"/student", "/student/history", "/profile", // student
-		"/attempt", "/attempt/review", "/attempt/result", // attempt
-		"/error/500", // error pages (404 is the catch-all, not a registry entry)
-	}
-	seen := map[string]bool{}
-	for _, p := range pages {
-		seen[p.Path] = true
-	}
-	for _, want := range owned {
-		if !seen[want] {
-			t.Errorf("milestone route %s is not registered", want)
-		}
-	}
-	if len(owned) != 28 {
-		t.Errorf("owned route list = %d entries, want 28", len(owned))
-	}
-}
-
-// reTagStrip removes HTML tags so a control's visible text can be measured.
-var reTagStrip = regexp.MustCompile(`<[^>]*>`)
-
-// stripJSComments removes // line comments and /* … */ block comments from a
-// JS source so a comment that merely names a banned API is not a failure.
+// stripJSComments removes comments so a comment naming a banned API is not a
+// failure.
 func stripJSComments(src string) string {
 	src = regexp.MustCompile(`(?s)/\*.*?\*/`).ReplaceAllString(src, "")
 	var b strings.Builder

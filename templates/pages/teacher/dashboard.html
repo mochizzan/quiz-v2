@@ -1,219 +1,210 @@
 {{define "partials/title"}}Dasbor guru — Twisty Quiz{{end}}
+{{define "partials/page-style"}}
+/* Dashboard lists: compact rows on the recent panel and the two
+   participation panels, so every figure sits on a hairline rhythm rather
+   than inside another rounded card. */
+.dash-list { display: flex; flex-direction: column; }
+.dash-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-top: 1px solid #ECEFF2;
+}
+.dash-row:first-child { border-top: 0; padding-top: 2px; }
+.dash-row:last-child { padding-bottom: 0; }
+.dash-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: #F4F6F8;
+  color: #293681;
+}
+.dash-row-title {
+  color: #121721;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+  text-decoration: none;
+}
+.dash-row-title:hover {
+  color: #293681;
+  text-decoration: underline;
+  text-underline-offset: .18em;
+}
+.dash-row-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+  margin: 2px 0 0;
+  color: #687182;
+  font-size: 12px;
+}
+.dash-row-compact { padding: 10px 0; }
+.dash-count {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  background: #F4F6F8;
+  color: #121721;
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+@media (max-width: 575.98px) {
+  .dash-row { align-items: flex-start; }
+  .dash-icon { display: none; }
+}
+{{end}}
 {{define "content"}}
-<div class="d-flex flex-column gap-4">
+<div class="page-stack">
 
-  {{/* Welcome header + single primary action. */}}
-  <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+  <header class="page-head">
     <div>
-      <h1 class="h1 mb-1">Selamat datang kembali, Bu Ratna</h1>
-      <p class="mb-0 fg-secondary">3 kuis aktif dengan 142 peserta sedang mengerjakan. Rabu, 21 Oktober 2026.</p>
+      <span class="eyebrow">Ringkasan mengajar</span>
+      <h1 class="h1">Selamat datang kembali, {{.Data.GreetingName}}</h1>
+      <p class="page-sub">{{.Data.DateLine}}</p>
     </div>
-    <a class="btn btn-solid theme-primary" href="/teacher/quizzes/edit">
-      <svg width="20" height="20" aria-hidden="true"><use href="#i-plus"></use></svg>
+    <a class="btn btn-solid theme-primary" href="/teacher/quizzes/new">
+      <svg width="18" height="18" aria-hidden="true"><use href="#i-plus"></use></svg>
       Buat kuis baru
     </a>
-  </div>
+  </header>
 
-  {{/* 4 stat tiles — every number carries a word, never colour alone. */}}
-  <div class="row g-4 row-cols-1 md:row-cols-2 xl:row-cols-4">
-    <div class="col">
-      <div class="card p-3 h-100">
-        <span class="fg-secondary" style="font-size: 13px">Kuis aktif</span>
-        <span class="fw-bold" style="font-size: 32px; line-height: 38px; font-variant-numeric: tabular-nums">3</span>
-        <span class="badge theme-primary align-self-start">Langsung</span>
-      </div>
-    </div>
-    <div class="col">
-      <div class="card p-3 h-100">
-        <span class="fg-secondary" style="font-size: 13px">Rata-rata kelulusan</span>
-        <span class="fw-bold" style="font-size: 32px; line-height: 38px; font-variant-numeric: tabular-nums">86,2%</span>
-        <span class="badge align-self-start" style="background-color: #EEF4FA; color: #237A57">Naik 5,4%</span>
-      </div>
-    </div>
-    <div class="col">
-      <div class="card p-3 h-100">
-        <span class="fg-secondary" style="font-size: 13px">Esai menunggu penilaian</span>
-        <span class="fw-bold" style="font-size: 32px; line-height: 38px; font-variant-numeric: tabular-nums">18</span>
-        <span class="badge theme-warning align-self-start">Perlu ditinjau</span>
-      </div>
-    </div>
-    <div class="col">
-      <div class="card p-3 h-100">
-        <span class="fg-secondary" style="font-size: 13px">Soal bank</span>
-        <span class="fw-bold" style="font-size: 32px; line-height: 38px; font-variant-numeric: tabular-nums">1.480</span>
-        <span class="badge align-self-start" style="background-color: #F4F6F8; color: #121721">8 topik</span>
-      </div>
-    </div>
-  </div>
-
-  {{/* Asymmetric main grid: live monitor (wider) + recent quizzes (narrower). */}}
   <div class="row g-4">
-    <div class="col-12 xl:col-7">
+
+    <section class="col-12 lg:col-7" aria-labelledby="dash-recent-title">
       <div class="card p-4 h-100 d-flex flex-column gap-3">
-        <div class="d-flex align-items-center justify-content-between gap-3">
-          <h2 class="h2 mb-0">Kelas berlangsung</h2>
-          <span class="badge theme-primary">Langsung</span>
+        <div class="row-between">
+          <div>
+            <h2 class="section-title" id="dash-recent-title">Kuis terbaru</h2>
+            <p class="section-sub">Lima kuis yang paling baru dibuat.</p>
+          </div>
+          <a class="link-quiet" href="/teacher/quizzes">Lihat semua kuis</a>
         </div>
 
-        {{/* Highlighted active quiz banner. */}}
-        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 p-3" style="background-color: #EEF4FA; border-radius: 18px">
-          <div class="d-flex align-items-center gap-3">
-            <span class="d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 40px; height: 40px; background-color: #293681; color: #FFFFFF">
-              <svg width="20" height="20" aria-hidden="true"><use href="#i-quiz"></use></svg>
+        {{if .Data.Recent}}
+        <ul class="dash-list list-unstyled m-0">
+          {{range .Data.Recent}}
+          <li class="dash-row">
+            <span class="dash-icon" aria-hidden="true">
+              <svg width="18" height="18" aria-hidden="true"><use href="#i-quiz"></use></svg>
             </span>
-            <div>
-              <div class="fw-semibold">Biologi Sel — Kuis 4</div>
-              <div class="fg-secondary" style="font-size: 13px">XII IPA 2 · kode QUIZ-7F2K</div>
+            <div class="min-w-0 flex-grow-1">
+              <a class="dash-row-title" href="{{.Href}}">{{.Title}}</a>
+              <p class="dash-row-meta">
+                <span class="num">{{.QuestionCount}} soal</span>
+                <span class="num">{{.Joined}} peserta</span>
+                <span>Dibuat {{.CreatedAt.Short}}</span>
+              </p>
             </div>
-          </div>
-          <span class="badge" style="background-color: #FFFFFF; color: #293681; font-variant-numeric: tabular-nums">Sisa 28 menit</span>
-        </div>
-
-        {{/* Progress (parameterized partial carries role + ARIA). */}}
-        <div class="d-flex flex-column gap-2">
-          {{template "partials/progress-bar.html" 68}}
-          <div class="d-flex justify-content-between fg-secondary" style="font-size: 13px">
-            <span style="font-variant-numeric: tabular-nums">17 dari 25 soal</span>
-            <span style="font-variant-numeric: tabular-nums">68%</span>
-          </div>
-        </div>
-
-        {{/* Avatar stack of participants — initials, not photos. */}}
-        <div class="d-flex align-items-center gap-2">
-          <span class="badge" style="background-color: #EEF4FA; color: #293681">AL</span>
-          <span class="badge" style="background-color: #EEF4FA; color: #293681">BP</span>
-          <span class="badge" style="background-color: #EEF4FA; color: #293681">CH</span>
-          <span class="badge" style="background-color: #EEF4FA; color: #293681">DA</span>
-          <span class="badge" style="background-color: #EEF4FA; color: #293681">EN</span>
-          <span class="fg-secondary" aria-live="polite" style="font-size: 13px">142 peserta hari ini</span>
-        </div>
-
-        <a class="btn btn-outline theme-primary align-self-start mt-auto" href="/teacher/monitor">
-          Pantau langsung
-          <svg width="20" height="20" aria-hidden="true"><use href="#i-arrow-right"></use></svg>
-        </a>
+            <span class="{{.State.BadgeClass}}">{{.State.Label}}</span>
+          </li>
+          {{end}}
+        </ul>
+        {{else}}
+        <p class="section-sub m-0">Belum ada kuis. Kuis yang Anda buat akan muncul di sini.</p>
+        {{end}}
       </div>
-    </div>
+    </section>
 
-    {{/* Recent quizzes list panel — status is always a word, never colour
-         alone; details expand via the v6 details-based accordion. */}}
-    <div class="col-12 xl:col-5">
-      <div class="card p-4 h-100 d-flex flex-column gap-3">
-        <h2 class="h2 mb-0">Kuis terbaru</h2>
+    <div class="col-12 lg:col-5 d-flex flex-column gap-4">
 
-        <details class="accordion-item border-0" style="background-color: #FFFFFF; border-radius: 18px">
-          <summary class="d-flex align-items-center justify-content-between gap-3 p-3">
-            <span class="d-flex align-items-center gap-3">
-              <span class="d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 40px; height: 40px; background-color: #EEF4FA; color: #293681">
-                <svg width="20" height="20" aria-hidden="true"><use href="#i-quiz"></use></svg>
-              </span>
-              <span>
-                <span class="d-block fw-semibold">Biologi Sel — Kuis 4</span>
-                <span class="d-block fg-secondary" style="font-size: 13px">25 soal · 45 menit</span>
-              </span>
-            </span>
-            <span class="badge theme-primary">Aktif</span>
-          </summary>
-          <div class="p-3 pt-0 fg-secondary" style="font-size: 14px">142 peserta · kode QUIZ-7F2K · dibuka 08.00 WIB.</div>
-        </details>
+      <section class="card p-4" aria-labelledby="dash-most-title">
+        <div class="row-between">
+          <div>
+            <h2 class="section-title" id="dash-most-title">Paling banyak diikuti</h2>
+            <p class="section-sub">Tiga kuis dengan peserta terdaftar terbanyak.</p>
+          </div>
+          <span class="dash-icon" aria-hidden="true">
+            <svg width="18" height="18" aria-hidden="true"><use href="#i-users"></use></svg>
+          </span>
+        </div>
+        {{if .Data.MostJoined}}
+        <ul class="dash-list list-unstyled m-0 mt-2">
+          {{range .Data.MostJoined}}
+          <li class="dash-row dash-row-compact">
+            <a class="dash-row-title flex-grow-1" href="{{.Href}}">{{.Quiz.Title}}</a>
+            <span class="dash-count">{{.Joined}} peserta</span>
+          </li>
+          {{end}}
+        </ul>
+        {{else}}
+        <p class="section-sub mt-2 mb-0">Belum ada peserta terdaftar.</p>
+        {{end}}
+      </section>
 
-        <details class="accordion-item border-0" style="background-color: #FFFFFF; border-radius: 18px">
-          <summary class="d-flex align-items-center justify-content-between gap-3 p-3">
-            <span class="d-flex align-items-center gap-3">
-              <span class="d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 40px; height: 40px; background-color: #F4F6F8; color: #121721">
-                <svg width="20" height="20" aria-hidden="true"><use href="#i-pencil"></use></svg>
-              </span>
-              <span>
-                <span class="d-block fw-semibold">Kimia Organik — Kuis 2</span>
-                <span class="d-block fg-secondary" style="font-size: 13px">20 soal · 40 menit</span>
-              </span>
-            </span>
-            <span class="badge" style="background-color: #F4F6F8; color: #121721">Draf</span>
-          </summary>
-          <div class="p-3 pt-0 fg-secondary" style="font-size: 14px">Belum dipublikasikan ke kelas mana pun.</div>
-        </details>
+      <section class="card p-4" aria-labelledby="dash-least-title">
+        <div class="row-between">
+          <div>
+            <h2 class="section-title" id="dash-least-title">Paling sedikit diikuti</h2>
+            <p class="section-sub">Tiga kuis dengan peserta terdaftar tersedikit.</p>
+          </div>
+          <span class="dash-icon" aria-hidden="true">
+            <svg width="18" height="18" aria-hidden="true"><use href="#i-trend"></use></svg>
+          </span>
+        </div>
+        {{if .Data.LeastJoined}}
+        <ul class="dash-list list-unstyled m-0 mt-2">
+          {{range .Data.LeastJoined}}
+          <li class="dash-row dash-row-compact">
+            <a class="dash-row-title flex-grow-1" href="{{.Href}}">{{.Quiz.Title}}</a>
+            <span class="dash-count">{{.Joined}} peserta</span>
+          </li>
+          {{end}}
+        </ul>
+        {{else}}
+        <p class="section-sub mt-2 mb-0">Belum ada peserta terdaftar.</p>
+        {{end}}
+      </section>
 
-        <details class="accordion-item border-0" style="background-color: #FFFFFF; border-radius: 18px">
-          <summary class="d-flex align-items-center justify-content-between gap-3 p-3">
-            <span class="d-flex align-items-center gap-3">
-              <span class="d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 40px; height: 40px; background-color: #F4F6F8; color: #121721">
-                <svg width="20" height="20" aria-hidden="true"><use href="#i-check"></use></svg>
-              </span>
-              <span>
-                <span class="d-block fw-semibold">Fisika Kinematika — Kuis 3</span>
-                <span class="d-block fg-secondary" style="font-size: 13px">Selesai 18 Okt 2026</span>
-              </span>
-            </span>
-            <span class="badge" style="background-color: #121721; color: #FFFFFF">Selesai</span>
-          </summary>
-          <div class="p-3 pt-0 fg-secondary" style="font-size: 14px">Rata-rata kelas: 78,4 · rekap tersedia.</div>
-        </details>
-
-        <details class="accordion-item border-0" style="background-color: #FFFFFF; border-radius: 18px">
-          <summary class="d-flex align-items-center justify-content-between gap-3 p-3">
-            <span class="d-flex align-items-center gap-3">
-              <span class="d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 40px; height: 40px; background-color: #F4F6F8; color: #121721">
-                <svg width="20" height="20" aria-hidden="true"><use href="#i-clipboard"></use></svg>
-              </span>
-              <span>
-                <span class="d-block fw-semibold">Sejarah Indonesia — Kuis 1</span>
-                <span class="d-block fg-secondary" style="font-size: 13px">30 soal · 60 menit</span>
-              </span>
-            </span>
-            <span class="badge theme-warning">Menunggu penilaian</span>
-          </summary>
-          <div class="p-3 pt-0 fg-secondary" style="font-size: 14px">12 esai menunggu penilaian Anda.</div>
-        </details>
-
-        <a class="btn btn-outline theme-primary align-self-start mt-auto" href="/teacher/quizzes">Lihat semua kuis</a>
-      </div>
     </div>
   </div>
 
-  {{/* Weekly participation — the ONLY chart idiom per DESIGN §7: vertical
-       stems + dots, day pills, one big metric. Decorative (aria-hidden) with
-       the number repeated as text for assistive tech. */}}
-  <div class="card p-4 d-flex flex-column gap-3">
-    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
-      <h2 class="h2 mb-0">Partisipasi minggu ini</h2>
-      <div class="d-flex align-items-center gap-2">
-        <span class="fw-bold" style="font-size: 32px; line-height: 38px; font-variant-numeric: tabular-nums">142</span>
-        <span class="badge" style="background-color: #EEF4FA; color: #237A57">Naik 5,4% dari minggu lalu</span>
-      </div>
+  <section class="card" aria-labelledby="dash-top-title">
+    <div class="p-4">
+      <h2 class="section-title" id="dash-top-title">Nilai tertinggi per kuis</h2>
+      <p class="section-sub">Nilai terbaik dari setiap kuis yang sudah memiliki percobaan selesai.</p>
     </div>
-    <div class="d-flex align-items-end justify-content-between gap-3" aria-hidden="true">
-      <div class="d-flex flex-column align-items-center gap-2">
-        <span style="width: 4px; height: 48px; background-color: #E2E6EB; border-radius: 9999px"></span>
-        <span class="badge" style="background-color: #F4F6F8; color: #687182">Sen</span>
-      </div>
-      <div class="d-flex flex-column align-items-center gap-2">
-        <span style="width: 4px; height: 72px; background-color: #E2E6EB; border-radius: 9999px"></span>
-        <span class="badge" style="background-color: #F4F6F8; color: #687182">Sel</span>
-      </div>
-      <div class="d-flex flex-column align-items-center gap-2">
-        <span style="width: 4px; height: 96px; background-color: #293681; border-radius: 9999px"></span>
-        <span style="width: 12px; height: 12px; background-color: #5589C3; border-radius: 9999px; margin-top: -6px"></span>
-        <span class="badge theme-primary">Rab</span>
-      </div>
-      <div class="d-flex flex-column align-items-center gap-2">
-        <span style="width: 4px; height: 60px; background-color: #E2E6EB; border-radius: 9999px"></span>
-        <span class="badge" style="background-color: #F4F6F8; color: #687182">Kam</span>
-      </div>
-      <div class="d-flex flex-column align-items-center gap-2">
-        <span style="width: 4px; height: 84px; background-color: #E2E6EB; border-radius: 9999px"></span>
-        <span class="badge" style="background-color: #F4F6F8; color: #687182">Jum</span>
-      </div>
-      <div class="d-flex flex-column align-items-center gap-2">
-        <span style="width: 4px; height: 28px; background-color: #E2E6EB; border-radius: 9999px"></span>
-        <span class="badge" style="background-color: #F4F6F8; color: #687182">Sab</span>
-      </div>
-      <div class="d-flex flex-column align-items-center gap-2">
-        <span style="width: 4px; height: 20px; background-color: #E2E6EB; border-radius: 9999px"></span>
-        <span class="badge" style="background-color: #F4F6F8; color: #687182">Min</span>
-      </div>
+
+    {{if .Data.TopScores}}
+    <div class="table-responsive">
+      <table class="table table-clean mb-0">
+        <caption class="visually-hidden">Nilai tertinggi per kuis</caption>
+        <thead>
+          <tr>
+            <th scope="col">Kuis</th>
+            <th scope="col">Siswa</th>
+            <th scope="col">Kelas</th>
+            <th scope="col">Skor</th>
+            <th scope="col" class="text-end"><span class="visually-hidden">Aksi</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          {{range .Data.TopScores}}
+          <tr>
+            <td><a class="link-quiet" href="{{.Href}}">{{.Quiz.Title}}</a></td>
+            <td class="cell-title">{{.StudentName}}</td>
+            <td class="cell-sub">{{.ClassLabel}}</td>
+            <td class="num">{{template "partials/score.html" .Score}}</td>
+            <td class="text-end"><a class="link-quiet" href="{{.Href}}">Lihat hasil</a></td>
+          </tr>
+          {{end}}
+        </tbody>
+      </table>
     </div>
-    <p class="mb-0 fg-secondary" style="font-size: 13px">142 peserta aktif minggu ini, tertinggi pada hari Rabu.</p>
-  </div>
+    {{else}}
+    <div class="px-4 pb-4">
+      <p class="section-sub m-0">Belum ada percobaan selesai yang memiliki nilai.</p>
+    </div>
+    {{end}}
+  </section>
 
 </div>
 {{end}}

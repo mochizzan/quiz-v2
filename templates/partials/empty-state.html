@@ -1,7 +1,6 @@
-{{define "partials/empty-state.html"}}<div class="card">
-  <div class="alert theme-info">
-    <h2 class="h2">Belum ada data.</h2>
-    <p class="mb-3">Data yang Anda buat akan muncul di sini. Mulai dari satu kuis atau satu set soal.</p>
-    <a class="btn btn-solid theme-primary" href="/teacher/quizzes">Buat kuis baru</a>
-  </div>
-</div>{{end}}
+{{define "partials/empty-state.html"}}{{with .}}<div class="empty-panel">
+  <span class="empty-icon"><svg width="26" height="26" aria-hidden="true"><use href="#i-{{.Icon}}"></use></svg></span>
+  <h2>{{.Title}}</h2>
+  {{if .Body}}<p>{{.Body}}</p>{{end}}
+  {{with .Action}}<a class="btn {{if eq .Style "primary"}}btn-solid theme-primary{{else if eq .Style "danger"}}btn-outline theme-danger{{else}}btn-outline theme-primary{{end}}" href="{{.Href}}">{{.Label}}</a>{{end}}
+</div>{{end}}{{end}}

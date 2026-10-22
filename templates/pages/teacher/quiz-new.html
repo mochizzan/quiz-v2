@@ -1,0 +1,123 @@
+{{define "partials/title"}}Buat kuis — Twisty Quiz{{end}}
+{{define "content"}}
+<div class="page-stack">
+
+  <div class="page-head">
+    <div>
+      <span class="eyebrow">Penyusunan kuis</span>
+      <h1 class="h1">Buat kuis</h1>
+      <p class="page-sub">Langkah 1 dari 2 · data kuis</p>
+    </div>
+  </div>
+
+  <div>
+    {{template "partials/stepper.html" 1}}
+  </div>
+
+  <div class="row g-4">
+    <div class="col-12 xl:col-8">
+      <form class="card form-card" method="post" action="{{.Data.Action}}" data-validate>
+        <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+
+        <div class="form-section">
+          <h2 class="form-section-title">Data kuis</h2>
+          <p class="form-section-sub">Judul dan penjelasan yang dibaca siswa sebelum mulai mengerjakan.</p>
+
+          <div class="mb-3">
+            <label class="form-label" for="quiz-title">Judul kuis <span class="required" aria-hidden="true">*</span></label>
+            <input class="form-control" type="text" id="quiz-title" name="title" value="{{.Data.Title}}" maxlength="120" required autocomplete="off">
+            <div class="field-help">Wajib diisi, maksimal 120 karakter.</div>
+          </div>
+
+          <div>
+            <label class="form-label" for="quiz-description">Deskripsi</label>
+            <textarea class="form-control" id="quiz-description" name="description" rows="4" data-char-count="quiz-description-count">{{.Data.Description}}</textarea>
+            <div class="d-flex flex-wrap justify-content-between gap-2">
+              <span class="field-help">Opsional. Jelaskan cakupan materi atau aturan singkat kuis.</span>
+              <output class="char-count" id="quiz-description-count"></output>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <h2 class="form-section-title">Jadwal</h2>
+          <p class="form-section-sub">Waktu hanya informasi bagi siswa. Kuis tetap dibuka dan ditutup manual dari halaman kuis.</p>
+
+          <div class="row g-3">
+            <div class="col-12 md:col-6">
+              <label class="form-label" for="quiz-start-at">Mulai</label>
+              <input class="form-control" type="datetime-local" id="quiz-start-at" name="start_at" value="{{.Data.StartAt.Input}}">
+              <div class="field-help">Opsional.</div>
+            </div>
+            <div class="col-12 md:col-6">
+              <label class="form-label" for="quiz-end-at">Selesai</label>
+              <input class="form-control" type="datetime-local" id="quiz-end-at" name="end_at" value="{{.Data.EndAt.Input}}">
+              <div class="field-help">Opsional. Harus setelah waktu mulai bila keduanya diisi.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <h2 class="form-section-title">Akses</h2>
+          <p class="form-section-sub">Kuis publik dapat diikuti semua siswa dan menerima peserta anonim. Kuis privat hanya untuk kelas dan jurusan yang dipilih.</p>
+
+          <div class="mb-3">
+            <label class="form-label" for="quiz-visibility">Visibilitas</label>
+            <select class="form-control" id="quiz-visibility" name="visibility" data-visibility required>
+              <option value="public"{{if eq .Data.Visibility "public"}} selected{{end}}>Publik</option>
+              <option value="private"{{if eq .Data.Visibility "private"}} selected{{end}}>Privat</option>
+            </select>
+            <div class="field-help">Visibilitas dapat diubah selama kuis masih draf.</div>
+          </div>
+
+          <div class="private-fields" data-private-fields{{if ne .Data.Visibility "private"}} hidden{{end}}>
+            <div class="row g-3">
+              <div class="col-12 md:col-6">
+                <label class="form-label" for="quiz-target-grade">Kelas</label>
+                <select class="form-control" id="quiz-target-grade" name="target_grade"{{if ne .Data.Visibility "private"}} disabled{{end}}>
+                  <option value="">Semua kelas</option>
+                  <option value="10"{{if eq .Data.TargetGrade 10}} selected{{end}}>Kelas X</option>
+                  <option value="11"{{if eq .Data.TargetGrade 11}} selected{{end}}>Kelas XI</option>
+                  <option value="12"{{if eq .Data.TargetGrade 12}} selected{{end}}>Kelas XII</option>
+                </select>
+              </div>
+              <div class="col-12 md:col-6">
+                <label class="form-label" for="quiz-target-major">Jurusan</label>
+                <select class="form-control" id="quiz-target-major" name="target_major_id"{{if ne .Data.Visibility "private"}} disabled{{end}}>
+                  <option value="">Semua jurusan</option>
+                  {{range .Data.Majors}}<option value="{{.ID}}"{{if eq .ID $.Data.TargetMajorID}} selected{{end}}>{{.Name}}</option>{{end}}
+                </select>
+              </div>
+            </div>
+            <p class="field-help">Kuis privat hanya terlihat oleh siswa yang cocok dengan kelas dan jurusan ini.</p>
+          </div>
+        </div>
+
+        <p class="section-sub d-flex align-items-start gap-2 mt-3 mb-0">
+          <svg class="flex-shrink-0 mt-1" width="16" height="16" aria-hidden="true"><use href="#i-info"></use></svg>
+          <span>Kuis disimpan sebagai draf. Tambahkan soal pada langkah 2, lalu buka kuis setelah semuanya siap. Kuis tanpa soal belum dapat dibuka.</span>
+        </p>
+
+        <div class="form-actions">
+          <a class="btn btn-outline theme-primary" href="{{.Data.CancelHref}}">Batal</a>
+          <button class="btn btn-solid theme-primary" type="submit">Simpan draf</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="col-12 xl:col-4">
+      <aside class="card p-4 d-flex flex-column gap-2 h-100" aria-labelledby="quiz-draft-rules-title">
+        <h2 class="section-title" id="quiz-draft-rules-title">Tentang draf</h2>
+        <p class="section-sub">Draf belum terlihat oleh siswa dan dapat diubah kapan saja.</p>
+        <ol class="section-sub d-flex flex-column gap-2 ps-3 mb-0">
+          <li>Simpan data kuis ini.</li>
+          <li>Tambahkan soal dan periksa pengaturan.</li>
+          <li>Buka kuis saat siap dikerjakan.</li>
+        </ol>
+        <p class="section-sub mt-2 mb-0">Setelah dibuka, soal dan pengaturan terkunci. Kuis yang sudah ditutup tidak dapat dibuka kembali, tetapi hasilnya tetap tersedia.</p>
+      </aside>
+    </div>
+  </div>
+
+</div>
+{{end}}

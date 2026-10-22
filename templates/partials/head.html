@@ -1,17 +1,67 @@
 {{define "partials/head.html"}}<meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{template "partials/title" .}}</title>
-<link rel="stylesheet" href="/static/bootstrap/bootstrap.min.css">
+<title>{{if .Title}}{{.Title}} — Twisty Quiz{{else}}{{template "partials/title" .}}{{end}}</title>
+<link rel="stylesheet" href="/static/vendor/bootstrap/bootstrap.min.css">
 <link rel="stylesheet" href="/static/css/tokens.css">
 <style>
-/* Plus Jakarta Sans variable font — latin subset, weight axis 400-700 (one
-   variable binary). Licensed under the SIL Open Font License 1.1; see
-   /static/fonts/plus-jakarta-sans/OFL.txt */
+/* Gotham Rounded — 8 static faces vendored as woff2 (Light 300 / Book 400 /
+   Medium 500 / Bold 700, each with an italic). Licensed commercial typeface;
+   the H&Co copyright notice ships at
+   /static/fonts/gotham-rounded/COPYRIGHT.txt. */
 @font-face {
-  font-family: 'Plus Jakarta Sans';
-  src: url('/static/fonts/plus-jakarta-sans/PlusJakartaSans-latin.woff2') format('woff2');
-  font-weight: 400 700;
+  font-family: 'Gotham Rounded';
+  src: url('/static/fonts/gotham-rounded/gotham-rounded-light.woff2') format('woff2');
+  font-weight: 300;
   font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Gotham Rounded';
+  src: url('/static/fonts/gotham-rounded/gotham-rounded-light-italic.woff2') format('woff2');
+  font-weight: 300;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Gotham Rounded';
+  src: url('/static/fonts/gotham-rounded/gotham-rounded-book.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Gotham Rounded';
+  src: url('/static/fonts/gotham-rounded/gotham-rounded-book-italic.woff2') format('woff2');
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Gotham Rounded';
+  src: url('/static/fonts/gotham-rounded/gotham-rounded-medium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Gotham Rounded';
+  src: url('/static/fonts/gotham-rounded/gotham-rounded-medium-italic.woff2') format('woff2');
+  font-weight: 500;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Gotham Rounded';
+  src: url('/static/fonts/gotham-rounded/gotham-rounded-bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Gotham Rounded';
+  src: url('/static/fonts/gotham-rounded/gotham-rounded-bold-italic.woff2') format('woff2');
+  font-weight: 700;
+  font-style: italic;
   font-display: swap;
 }
 /* Sprite icon stroke contract: presentation attributes on the sprite root
@@ -19,6 +69,10 @@
    this every icon renders as a solid black fill. Outline icons, currentColor,
    1.8-unit round strokes — same contract the sprite root declares. */
 use { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+{{/* App-frame + topbar CSS, shared by the teacher and student shells.
+     Emitted before the page slot so page CSS still wins on specificity ties. */}}
+{{template "partials/navbar-style.html" .}}
+{{template "partials/ui-style.html" .}}
 {{/* Page-scoped internal CSS slot (user directive 2026-10-22): a page may
      override component styles from here — ONE style element in <head>,
      never style="" attributes. The default is empty; a page parsed last

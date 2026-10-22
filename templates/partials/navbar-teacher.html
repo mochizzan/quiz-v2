@@ -1,25 +1,30 @@
-{{define "partials/navbar-teacher.html"}}<nav class="navbar d-flex align-items-center justify-content-between flex-wrap gap-3 py-3 px-4" aria-label="Navigasi utama">
-  <a class="navbar-brand d-inline-flex align-items-center gap-2 text-decoration-none" href="/teacher">
-    <span class="d-inline-flex align-items-center justify-content-center fw-bold px-2 py-1" style="background-color: #293681; color: #FFFFFF; border-radius: 8px" aria-hidden="true">T</span>
-    <span class="fw-bold" style="color: #121721">TWISTY QUIZ</span>
-    <span class="d-block rounded-circle p-1" style="background-color: #E24A21" aria-hidden="true"></span>
+{{define "partials/navbar-teacher.html"}}<nav class="app-nav" aria-label="Navigasi utama">
+  <a class="app-brand" href="/teacher">
+    <span class="app-brand-mark" aria-hidden="true">Q</span>
+    <span class="app-brand-title">TWISTY <span class="app-brand-title-sub">QUIZ</span> <span class="app-badge-role">Guru</span></span>
   </a>
-  <ul class="nav d-none xl:d-flex flex-wrap gap-1">
-    <li class="nav-item"><a class="nav-link d-inline-flex align-items-center gap-2{{if eq .Active "dasbor"}} active{{end}}" href="/teacher"{{if eq .Active "dasbor"}} aria-current="page"{{end}}><svg width="20" height="20" aria-hidden="true"><use href="#i-dashboard"></use></svg>Dasbor</a></li>
-    <li class="nav-item"><a class="nav-link d-inline-flex align-items-center gap-2{{if eq .Active "kuis"}} active{{end}}" href="/teacher/quizzes"{{if eq .Active "kuis"}} aria-current="page"{{end}}><svg width="20" height="20" aria-hidden="true"><use href="#i-quiz"></use></svg>Kuis</a></li>
-    <li class="nav-item"><a class="nav-link d-inline-flex align-items-center gap-2{{if eq .Active "bank-soal"}} active{{end}}" href="/teacher/questions"{{if eq .Active "bank-soal"}} aria-current="page"{{end}}><svg width="20" height="20" aria-hidden="true"><use href="#i-bank"></use></svg>Bank Soal</a></li>
-    <li class="nav-item"><a class="nav-link d-inline-flex align-items-center gap-2{{if eq .Active "siswa"}} active{{end}}" href="/teacher/students"{{if eq .Active "siswa"}} aria-current="page"{{end}}><svg width="20" height="20" aria-hidden="true"><use href="#i-users"></use></svg>Siswa</a></li>
-    <li class="nav-item"><a class="nav-link d-inline-flex align-items-center gap-2{{if eq .Active "penilaian"}} active{{end}}" href="/teacher/grading"{{if eq .Active "penilaian"}} aria-current="page"{{end}}><svg width="20" height="20" aria-hidden="true"><use href="#i-grade"></use></svg>Penilaian</a></li>
-    <li class="nav-item"><a class="nav-link d-inline-flex align-items-center gap-2{{if eq .Active "pengaturan"}} active{{end}}" href="/teacher/teachers"{{if eq .Active "pengaturan"}} aria-current="page"{{end}}><svg width="20" height="20" aria-hidden="true"><use href="#i-settings"></use></svg>Pengaturan</a></li>
+  <ul class="nav app-nav-links d-none lg:d-flex">
+    <li class="nav-item"><a class="nav-link{{if eq .Active "dasbor"}} active{{end}}" href="/teacher"{{if eq .Active "dasbor"}} aria-current="page"{{end}}><svg width="16" height="16" aria-hidden="true"><use href="#i-dashboard"></use></svg>Dasbor</a></li>
+    <li class="nav-item"><a class="nav-link{{if eq .Active "kuis"}} active{{end}}" href="/teacher/quizzes"{{if eq .Active "kuis"}} aria-current="page"{{end}}><svg width="16" height="16" aria-hidden="true"><use href="#i-quiz"></use></svg>Kuis</a></li>
+    <li class="nav-item"><a class="nav-link{{if eq .Active "siswa"}} active{{end}}" href="/teacher/students"{{if eq .Active "siswa"}} aria-current="page"{{end}}><svg width="16" height="16" aria-hidden="true"><use href="#i-users"></use></svg>Siswa</a></li>
+    <li class="nav-item"><a class="nav-link{{if eq .Active "penilaian"}} active{{end}}" href="/teacher/grading"{{if eq .Active "penilaian"}} aria-current="page"{{end}}><svg width="16" height="16" aria-hidden="true"><use href="#i-grade"></use></svg>Penilaian</a></li>
+    <li class="nav-item"><a class="nav-link{{if eq .Active "pengaturan"}} active{{end}}" href="/teacher/teachers"{{if eq .Active "pengaturan"}} aria-current="page"{{end}}><svg width="16" height="16" aria-hidden="true"><use href="#i-settings"></use></svg>Pengaturan</a></li>
   </ul>
-  <div class="d-flex align-items-center gap-2 flex-grow-1 justify-content-end">
-    <label class="visually-hidden" for="teacher-nav-search">Cari</label>
-    <input class="form-control" id="teacher-nav-search" type="search" placeholder="Cari kuis atau soal">
-    <button type="button" class="btn" aria-label="Notifikasi"><svg width="20" height="20" aria-hidden="true"><use href="#i-bell"></use></svg></button>
-    <span class="d-inline-flex align-items-center gap-2">
-      <span class="d-inline-flex align-items-center justify-content-center rounded-circle" style="background-color: #293681; color: #FFFFFF; font-size: 13px; line-height: 18px" aria-hidden="true">RW</span>
-      <span class="d-none md:d-inline fw-semibold">Ratna Wijaya</span>
-    </span>
-    <button type="button" class="btn d-inline-flex xl:d-none" data-bs-toggle="drawer" data-bs-target="#nav-drawer" aria-label="Buka menu"><svg width="20" height="20" aria-hidden="true"><use href="#i-menu"></use></svg></button>
+  <div class="app-nav-actions">
+    <a class="btn btn-solid theme-primary d-none xl:d-inline-flex" href="/teacher/quizzes/new"><svg width="18" height="18" aria-hidden="true"><use href="#i-plus"></use></svg>Buat kuis</a>
+    {{with .User}}
+    <div class="app-profile">
+      <span class="app-avatar" aria-hidden="true">{{.Initials}}</span>
+      <span class="app-profile-meta">
+        <span class="app-profile-name">{{.FullName}}</span>
+        <span class="app-profile-sub">{{.Role.Label}}</span>
+      </span>
+    </div>
+    {{end}}
+    <form method="post" action="/logout" class="d-inline-flex">
+      <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+      <button type="submit" class="btn app-icon-btn d-inline-flex" aria-label="Keluar" title="Keluar"><svg width="18" height="18" aria-hidden="true"><use href="#i-signout"></use></svg></button>
+    </form>
+    <button type="button" class="btn app-icon-btn d-inline-flex lg:d-none" data-bs-toggle="drawer" data-bs-target="#nav-drawer" aria-controls="nav-drawer" aria-label="Buka menu"><svg width="18" height="18" aria-hidden="true"><use href="#i-menu"></use></svg></button>
   </div>
 </nav>{{end}}

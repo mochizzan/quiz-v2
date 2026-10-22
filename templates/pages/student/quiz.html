@@ -1,0 +1,199 @@
+{{define "content"}}
+<div class="page-stack">
+
+  <a class="link-quiet d-inline-flex align-items-center gap-2" href="{{.Data.BackHref}}">
+    <svg width="16" height="16" aria-hidden="true"><use href="#i-arrow-left"></use></svg>
+    Kembali ke dasbor
+  </a>
+
+  <header class="page-head">
+    <div>
+      <span class="eyebrow">{{.Data.Quiz.TeacherName}}</span>
+      <h1 class="h1">{{.Data.Quiz.Title}}</h1>
+      <p class="page-sub">{{.Data.Description}}</p>
+    </div>
+    <span class="{{.Data.Quiz.State.BadgeClass}}">{{.Data.Quiz.State.Label}}</span>
+  </header>
+
+  {{with .Data.Error}}
+  <div class="alert theme-danger" role="alert">
+    <strong class="d-block">Anda tidak dapat mengikuti kuis ini.</strong>
+    {{.Label}} Hubungi guru bila menurut Anda ini keliru.
+  </div>
+  {{end}}
+
+  {{if eq .Data.Quiz.State "closed"}}
+  <div class="alert theme-warning" role="status">
+    <strong class="d-block">Kuis sudah ditutup.</strong>
+    Jawaban tidak lagi dapat diubah atau ditambah.
+  </div>
+  {{end}}
+
+  {{if eq .Data.Quiz.Visibility "public"}}
+  <div class="alert theme-info" role="note">
+    <strong class="d-block">Kuis publik.</strong>
+    Kuis ini juga dapat diikuti tanpa akun melalui {{if .Data.Quiz.Code}}kode <span class="mono">{{.Data.Quiz.CodeText}}</span>{{else}}tautan undangan yang dibagikan guru{{end}}.
+  </div>
+  {{end}}
+
+  <div class="row g-4">
+    <div class="col-12 lg:col-7 d-flex flex-column gap-4">
+
+      <div class="card p-4 d-flex flex-column gap-3">
+        <h2 class="section-title">Tentang kuis</h2>
+        <div class="row g-3">
+          <div class="col-12 md:col-6">
+            <span class="cell-sub d-block">Jadwal</span>
+            <span class="fw-semibold">{{.Data.Quiz.Schedule}}</span>
+          </div>
+          <div class="col-12 md:col-6">
+            <span class="cell-sub d-block">Audiens</span>
+            <span class="fw-semibold">{{.Data.Quiz.AudienceText}}</span>
+          </div>
+          <div class="col-12 md:col-6">
+            <span class="cell-sub d-block">Jumlah soal</span>
+            <span class="num fw-semibold">{{.Data.Quiz.QuestionCount}} soal</span>
+          </div>
+          <div class="col-12 md:col-6">
+            <span class="cell-sub d-block">Kode kuis</span>
+            <span class="quiz-code">{{.Data.Quiz.CodeText}}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card p-4 d-flex flex-column gap-3">
+        <h2 class="section-title">Aturan pengerjaan</h2>
+        <ul class="mb-0 ps-4 d-flex flex-column gap-2">
+          <li>
+            {{if gt .Data.MaxAttempts 1}}
+            Setiap siswa mendapat <span class="num">{{.Data.MaxAttempts}}</span> percobaan.
+            {{else}}
+            Kuis ini hanya dapat dikerjakan satu kali.
+            {{end}}
+          </li>
+          <li>Jawaban tersimpan setiap kali Anda menekan Simpan, sehingga Anda dapat melanjutkan nanti.</li>
+          <li>Meninggalkan layar kuis akan tercatat dan dilaporkan kepada guru.</li>
+          <li>Tampilan hasil setelah pengiriman: {{.Data.Quiz.ReviewMode.Label}}.</li>
+        </ul>
+      </div>
+
+    </div>
+
+    <div class="col-12 lg:col-5 d-flex flex-column gap-4">
+
+      <div class="card p-4 d-flex flex-column gap-3">
+        <div class="row-between">
+          <h2 class="section-title">Status Anda</h2>
+          {{if .Data.Participation}}
+          <span class="{{.Data.Participation.BadgeClass}}">{{.Data.Participation.Label}}</span>
+          {{else}}
+          <span class="badge bg-2 fg-secondary">Belum terdaftar</span>
+          {{end}}
+        </div>
+
+        <div class="stack-2">
+          <div class="row-between">
+            <span class="cell-sub">Percobaan</span>
+            <span class="num">{{.Data.AttemptsUsed}} dari {{.Data.MaxAttempts}}</span>
+          </div>
+          <div class="row-between">
+            <span class="cell-sub">Jumlah soal</span>
+            <span class="num">{{.Data.Quiz.QuestionCount}}</span>
+          </div>
+          {{with .Data.JoinedAt}}
+          <div class="row-between">
+            <span class="cell-sub">Terdaftar sejak</span>
+            <span class="num">{{.DateTime}}</span>
+          </div>
+          {{end}}
+        </div>
+
+        {{if .Data.CanRegister}}
+        <p class="page-sub mb-0">Daftar dulu, lalu mulai saat Anda siap.</p>
+        {{else if .Data.CanStart}}
+        <p class="page-sub mb-0">Waktu mulai berjalan saat Anda menekan tombol mulai.</p>
+        {{else if eq .Data.Participation "in_progress"}}
+        <p class="page-sub mb-0">Percobaan Anda masih tersimpan. Lanjutkan kapan saja.</p>
+        {{else if .Data.Primary}}
+        <p class="page-sub mb-0">Percobaan baru belum tersedia. Anda masih dapat membuka hasil terakhir.</p>
+        {{else}}
+        <p class="page-sub mb-0">Belum ada tindakan yang dapat dilakukan di halaman ini.</p>
+        {{end}}
+
+        <div class="d-flex flex-column gap-2">
+          {{with .Data.Primary}}
+          {{if $.Data.CanRegister}}
+          <form method="post" action="{{.Href}}" data-validate>
+            <input type="hidden" name="csrf_token" value="{{$.CSRF}}">
+            <button type="submit" class="btn btn-solid theme-primary w-100">{{.Label}}</button>
+          </form>
+          {{else if $.Data.CanStart}}
+          <form method="post" action="{{.Href}}" data-validate>
+            <input type="hidden" name="csrf_token" value="{{$.CSRF}}">
+            <button type="submit" class="btn btn-solid theme-primary w-100">{{.Label}}</button>
+          </form>
+          {{else}}
+          <a class="btn btn-solid theme-primary w-100" href="{{.Href}}">{{.Label}}</a>
+          {{end}}
+          {{end}}
+
+          {{with .Data.Secondary}}
+          {{if $.Data.CanCancel}}
+          <form method="post" action="{{.Href}}" data-confirm="Batalkan pendaftaran Anda di kuis ini?">
+            <input type="hidden" name="csrf_token" value="{{$.CSRF}}">
+            <button type="submit" class="btn btn-outline theme-danger w-100">{{.Label}}</button>
+          </form>
+          {{else}}
+          <a class="btn btn-outline theme-primary w-100" href="{{.Href}}">{{.Label}}</a>
+          {{end}}
+          {{end}}
+        </div>
+      </div>
+
+      <div class="card p-4 d-flex flex-column gap-3">
+        <div class="row-between">
+          <h2 class="section-title">Percobaan</h2>
+          <span class="num page-sub">{{.Data.AttemptsUsed}} dari {{.Data.MaxAttempts}}</span>
+        </div>
+        {{if .Data.Attempts}}
+        <div class="table-responsive">
+          <table class="table table-clean">
+            <caption class="visually-hidden">Percobaan Anda di {{.Data.Quiz.Title}}</caption>
+            <thead>
+              <tr>
+                <th scope="col">Ke</th>
+                <th scope="col">Dikirim</th>
+                <th scope="col">Skor</th>
+                <th scope="col">Status</th>
+                <th scope="col"><span class="visually-hidden">Aksi</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              {{range .Data.Attempts}}
+              <tr>
+                <td class="num">{{.Number}}</td>
+                <td class="num">{{with .SubmittedAt}}{{.Short}}{{else}}—{{end}}</td>
+                <td class="num">{{with .Score}}{{template "partials/score.html" .}}{{else}}—{{end}}</td>
+                <td><span class="badge theme-{{.StatusTone}}">{{.StatusLabel}}</span></td>
+                <td class="text-end">
+                  {{if eq .State "in_progress"}}
+                  <a class="link-quiet" href="{{.ResultHref}}">Lanjutkan</a>
+                  {{else}}
+                  <a class="link-quiet" href="{{.ResultHref}}">Hasil</a>
+                  {{end}}
+                </td>
+              </tr>
+              {{end}}
+            </tbody>
+          </table>
+        </div>
+        {{else}}
+        <p class="page-sub mb-0">Belum ada percobaan. Percobaan pertama tercatat saat Anda memulai kuis.</p>
+        {{end}}
+      </div>
+
+    </div>
+  </div>
+
+</div>
+{{end}}

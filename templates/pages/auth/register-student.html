@@ -1,0 +1,116 @@
+{{define "partials/page-style"}}{{template "partials/auth-style.html" .}}{{end}}
+{{define "content"}}
+{{/* Student registration. Students are active immediately, so there is no
+     approval note: the form says plainly that they can start right away. */}}
+<div class="auth-heading">
+  <span class="auth-kicker">Akun siswa</span>
+  <h1 class="h1 auth-title">Daftar sebagai siswa</h1>
+  <p class="auth-subtitle">Simpan riwayat kuis dan lihat hasil Anda kapan saja setelah masuk.</p>
+</div>
+
+<div class="alert theme-info" role="note">
+  <strong class="d-block mb-1">Langsung aktif</strong>
+  <span>Akun siswa tidak menunggu persetujuan. Anda bisa masuk segera setelah mendaftar.</span>
+</div>
+
+<form class="login-form" action="/register/student" method="post" data-validate>
+  <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+
+  <div class="field-group">
+    <label class="form-label" for="student-name">Nama lengkap</label>
+    <input class="form-control" type="text" id="student-name" name="full_name" value="{{.Data.FullName}}" autocomplete="name" placeholder="Nama sesuai daftar kelas" aria-describedby="student-name-help student-name-error" required>
+    <div class="field-help" id="student-name-help">Nama ini tampil pada hasil kuis Anda.</div>
+    {{with .Errors.Get "full_name"}}<div class="field-error" id="student-name-error" role="alert">{{.}}</div>{{end}}
+  </div>
+
+  <div class="field-group">
+    <label class="form-label" for="student-email">Email sekolah</label>
+    <input class="form-control" type="email" id="student-email" name="email" value="{{.Data.Email}}" inputmode="email" autocomplete="email" placeholder="nama@siswa.sekolah.sch.id" aria-describedby="student-email-help student-email-error" required>
+    <div class="field-help" id="student-email-help">Pakai email yang aktif dan hanya Anda yang tahu.</div>
+    {{with .Errors.Get "email"}}<div class="field-error" id="student-email-error" role="alert">{{.}}</div>{{end}}
+  </div>
+
+  <div class="field-group">
+    <div class="row g-3">
+      <div class="col-12 md:col-6">
+        <label class="form-label" for="student-grade">Kelas</label>
+        <select class="form-control" id="student-grade" name="grade_level" aria-describedby="student-grade-help student-grade-error" required>
+          <option value=""{{if eq .Data.GradeLevel 0}} selected{{end}} disabled>Pilih kelas</option>
+          <option value="10"{{if eq .Data.GradeLevel 10}} selected{{end}}>Kelas X</option>
+          <option value="11"{{if eq .Data.GradeLevel 11}} selected{{end}}>Kelas XI</option>
+          <option value="12"{{if eq .Data.GradeLevel 12}} selected{{end}}>Kelas XII</option>
+        </select>
+        <div class="field-help" id="student-grade-help">Kelas Anda saat ini.</div>
+        {{with .Errors.Get "grade_level"}}<div class="field-error" id="student-grade-error" role="alert">{{.}}</div>{{end}}
+      </div>
+      <div class="col-12 md:col-6">
+        <label class="form-label" for="student-major">Jurusan</label>
+        <select class="form-control" id="student-major" name="major_id" aria-describedby="student-major-help student-major-error" required>
+          <option value=""{{if eq .Data.MajorID 0}} selected{{end}} disabled>Pilih jurusan</option>
+          {{range .Data.Majors}}<option value="{{.ID}}"{{if eq $.Data.MajorID .ID}} selected{{end}}>{{.Name}}</option>{{end}}
+        </select>
+        <div class="field-help" id="student-major-help">Jurusan yang terdaftar di sekolah.</div>
+        {{with .Errors.Get "major_id"}}<div class="field-error" id="student-major-error" role="alert">{{.}}</div>{{end}}
+      </div>
+    </div>
+  </div>
+
+  <div class="field-group">
+    <label class="form-label" for="student-password">Kata sandi</label>
+    <div class="position-relative">
+      <input class="form-control pe-5" type="password" id="student-password" name="password" autocomplete="new-password" minlength="{{.Data.MinPassword}}" placeholder="Buat kata sandi" aria-describedby="student-password-help student-password-error" required>
+      <button type="button" class="btn btn-text position-absolute top-50 end-0 translate-middle-y me-1" data-toggle-password="student-password" aria-label="Tampilkan kata sandi" aria-pressed="false" aria-controls="student-password">
+        <svg width="20" height="20" aria-hidden="true"><use href="#i-eye"></use></svg>
+      </button>
+    </div>
+    <div class="field-help" id="student-password-help">Minimal {{.Data.MinPassword}} karakter.</div>
+    {{with .Errors.Get "password"}}<div class="field-error" id="student-password-error" role="alert">{{.}}</div>{{end}}
+  </div>
+
+  <div class="field-group">
+    <label class="form-label" for="student-password-confirm">Konfirmasi kata sandi</label>
+    <div class="position-relative">
+      <input class="form-control pe-5" type="password" id="student-password-confirm" name="password_confirm" autocomplete="new-password" minlength="{{.Data.MinPassword}}" placeholder="Ulangi kata sandi" aria-describedby="student-password-confirm-help student-password-confirm-error" required>
+      <button type="button" class="btn btn-text position-absolute top-50 end-0 translate-middle-y me-1" data-toggle-password="student-password-confirm" aria-label="Tampilkan kata sandi" aria-pressed="false" aria-controls="student-password-confirm">
+        <svg width="20" height="20" aria-hidden="true"><use href="#i-eye"></use></svg>
+      </button>
+    </div>
+    <div class="field-help" id="student-password-confirm-help">Tulis ulang kata sandi yang sama.</div>
+    {{with .Errors.Get "password_confirm"}}<div class="field-error" id="student-password-confirm-error" role="alert">{{.}}</div>{{end}}
+  </div>
+
+  <button type="submit" class="btn btn-solid theme-primary w-100 login-submit">
+    Buat akun siswa
+    <svg width="16" height="16" aria-hidden="true"><use href="#i-arrow-right"></use></svg>
+  </button>
+</form>
+
+<div class="auth-divider">
+  <hr class="divider-line">
+  <span>Sudah punya akun?</span>
+  <hr class="divider-line">
+</div>
+
+<div class="register-grid">
+  <a class="register-card" href="/login">
+    <span class="register-icon">
+      <svg width="16" height="16" aria-hidden="true"><use href="#i-lock"></use></svg>
+    </span>
+    <span class="register-copy">
+      <strong>Masuk</strong>
+      <span>Lanjutkan belajar</span>
+    </span>
+    <svg class="register-arrow" width="16" height="16" aria-hidden="true"><use href="#i-chev-right"></use></svg>
+  </a>
+  <a class="register-card" href="/register/teacher">
+    <span class="register-icon">
+      <svg width="16" height="16" aria-hidden="true"><use href="#i-cap"></use></svg>
+    </span>
+    <span class="register-copy">
+      <strong>Akun guru</strong>
+      <span>Perlu persetujuan</span>
+    </span>
+    <svg class="register-arrow" width="16" height="16" aria-hidden="true"><use href="#i-chev-right"></use></svg>
+  </a>
+</div>
+{{end}}

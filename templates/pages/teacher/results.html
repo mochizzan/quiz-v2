@@ -1,0 +1,215 @@
+{{define "partials/title"}}{{with .Data.Quiz.Title}}Hasil · {{.}}{{else}}Hasil kuis{{end}} — Twisty Quiz{{end}}
+{{define "partials/page-style"}}
+/* Results: three summary tiles, one filter toolbar, then the attempt table.
+   The table keeps its columns aligned and scrolls inside its card below md. */
+.results-summary { display: grid; grid-template-columns: 1fr; gap: 12px; }
+@media (min-width: 768px) { .results-summary { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.results-count {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 16px 18px;
+  border: 1px solid #E2E6EB;
+  border-radius: 18px;
+  background: #FFFFFF;
+}
+.results-count .metric-value { font-size: 28px; line-height: 34px; }
+.results-count-average { border-color: #D0E7E6; background: #EEF4FA; }
+.results-count-average .metric-value { color: #293681; }
+
+.results-toolbar {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+}
+.results-search { display: flex; align-items: center; gap: 8px; flex: 1 1 280px; max-width: 420px; }
+.results-search-field { position: relative; flex: 1 1 auto; min-width: 0; }
+.results-search-field .form-control { height: 40px; min-height: 40px; padding-left: 38px; }
+.results-search-field svg {
+  position: absolute;
+  top: 50%;
+  left: 14px;
+  transform: translateY(-50%);
+  color: #687182;
+  pointer-events: none;
+}
+.results-search .btn { flex-shrink: 0; }
+
+.results-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 16px;
+  border: 1px solid #D0E7E6;
+  border-radius: 14px;
+  background: #EAF6FA;
+  color: #121721;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.results-note svg { flex-shrink: 0; margin-top: 1px; color: #293681; }
+.results-note strong { font-weight: 700; }
+
+.results-card { overflow: hidden; }
+.results-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 18px 20px;
+  border-bottom: 1px solid #ECEFF2;
+}
+.results-table { min-width: 820px; }
+.results-table th:last-child, .results-table td:last-child { width: 88px; }
+.results-empty { padding: 16px; }
+.results-foot { padding: 0 16px 8px; }
+.results-foot:empty { display: none; }
+@media (max-width: 767.98px) { .results-table { min-width: 700px; } }
+{{end}}
+{{define "content"}}
+{{with .Data}}
+<div class="page-stack">
+
+  <a class="link-quiet d-inline-flex align-items-center gap-2" href="{{.BackHref}}">
+    <svg width="16" height="16" aria-hidden="true"><use href="#i-arrow-left"></use></svg>
+    Kembali ke detail kuis
+  </a>
+
+  <header class="page-head">
+    <div class="min-w-0">
+      <span class="eyebrow">Hasil kuis</span>
+      <h1 class="h1">{{if .Quiz.Title}}{{.Quiz.Title}}{{else}}Hasil kuis{{end}}</h1>
+      <p class="page-sub">Rekap percobaan, nilai, dan catatan fokus untuk kuis ini.</p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+      <a class="btn btn-outline theme-primary" href="{{.BackHref}}">
+        <svg width="18" height="18" aria-hidden="true"><use href="#i-quiz"></use></svg>
+        Detail kuis
+      </a>
+      <a class="btn btn-outline theme-primary" href="/teacher/grading">
+        <svg width="18" height="18" aria-hidden="true"><use href="#i-grade"></use></svg>
+        Nilai esai
+      </a>
+    </div>
+  </header>
+
+  <section class="results-summary" aria-label="Ringkasan hasil">
+    <div class="results-count">
+      <span class="metric-label">Selesai</span>
+      <span class="metric-value">{{.Counts.Submitted}}</span>
+      <span class="metric-foot">Percobaan yang sudah dikirim</span>
+    </div>
+    <div class="results-count">
+      <span class="metric-label">Sedang berlangsung</span>
+      <span class="metric-value">{{.Counts.InProgress}}</span>
+      <span class="metric-foot">Percobaan yang belum dikirim</span>
+    </div>
+    <div class="results-count results-count-average">
+      <span class="metric-label">Rata-rata nilai</span>
+      <span class="metric-value">{{with .Counts.Average}}{{.}}{{else}}—{{end}}</span>
+      <span class="metric-foot">Dari percobaan yang sudah dinilai</span>
+    </div>
+  </section>
+
+  <section class="card results-toolbar" aria-label="Saring hasil">
+    {{template "partials/tabs.html" .Tabs}}
+    <form class="results-search" method="get" action="/teacher/quizzes/{{.Quiz.ID}}/results" role="search" aria-label="Cari peserta">
+      {{if ne .Query.Tab "all"}}<input type="hidden" name="state" value="{{.Query.Tab}}">{{end}}
+      <div class="results-search-field">
+        <label class="visually-hidden" for="results-q">Cari peserta</label>
+        <svg width="18" height="18" aria-hidden="true"><use href="#i-search"></use></svg>
+        <input class="form-control" type="search" id="results-q" name="q" value="{{.Query.Get}}" placeholder="Cari nama peserta…">
+      </div>
+      <button class="btn btn-outline theme-primary" type="submit">Cari</button>
+    </form>
+  </section>
+
+  <div class="results-note" role="note">
+    <svg width="18" height="18" aria-hidden="true"><use href="#i-info"></use></svg>
+    <div>
+      <strong>Tampilan hasil siswa: {{.ReviewMode.Label}}.</strong>
+      {{if eq .ReviewMode "questions_and_key"}}Siswa dapat meninjau soal, jawaban, dan kunci jawaban.
+      {{else if eq .ReviewMode "key_only"}}Siswa hanya melihat kunci jawaban, tanpa teks soal.
+      {{else if eq .ReviewMode "questions_only"}}Siswa melihat soal dan jawabannya, tanpa kunci jawaban.
+      {{else if eq .ReviewMode "answers_only"}}Siswa melihat jawabannya tanpa penilaian benar atau salah.
+      {{else}}Tampilan ini mengikuti pengaturan kuis.{{end}}
+    </div>
+  </div>
+
+  <section class="card results-card" aria-labelledby="results-table-title">
+    <div class="results-card-head">
+      <div>
+        <h2 class="section-title" id="results-table-title">Percobaan</h2>
+        <p class="section-sub">{{.Rows.Total}} percobaan ditemukan · terbaru lebih dulu.</p>
+      </div>
+      <p class="section-sub mb-0">Fokus hilang dicatat, tetapi tidak menghentikan percobaan.</p>
+    </div>
+
+    {{if .Rows.Empty}}
+    <div class="results-empty">
+      {{template "partials/empty-state.html" .Empty}}
+    </div>
+    {{else}}
+    <div class="table-responsive">
+      <table class="table table-clean results-table mb-0">
+        <caption class="visually-hidden">Percobaan siswa pada kuis ini</caption>
+        <thead>
+          <tr>
+            <th scope="col">Peserta</th>
+            <th scope="col">Percobaan</th>
+            <th scope="col">Dikirim (WIB)</th>
+            <th scope="col">Skor</th>
+            <th scope="col">Fokus hilang</th>
+            <th scope="col" class="text-end"><span class="visually-hidden">Aksi</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          {{range $row := .Rows.Items}}
+          <tr>
+            <td>
+              <span class="d-block cell-title">{{.StudentName}}</span>
+              {{with .ClassLabel}}<span class="d-block cell-sub">{{.}}</span>{{end}}
+            </td>
+            <td class="num">{{.AttemptNo}} dari {{.MaxAttempts}}</td>
+            <td class="num">{{with .SubmittedAt}}{{.DateTime}}{{else}}<span class="cell-sub">Belum dikirim</span>{{end}}</td>
+            <td>
+              {{if .Waiting}}
+              <span class="badge theme-warning">Menunggu nilai</span>
+              {{else}}
+              {{with .Score}}{{template "partials/score.html" .}}{{else}}<span class="num">—</span>{{end}}
+              {{end}}
+            </td>
+            <td>
+              {{if gt .FocusLoss 0}}
+              <span class="badge theme-danger"><span class="num">{{.FocusLoss}}</span> kali</span>
+              {{else}}
+              <span class="cell-sub">Tidak ada</span>
+              {{end}}
+            </td>
+            <td class="text-end">
+              {{with .RecapHref}}
+              <a class="link-quiet d-inline-flex align-items-center gap-1" href="{{.}}" aria-label="Buka rekap percobaan {{$row.AttemptNo}} {{$row.StudentName}}">
+                Rekap
+                <svg width="14" height="14" aria-hidden="true"><use href="#i-arrow-right"></use></svg>
+              </a>
+              {{else}}
+              <span class="cell-sub">—</span>
+              {{end}}
+            </td>
+          </tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+    <div class="results-foot">{{template "partials/pagination.html" .Pagination}}</div>
+    {{end}}
+  </section>
+
+</div>
+{{end}}
+{{end}}

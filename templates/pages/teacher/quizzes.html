@@ -1,99 +1,184 @@
 {{define "partials/title"}}Daftar kuis — Twisty Quiz{{end}}
+{{define "partials/page-style"}}
+/* Quiz list: flat rows inside one panel. Title, state badge and metadata
+   share the left column; the state-dependent actions sit on the right and
+   wrap below the metadata on narrow screens. */
+.quiz-rows { display: flex; flex-direction: column; }
+.quiz-row-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 12px 16px;
+  padding: 16px 24px;
+  border-top: 1px solid #ECEFF2;
+}
+.quiz-row-item:first-child { border-top: 0; }
+.quiz-row-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 14px;
+  background: #F4F6F8;
+  color: #293681;
+}
+.quiz-row-main { flex: 1 1 320px; min-width: 0; }
+.quiz-row-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.quiz-row-title { margin: 0; font-size: 15px; font-weight: 700; line-height: 1.4; }
+.quiz-row-title a { color: #121721; text-decoration: none; }
+.quiz-row-title a:hover {
+  color: #293681;
+  text-decoration: underline;
+  text-underline-offset: .18em;
+}
+.quiz-row-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 14px;
+  margin-top: 4px;
+  color: #687182;
+  font-size: 12px;
+}
+.quiz-row-meta > span { display: inline-flex; align-items: center; gap: 5px; }
+.quiz-row-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-left: auto; }
+@media (max-width: 991.98px) {
+  .quiz-row-actions { margin-left: 0; flex-basis: 100%; }
+}
+@media (max-width: 575.98px) {
+  .quiz-row-item { padding: 16px; }
+  .quiz-row-icon { display: none; }
+}
+{{end}}
 {{define "content"}}
-<div class="d-flex flex-column gap-4">
+<div class="page-stack">
 
-  <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
-    <h1 class="h1 mb-0">Daftar kuis</h1>
-    <a class="btn btn-solid theme-primary" href="/teacher/quizzes/edit">
-      <svg width="20" height="20" aria-hidden="true"><use href="#i-plus"></use></svg>
-      Buat kuis baru
+  <div class="page-head">
+    <div>
+      <span class="eyebrow">Kuis</span>
+      <h1 class="h1">Daftar kuis</h1>
+      <p class="page-sub">{{.Data.Quizzes.Total}} kuis · saring menurut status atau cari judulnya.</p>
+    </div>
+    <a class="btn btn-solid theme-primary" href="{{.Data.CreateHref}}">
+      <svg width="18" height="18" aria-hidden="true"><use href="#i-plus"></use></svg>
+      Buat kuis
     </a>
   </div>
 
-  {{/* Filters (segmented pills) + search. */}}
-  <div class="d-flex flex-wrap align-items-center gap-3">
-    <div class="btn-group" role="group" aria-label="Saring kuis">
-      <button type="button" class="btn btn-solid theme-primary" aria-pressed="true">Semua</button>
-      <button type="button" class="btn btn-outline theme-primary" aria-pressed="false">Aktif</button>
-      <button type="button" class="btn btn-outline theme-primary" aria-pressed="false">Draf</button>
-      <button type="button" class="btn btn-outline theme-primary" aria-pressed="false">Selesai</button>
+  <section class="card p-4" aria-labelledby="quiz-filter-title">
+    <div>
+      <h2 class="section-title" id="quiz-filter-title">Cari dan saring</h2>
+      <p class="section-sub">Tab menyaring status. Kata kunci dan urutan berlaku di dalam tab yang aktif.</p>
     </div>
-    <div class="flex-grow-1" style="min-width: 220px">
-      <label class="visually-hidden" for="quiz-search">Cari kuis</label>
-      <input class="form-control" type="search" id="quiz-search" placeholder="Cari kuis…">
+
+    <div class="mt-3">
+      {{template "partials/tabs.html" .Data.Tabs}}
     </div>
-  </div>
 
-  {{/* Teacher-list family EMPTY state demo (spec §15.8). */}}
-  <div hidden data-state-demo="empty">
-    {{template "partials/empty-state.html" .}}
-  </div>
+    <form class="row g-3 align-items-end mt-3" method="get" action="/teacher/quizzes">
+      {{if ne .Data.Query.Tab "all"}}<input type="hidden" name="state" value="{{.Data.Query.Tab}}">{{end}}
+      <div class="col-12 md:col-6">
+        <label class="form-label" for="quiz-search">Cari judul</label>
+        <input class="form-control" type="search" id="quiz-search" name="q" value="{{.Data.Query.Q}}" placeholder="Judul kuis">
+      </div>
+      <div class="col-12 md:col-6 xl:col-4">
+        <label class="form-label" for="quiz-sort">Urutkan</label>
+        <select class="form-control" id="quiz-sort" name="sort">
+          <option value="newest"{{if eq .Data.Query.Sort "newest"}} selected{{end}}>Terbaru</option>
+          <option value="oldest"{{if eq .Data.Query.Sort "oldest"}} selected{{end}}>Terlama</option>
+          <option value="name_asc"{{if eq .Data.Query.Sort "name_asc"}} selected{{end}}>Nama A–Z</option>
+          <option value="name_desc"{{if eq .Data.Query.Sort "name_desc"}} selected{{end}}>Nama Z–A</option>
+        </select>
+      </div>
+      <div class="col-12 xl:col-4 d-flex flex-wrap gap-2">
+        <button class="btn btn-solid theme-primary" type="submit">
+          <svg width="18" height="18" aria-hidden="true"><use href="#i-search"></use></svg>
+          Terapkan
+        </button>
+        <a class="btn btn-outline theme-primary" href="/teacher/quizzes">Atur ulang</a>
+      </div>
+    </form>
+  </section>
 
-  {{/* The 4 canonical quizzes as full rows. Status badges are never
-       colour-only: each carries its word. */}}
-  <ul class="list-group">
-    <li class="list-group-item d-flex flex-wrap align-items-center justify-content-between gap-3 p-3">
-      <span class="d-flex align-items-center gap-3">
-        <span class="d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 40px; height: 40px; background-color: #EEF4FA; color: #293681">
+  <section class="card" aria-labelledby="quiz-list-title">
+    <div class="p-4">
+      <div class="row-between">
+        <div>
+          <h2 class="section-title" id="quiz-list-title">Hasil</h2>
+          <p class="section-sub">Menampilkan {{len .Data.Quizzes.Items}} dari {{.Data.Quizzes.Total}} kuis.</p>
+        </div>
+      </div>
+    </div>
+
+    {{if .Data.Quizzes.Empty}}
+    <div class="px-4 pb-4">
+      {{template "partials/empty-state.html" .Data.Empty}}
+    </div>
+    {{else}}
+    <ul class="quiz-rows list-unstyled m-0">
+      {{range .Data.Quizzes.Items}}
+      <li class="quiz-row-item">
+        <span class="quiz-row-icon" aria-hidden="true">
           <svg width="20" height="20" aria-hidden="true"><use href="#i-quiz"></use></svg>
         </span>
-        <span>
-          <span class="d-block fw-semibold">Biologi Sel — Kuis 4</span>
-          <span class="d-block fg-secondary" style="font-size: 13px">25 soal · 45 menit · XII IPA 2 · kode QUIZ-7F2K</span>
-        </span>
-      </span>
-      <span class="d-flex flex-wrap align-items-center gap-2">
-        <span class="badge theme-primary">Aktif</span>
-        <a class="btn btn-outline theme-primary" href="/teacher/monitor">Pantau</a>
-        <a class="btn btn-solid theme-primary" href="/teacher/quizzes/edit">Kelola</a>
-      </span>
-    </li>
-    <li class="list-group-item d-flex flex-wrap align-items-center justify-content-between gap-3 p-3">
-      <span class="d-flex align-items-center gap-3">
-        <span class="d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 40px; height: 40px; background-color: #F4F6F8; color: #121721">
-          <svg width="20" height="20" aria-hidden="true"><use href="#i-pencil"></use></svg>
-        </span>
-        <span>
-          <span class="d-block fw-semibold">Kimia Organik — Kuis 2</span>
-          <span class="d-block fg-secondary" style="font-size: 13px">20 soal · 40 menit · XI IPA 1</span>
-        </span>
-      </span>
-      <span class="d-flex flex-wrap align-items-center gap-2">
-        <span class="badge" style="background-color: #F4F6F8; color: #121721">Draf</span>
-        <a class="btn btn-outline theme-primary" href="/teacher/quizzes/edit">Kelola</a>
-      </span>
-    </li>
-    <li class="list-group-item d-flex flex-wrap align-items-center justify-content-between gap-3 p-3">
-      <span class="d-flex align-items-center gap-3">
-        <span class="d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 40px; height: 40px; background-color: #F4F6F8; color: #121721">
-          <svg width="20" height="20" aria-hidden="true"><use href="#i-check"></use></svg>
-        </span>
-        <span>
-          <span class="d-block fw-semibold">Fisika Kinematika — Kuis 3</span>
-          <span class="d-block fg-secondary" style="font-size: 13px">25 soal · 45 menit · X IPS 3 · selesai 18 Okt 2026</span>
-        </span>
-      </span>
-      <span class="d-flex flex-wrap align-items-center gap-2">
-        <span class="badge" style="background-color: #121721; color: #FFFFFF">Selesai</span>
-        <a class="btn btn-outline theme-primary" href="/teacher/recap">Rekap</a>
-      </span>
-    </li>
-    <li class="list-group-item d-flex flex-wrap align-items-center justify-content-between gap-3 p-3">
-      <span class="d-flex align-items-center gap-3">
-        <span class="d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 40px; height: 40px; background-color: #F4F6F8; color: #121721">
-          <svg width="20" height="20" aria-hidden="true"><use href="#i-clipboard"></use></svg>
-        </span>
-        <span>
-          <span class="d-block fw-semibold">Sejarah Indonesia — Kuis 1</span>
-          <span class="d-block fg-secondary" style="font-size: 13px">30 soal · 60 menit · XI IPA 2 · 12 esai menunggu</span>
-        </span>
-      </span>
-      <span class="d-flex flex-wrap align-items-center gap-2">
-        <span class="badge theme-warning">Menunggu penilaian</span>
-        <a class="btn btn-solid theme-primary" href="/teacher/grading">Nilai</a>
-      </span>
-    </li>
-  </ul>
+
+        <div class="quiz-row-main">
+          <div class="quiz-row-heading">
+            <h3 class="quiz-row-title"><a href="{{.Href}}">{{.Title}}</a></h3>
+            <span class="{{.State.BadgeClass}}">{{.State.Label}}</span>
+          </div>
+          <div class="quiz-row-meta">
+            <span>{{.AudienceText}}</span>
+            <span>
+              <svg width="13" height="13" aria-hidden="true"><use href="#i-calendar"></use></svg>
+              {{.Schedule}}
+            </span>
+            <span class="num">{{.QuestionCount}} soal</span>
+            {{if .Code}}<span class="quiz-code">{{.CodeText}}</span>{{end}}
+            {{if .Participation}}<span class="num">{{.AttemptText}}</span>{{end}}
+          </div>
+        </div>
+
+        <div class="quiz-row-actions" role="group" aria-label="Aksi untuk {{.Title}}">
+          {{with .Primary}}
+          <a class="btn btn-sm {{if eq .Style "primary"}}btn-solid theme-primary{{else if eq .Style "danger"}}btn-outline theme-danger{{else}}btn-outline theme-primary{{end}}" href="{{.Href}}">{{.Label}}</a>
+          {{end}}
+          {{with .Secondary}}
+          <a class="btn btn-sm {{if eq .Style "primary"}}btn-solid theme-primary{{else if eq .Style "danger"}}btn-outline theme-danger{{else}}btn-outline theme-primary{{end}}" href="{{.Href}}">{{.Label}}</a>
+          {{end}}
+
+          {{if eq .State "draft"}}
+          <form method="post" action="/teacher/quizzes/{{.ID}}/publish" class="d-inline-flex" data-confirm="Buka kuis {{.Title}} sekarang? Soal dan pengaturan tidak dapat diubah setelah kuis dibuka.">
+            <input type="hidden" name="csrf_token" value="{{$.CSRF}}">
+            <button class="btn btn-sm btn-outline theme-primary" type="submit">Buka</button>
+          </form>
+          <form method="post" action="/teacher/quizzes/{{.ID}}/delete" class="d-inline-flex" data-confirm="Hapus draf {{.Title}}? Soal di dalamnya ikut terhapus dan tindakan ini tidak dapat dibatalkan.">
+            <input type="hidden" name="csrf_token" value="{{$.CSRF}}">
+            <button class="btn btn-sm btn-outline theme-danger" type="submit">
+              <svg width="15" height="15" aria-hidden="true"><use href="#i-trash"></use></svg>
+              Hapus
+            </button>
+          </form>
+          {{end}}
+
+          {{if eq .State "open"}}
+          <form method="post" action="/teacher/quizzes/{{.ID}}/close" class="d-inline-flex" data-confirm="Tutup kuis {{.Title}}? Kuis yang ditutup tidak dapat dibuka kembali; hasil tetap tersedia.">
+            <input type="hidden" name="csrf_token" value="{{$.CSRF}}">
+            <button class="btn btn-sm btn-outline theme-primary" type="submit">Tutup</button>
+          </form>
+          {{end}}
+        </div>
+      </li>
+      {{end}}
+    </ul>
+
+    <div class="p-4 pt-3">
+      {{template "partials/pagination.html" .Data.Pagination}}
+    </div>
+    {{end}}
+  </section>
 
 </div>
 {{end}}

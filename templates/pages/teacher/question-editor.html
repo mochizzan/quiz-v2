@@ -1,90 +1,281 @@
-{{define "partials/title"}}Editor soal — Twisty Quiz{{end}}
+{{define "partials/title"}}{{if .Data.IsNew}}Tambah soal{{else}}Edit soal{{end}} — Twisty Quiz{{end}}
+{{define "partials/page-style"}}
+/* Question editor: one writing column, one narrow reference rail. */
+.editor-layout { display: grid; grid-template-columns: 1fr; gap: 20px; align-items: start; }
+@media (min-width: 1024px) { .editor-layout { grid-template-columns: minmax(0, 1fr) 320px; } }
+@media (min-width: 1280px) { .editor-rail { position: sticky; top: 92px; } }
+.editor-rail { display: flex; flex-direction: column; gap: 16px; }
+.editor-form { min-width: 0; }
+.editor-form fieldset { min-width: 0; border: 0; margin: 0; padding: 0; }
+.editor-form legend { float: none; width: auto; }
+
+.type-grid { display: grid; grid-template-columns: 1fr; gap: 8px; }
+@media (min-width: 640px) { .type-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.type-card { position: relative; display: flex; align-items: flex-start; gap: 8px; padding: 12px 14px; border: 1px solid #E2E6EB; border-radius: 14px; background: #FFFFFF; cursor: pointer; }
+.type-card:hover { border-color: #94A3B8; }
+.type-card:has(input:checked) { border-color: #293681; background: #EEF4FA; box-shadow: inset 0 0 0 1px #293681; }
+.type-card:has(input:focus-visible) { outline: 3px solid rgba(66, 116, 217, .36); outline-offset: 2px; }
+.type-card input { margin-top: 3px; flex-shrink: 0; }
+.type-card-title { display: block; font-size: 13px; font-weight: 700; line-height: 1.35; }
+.type-card-sub { display: block; margin-top: 2px; color: #687182; font-size: 11px; line-height: 1.4; }
+
+.option-head { display: grid; grid-template-columns: 26px minmax(0, 1fr) 38px 34px; gap: 8px; align-items: center; padding: 0 0 6px; color: #687182; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; }
+.option-editor { display: grid; grid-template-columns: 26px minmax(0, 1fr) 38px 34px; gap: 8px; align-items: center; padding: 8px 0; }
+.option-editor + .option-editor { border-top: 1px solid #ECEFF2; }
+.option-letter { margin: 0; }
+.option-text { min-width: 0; }
+.option-key { display: flex; align-items: center; justify-content: center; }
+.option-key input { margin: 0; }
+.option-remove { display: flex; justify-content: flex-end; }
+.option-remove .btn { color: #B42318; }
+.option-remove .btn:hover { background: #FDF0ED; }
+
+.image-preview { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 12px; padding: 10px; border: 1px solid #E2E6EB; border-radius: 14px; background: #F4F6F8; }
+.image-preview img { display: block; width: 120px; height: 80px; object-fit: cover; border: 1px solid #E2E6EB; border-radius: 10px; background: #FFFFFF; }
+.image-preview .form-label { margin: 0; font-size: 13px; }
+
+.editor-note { margin: 0; color: #687182; font-size: 13px; line-height: 1.55; }
+.essay-hint { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border: 1px solid #E2E6EB; border-radius: 14px; background: #F4F6F8; color: #121721; font-size: 13px; line-height: 1.5; }
+.essay-hint svg { flex-shrink: 0; margin-top: 1px; color: #293681; }
+.guide-list { display: flex; flex-direction: column; gap: 6px; margin: 8px 0 0; padding-left: 18px; color: #687182; font-size: 13px; line-height: 1.55; }
+.settings-list { margin: 4px 0 0; }
+.setting-item dt { margin: 0; }
+.setting-item dd { margin: 0; }
+{{end}}
 {{define "content"}}
-<div class="d-flex flex-column gap-4">
+{{with .Data}}
+{{$type := .Type}}
+<div class="page-stack">
 
-  {{template "partials/breadcrumb.html" .}}
-  {{template "partials/stepper.html" 2}}
+  <a class="link-quiet d-inline-flex align-items-center gap-2" href="{{.CancelHref}}">
+    <svg width="16" height="16" aria-hidden="true"><use href="#i-arrow-left"></use></svg>
+    Kembali ke kuis
+  </a>
 
-  <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
-    <h1 class="h1 mb-0">Editor soal</h1>
-    <a class="btn btn-outline theme-primary" href="/teacher/quizzes/edit">Kembali ke kuis</a>
-  </div>
+  <header class="page-head">
+    <div class="min-w-0">
+      <span class="eyebrow">{{if .Position}}Soal {{.Position}}{{else}}Soal{{end}}</span>
+      <h1 class="h1">{{if .IsNew}}Tambah soal{{else}}Edit soal{{end}}</h1>
+      <p class="page-sub">{{.Quiz.Title}}</p>
+    </div>
+    <span class="badge theme-primary">{{.Type.Label}}</span>
+  </header>
 
-  {{/* Question type pills — the current type is active. */}}
-  <div class="btn-group" role="group" aria-label="Tipe soal">
-    <button type="button" class="btn btn-solid theme-primary" aria-pressed="true">Pilihan Ganda</button>
-    <button type="button" class="btn btn-outline theme-primary" aria-pressed="false">Esai</button>
-    <button type="button" class="btn btn-outline theme-primary" aria-pressed="false">Benar-Salah</button>
-    <button type="button" class="btn btn-outline theme-primary" aria-pressed="false">Isian</button>
-  </div>
+  <div class="editor-layout">
 
-  <div class="row g-4">
-    <div class="col-12 xl:col-8">
-      <div class="card p-4 d-flex flex-column gap-3">
-        <div>
-          <label class="form-label" for="qe-text">Teks soal</label>
-          <textarea class="form-control" id="qe-text" name="text" rows="4" maxlength="1000" required>Organel apa yang berperan dalam respirasi sel dan menghasilkan energi?</textarea>
-          <div class="form-text" style="font-variant-numeric: tabular-nums">999 karakter tersisa</div>
+    {{/* NewQuestionFormData.Action points at the GET /questions/new page; the
+         create action is the collection route. Edit forms use their own URL. */}}
+    <form class="card form-card editor-form" method="post" action="{{if .IsNew}}/teacher/quizzes/{{.Quiz.ID}}/questions{{else}}{{.Action}}{{end}}" enctype="multipart/form-data" data-validate>
+      <input type="hidden" name="csrf_token" value="{{$.CSRF}}">
+
+      <fieldset class="form-section">
+        <legend class="form-section-title">Tipe soal</legend>
+        <p class="form-section-sub">Tipe menentukan cara siswa menjawab dan cara soal dinilai.</p>
+        <div class="type-grid">
+          {{/* Labels mirror viewmodel.QuestionType.Label(); the model has no
+               enum slice, so the three fixed values are written out. */}}
+          <label class="type-card">
+            <input class="radio" type="radio" name="type" value="single" data-question-type{{if eq $type "single"}} checked{{end}}>
+            <span>
+              <span class="type-card-title">Pilihan tunggal</span>
+              <span class="type-card-sub">Tepat satu jawaban benar.</span>
+            </span>
+          </label>
+          <label class="type-card">
+            <input class="radio" type="radio" name="type" value="multiple" data-question-type{{if eq $type "multiple"}} checked{{end}}>
+            <span>
+              <span class="type-card-title">Pilihan ganda</span>
+              <span class="type-card-sub">Satu atau lebih jawaban benar.</span>
+            </span>
+          </label>
+          <label class="type-card">
+            <input class="radio" type="radio" name="type" value="essay" data-question-type{{if eq $type "essay"}} checked{{end}}>
+            <span>
+              <span class="type-card-title">Esai</span>
+              <span class="type-card-sub">Jawaban terbuka, dinilai guru.</span>
+            </span>
+          </label>
         </div>
+      </fieldset>
 
-        <fieldset class="d-flex flex-column gap-2 border-0 p-0 m-0">
-          <legend class="form-label">Pilihan jawaban</legend>
-
-          {{/* Letter circles + radio for the answer key; selection state is
-               never colour-only (the radio input carries the state). */}}
-          <label class="d-flex align-items-center gap-3 p-3" style="background-color: #EEF4FA; border-radius: 18px">
-            <span class="d-inline-flex align-items-center justify-content-center rounded-circle fw-semibold" style="width: 32px; height: 32px; background-color: #293681; color: #FFFFFF">A</span>
-            <span class="flex-grow-1">Mitokondria</span>
-            <span class="d-flex align-items-center gap-2">
-              <span class="badge theme-primary">Kunci</span>
-              <input class="radio" type="radio" name="key" value="a" checked aria-label="Jadikan kunci: Mitokondria">
-            </span>
-          </label>
-          <label class="d-flex align-items-center gap-3 p-3" style="background-color: #F4F6F8; border-radius: 18px">
-            <span class="d-inline-flex align-items-center justify-content-center rounded-circle fw-semibold" style="width: 32px; height: 32px; background-color: #FFFFFF; color: #121721">B</span>
-            <span class="flex-grow-1">Ribosom</span>
-            <span class="d-flex align-items-center gap-2">
-              <input class="radio" type="radio" name="key" value="b" aria-label="Jadikan kunci: Ribosom">
-            </span>
-          </label>
-          <label class="d-flex align-items-center gap-3 p-3" style="background-color: #F4F6F8; border-radius: 18px">
-            <span class="d-inline-flex align-items-center justify-content-center rounded-circle fw-semibold" style="width: 32px; height: 32px; background-color: #FFFFFF; color: #121721">C</span>
-            <span class="flex-grow-1">Lisosom</span>
-            <span class="d-flex align-items-center gap-2">
-              <input class="radio" type="radio" name="key" value="c" aria-label="Jadikan kunci: Lisosom">
-            </span>
-          </label>
-          <label class="d-flex align-items-center gap-3 p-3" style="background-color: #F4F6F8; border-radius: 18px">
-            <span class="d-inline-flex align-items-center justify-content-center rounded-circle fw-semibold" style="width: 32px; height: 32px; background-color: #FFFFFF; color: #121721">D</span>
-            <span class="flex-grow-1">Badan Golgi</span>
-            <span class="d-flex align-items-center gap-2">
-              <input class="radio" type="radio" name="key" value="d" aria-label="Jadikan kunci: Badan Golgi">
-            </span>
-          </label>
-        </fieldset>
-
-        <div style="max-width: 200px">
-          <label class="form-label" for="qe-points">Poin</label>
-          <input class="form-control" type="number" id="qe-points" name="points" value="10" min="1" style="font-variant-numeric: tabular-nums">
-        </div>
-
-        <div class="d-flex flex-wrap justify-content-end gap-2">
-          <a class="btn btn-outline theme-primary" href="/teacher/quizzes/edit">Kembali ke kuis</a>
-          <button type="button" class="btn btn-solid theme-primary">Simpan soal</button>
+      <div class="form-section">
+        <label class="form-label" for="question-body">Teks soal <span class="required" aria-hidden="true">*</span></label>
+        <textarea class="form-control" id="question-body" name="body" rows="5" required minlength="8" maxlength="2000" data-char-count="question-body-count" aria-describedby="question-body-help">{{.Body}}</textarea>
+        <div class="row-between mt-1">
+          <p class="field-help mb-0" id="question-body-help">Satu pertanyaan, satu gagasan. Tambahkan konteks bila soal merujuk gambar.</p>
+          <span class="char-count" id="question-body-count" aria-live="polite"></span>
         </div>
       </div>
-    </div>
 
-    {{/* Right rail tips panel. */}}
-    <div class="col-12 xl:col-4">
-      <div class="card p-4 d-flex flex-column gap-2">
-        <h2 class="h2 mb-0">Tips menulis soal</h2>
-        <p class="mb-0 fg-secondary" style="font-size: 14px">Pertanyaan satu kalimat, satu gagasan. Hindari jawaban “semua benar”.</p>
-        <p class="mb-0 fg-secondary" style="font-size: 14px">Untuk esai, tulis kriteria penilaian yang jelas agar penilaian konsisten.</p>
-        <p class="mb-0 fg-secondary" style="font-size: 14px">Gunakan gambar hanya bila informasinya tidak bisa disampaikan teks.</p>
-        <a class="btn btn-outline theme-primary align-self-start mt-2" href="/teacher/questions/image">Unggah gambar soal</a>
+      <div class="form-section">
+        <label class="form-label" for="question-image">Gambar soal <span class="fg-secondary">(opsional)</span></label>
+        {{with .Image}}
+        <div class="image-preview">
+          <img src="{{.URL}}" alt="{{.Alt}}">
+          <div class="min-w-0">
+            <p class="mb-1 fw-semibold">{{.Alt}}</p>
+            <p class="field-help mb-1">{{.SizeLabel}}</p>
+            <label class="d-inline-flex align-items-center gap-2" for="remove-image">
+              <input class="check" type="checkbox" id="remove-image" name="remove_image" value="1">
+              <span>Hapus gambar ini</span>
+            </label>
+          </div>
+        </div>
+        {{end}}
+        <input class="form-control" type="file" id="question-image" name="image" accept="image/jpeg,image/png,image/webp" aria-describedby="question-image-help">
+        <p class="field-help" id="question-image-help">JPEG, PNG, atau WebP. Maksimal 10 MB, satu gambar per soal.</p>
       </div>
-    </div>
+
+      <fieldset class="form-section" data-objective-only{{if eq $type "essay"}} hidden{{end}}>
+        <legend class="form-section-title">Pilihan jawaban</legend>
+        <p class="form-section-sub">Minimal dua pilihan. Tandai jawaban benar di kolom kunci.</p>
+
+        <div class="option-head" aria-hidden="true">
+          <span></span>
+          <span>Pilihan</span>
+          <span class="text-center">Kunci</span>
+          <span></span>
+        </div>
+
+        <div data-options>
+          {{range $i, $opt := .Options}}
+          <div class="option-editor" data-option-row>
+            <span class="option-letter" data-option-letter>{{$opt.Letter}}</span>
+            <div class="option-text">
+              <input class="form-control" type="text" name="option_body[]" value="{{$opt.Body}}" placeholder="Pilihan {{$opt.Letter}}" maxlength="300" aria-label="Teks pilihan {{$opt.Letter}}">
+            </div>
+            <div class="option-key">
+              <span data-single-mode{{if ne $type "single"}} hidden{{end}}>
+                <input class="radio" type="radio" name="correct_index" value="{{$i}}" aria-label="Jadikan kunci: pilihan {{$opt.Letter}}"{{if and $opt.Correct (eq $type "single")}} checked{{end}}>
+              </span>
+              <span data-correct-mode{{if ne $type "multiple"}} hidden{{end}}>
+                <input class="check" type="checkbox" name="correct_indexes" value="{{$i}}" aria-label="Jadikan kunci: pilihan {{$opt.Letter}}"{{if and $opt.Correct (eq $type "multiple")}} checked{{end}}>
+              </span>
+            </div>
+            <div class="option-remove">
+              <button class="btn btn-sm btn-text" type="button" data-remove-option aria-label="Hapus pilihan {{$opt.Letter}}">
+                <svg width="15" height="15" aria-hidden="true"><use href="#i-trash"></use></svg>
+              </button>
+            </div>
+          </div>
+          {{end}}
+
+          {{if not .Options}}
+          <div class="option-editor" data-option-row>
+            <span class="option-letter" data-option-letter>A</span>
+            <div class="option-text">
+              <input class="form-control" type="text" name="option_body[]" value="" placeholder="Pilihan A" maxlength="300" aria-label="Teks pilihan A">
+            </div>
+            <div class="option-key">
+              <span data-single-mode{{if ne $type "single"}} hidden{{end}}>
+                <input class="radio" type="radio" name="correct_index" value="0" aria-label="Jadikan kunci: pilihan A">
+              </span>
+              <span data-correct-mode{{if ne $type "multiple"}} hidden{{end}}>
+                <input class="check" type="checkbox" name="correct_indexes" value="0" aria-label="Jadikan kunci: pilihan A">
+              </span>
+            </div>
+            <div class="option-remove">
+              <button class="btn btn-sm btn-text" type="button" data-remove-option aria-label="Hapus pilihan A">
+                <svg width="15" height="15" aria-hidden="true"><use href="#i-trash"></use></svg>
+              </button>
+            </div>
+          </div>
+          <div class="option-editor" data-option-row>
+            <span class="option-letter" data-option-letter>B</span>
+            <div class="option-text">
+              <input class="form-control" type="text" name="option_body[]" value="" placeholder="Pilihan B" maxlength="300" aria-label="Teks pilihan B">
+            </div>
+            <div class="option-key">
+              <span data-single-mode{{if ne $type "single"}} hidden{{end}}>
+                <input class="radio" type="radio" name="correct_index" value="1" aria-label="Jadikan kunci: pilihan B">
+              </span>
+              <span data-correct-mode{{if ne $type "multiple"}} hidden{{end}}>
+                <input class="check" type="checkbox" name="correct_indexes" value="1" aria-label="Jadikan kunci: pilihan B">
+              </span>
+            </div>
+            <div class="option-remove">
+              <button class="btn btn-sm btn-text" type="button" data-remove-option aria-label="Hapus pilihan B">
+                <svg width="15" height="15" aria-hidden="true"><use href="#i-trash"></use></svg>
+              </button>
+            </div>
+          </div>
+          {{end}}
+        </div>
+
+        <div class="row-between mt-3">
+          <button class="btn btn-outline theme-primary" type="button" data-add-option>
+            <svg width="16" height="16" aria-hidden="true"><use href="#i-plus"></use></svg>
+            Tambah pilihan
+          </button>
+          <p class="field-help mb-0">Pilihan minimal dua; tambah sebanyak yang diperlukan.</p>
+        </div>
+        {{if .RandomizeAnswers}}<p class="field-help mt-2 mb-0">Pengaturan kuis mengacak urutan pilihan untuk setiap siswa.</p>{{end}}
+      </fieldset>
+
+      <div class="form-section" data-essay-only{{if ne $type "essay"}} hidden{{end}}>
+        <h2 class="form-section-title">Penilaian esai</h2>
+        <p class="editor-note">{{.EssayNote}}</p>
+        <div class="essay-hint mt-3">
+          <svg width="18" height="18" aria-hidden="true"><use href="#i-info"></use></svg>
+          <span>Esai tidak memiliki kunci jawaban. Nilai diberikan guru di halaman Penilaian setelah jawaban dikirim.</span>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <a class="btn btn-outline theme-primary" href="{{.CancelHref}}">Batal</a>
+        <button class="btn btn-solid theme-primary" type="submit">
+          <svg width="16" height="16" aria-hidden="true"><use href="#i-check"></use></svg>
+          Simpan soal
+        </button>
+      </div>
+    </form>
+
+    <aside class="editor-rail" aria-label="Ringkasan dan panduan soal">
+
+      <section class="card p-4" aria-labelledby="editor-summary-title">
+        <h2 class="section-title" id="editor-summary-title">Ringkasan</h2>
+        <dl class="settings-list">
+          <div class="setting-item">
+            <dt class="setting-label">Kuis</dt>
+            <dd class="setting-value">{{.Quiz.Title}}</dd>
+          </div>
+          <div class="setting-item">
+            <dt class="setting-label">Posisi</dt>
+            <dd class="setting-value num">{{if .Position}}Soal {{.Position}}{{else}}—{{end}}</dd>
+          </div>
+          <div class="setting-item">
+            <dt class="setting-label">Tipe</dt>
+            <dd class="setting-value">{{.Type.Label}}</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section class="card p-4" aria-labelledby="editor-guide-title">
+        <h2 class="section-title" id="editor-guide-title">Panduan singkat</h2>
+        <ul class="guide-list">
+          <li>Tulis satu pertanyaan untuk satu gagasan.</li>
+          <li>Pilihan tunggal memerlukan tepat satu kunci.</li>
+          <li>Pilihan ganda boleh memiliki lebih dari satu kunci.</li>
+          <li>Gunakan gambar hanya bila teks tidak cukup menjelaskan.</li>
+        </ul>
+      </section>
+
+      {{if not .IsNew}}{{with .DeleteHref}}
+      <section class="card p-4" aria-labelledby="editor-danger-title">
+        <h2 class="section-title" id="editor-danger-title">Hapus soal</h2>
+        <p class="field-help">Soal yang dihapus tidak dapat dikembalikan. Jawaban siswa pada soal ini ikut terhapus.</p>
+        <form method="post" action="{{.}}" data-confirm="Hapus soal ini? Jawaban siswa pada soal ini ikut terhapus.">
+          <input type="hidden" name="csrf_token" value="{{$.CSRF}}">
+          <button class="btn btn-outline theme-danger w-100" type="submit">
+            <svg width="16" height="16" aria-hidden="true"><use href="#i-trash"></use></svg>
+            Hapus soal
+          </button>
+        </form>
+      </section>
+      {{end}}{{end}}
+
+    </aside>
   </div>
 </div>
+{{end}}
 {{end}}

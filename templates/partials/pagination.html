@@ -1,0 +1,8 @@
+{{define "partials/pagination.html"}}{{if .Show}}<nav aria-label="Navigasi halaman" class="row-between">
+  <span class="page-sub">{{.From}}–{{.To}} dari {{.Total}}</span>
+  <ul class="pagination mb-0">
+    <li class="page-item{{if not .HasPrev}} disabled{{end}}"><a class="page-link" href="{{if .HasPrev}}{{.PrevHref}}{{else}}#{{end}}"{{if not .HasPrev}} aria-disabled="true" tabindex="-1"{{end}}>Sebelumnya</a></li>
+    {{range .Numbers}}<li class="page-item{{if .Active}} active{{end}}"><a class="page-link" href="{{.Href}}"{{if .Active}} aria-current="page"{{end}}>{{.Number}}</a></li>{{end}}
+    <li class="page-item{{if not .HasNext}} disabled{{end}}"><a class="page-link" href="{{if .HasNext}}{{.NextHref}}{{else}}#{{end}}"{{if not .HasNext}} aria-disabled="true" tabindex="-1"{{end}}>Berikutnya</a></li>
+  </ul>
+</nav>{{end}}{{end}}

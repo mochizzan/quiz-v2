@@ -1,0 +1,109 @@
+{{define "content"}}
+<div class="page-stack">
+
+  <a class="link-quiet d-inline-flex align-items-center gap-2" href="{{.Data.BackHref}}">
+    <svg width="16" height="16" aria-hidden="true"><use href="#i-arrow-left"></use></svg>
+    Kembali ke riwayat
+  </a>
+
+  <header class="page-head">
+    <div>
+      <span class="eyebrow">{{.Data.TeacherName}}</span>
+      <h1 class="h1">{{.Data.Quiz.Title}}</h1>
+      <p class="page-sub">{{.Data.Audience}} · {{len .Data.Attempts}} dari {{.Data.MaxAttempts}} percobaan</p>
+    </div>
+    <div class="d-flex flex-wrap align-items-center gap-2">
+      <span class="{{.Data.State.BadgeClass}}">{{.Data.State.Label}}</span>
+      {{if .Data.CanRetry}}
+      <form method="post" action="{{.Data.RetryHref}}/attempts" data-validate>
+        <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+        <button type="submit" class="btn btn-solid theme-primary">{{if .Data.Attempts}}Coba lagi{{else}}Mulai kuis{{end}}</button>
+      </form>
+      {{end}}
+    </div>
+  </header>
+
+  <div class="card p-4">
+    <div class="row g-3">
+      <div class="col-12 md:col-4">
+        <span class="cell-sub d-block">Guru</span>
+        <span class="fw-semibold">{{.Data.TeacherName}}</span>
+      </div>
+      <div class="col-12 md:col-4">
+        <span class="cell-sub d-block">Audiens</span>
+        <span class="fw-semibold">{{.Data.Audience}}</span>
+      </div>
+      <div class="col-12 md:col-4">
+        <span class="cell-sub d-block">Batas percobaan</span>
+        <span class="num fw-semibold">{{.Data.MaxAttempts}} percobaan</span>
+      </div>
+    </div>
+  </div>
+
+  <section class="d-flex flex-column gap-3">
+    <div class="row-between">
+      <div>
+        <h2 class="section-title">Percobaan Anda</h2>
+        <p class="section-sub">
+          {{if .Data.Attempts}}
+            {{if .Data.CanRetry}}Anda masih dapat memakai sisa percobaan.{{else}}Tidak ada percobaan baru yang dapat dimulai saat ini.{{end}}
+          {{else}}
+            Percobaan pertama belum dimulai.
+          {{end}}
+        </p>
+      </div>
+      <a class="link-quiet" href="{{.Data.RetryHref}}">Buka halaman kuis</a>
+    </div>
+
+    {{if .Data.Attempts}}
+    <div class="card p-0">
+      <div class="table-responsive">
+        <table class="table table-clean">
+          <caption class="visually-hidden">Percobaan untuk {{.Data.Quiz.Title}}</caption>
+          <thead>
+            <tr>
+              <th scope="col">Percobaan</th>
+              <th scope="col">Dimulai</th>
+              <th scope="col">Dikirim</th>
+              <th scope="col">Skor</th>
+              <th scope="col">Status</th>
+              <th scope="col"><span class="visually-hidden">Aksi</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            {{range .Data.Attempts}}
+            <tr>
+              <td class="num">{{.Number}}{{if .MaxAttempts}} <span class="cell-sub">dari {{.MaxAttempts}}</span>{{end}}</td>
+              <td class="num">{{with .StartedAt}}{{.DateTime}}{{else}}—{{end}}</td>
+              <td class="num">{{with .SubmittedAt}}{{.DateTime}}{{else}}—{{end}}</td>
+              <td class="num">{{with .Score}}{{template "partials/score.html" .}}{{else}}—{{end}}</td>
+              <td>
+                <span class="badge theme-{{.StatusTone}}">{{.StatusLabel}}</span>
+                {{if .FocusLoss}}<span class="focus-flag d-block">{{.FocusLoss}} kali keluar layar</span>{{end}}
+              </td>
+              <td class="text-end">
+                {{if eq .State "in_progress"}}
+                <a class="link-quiet" href="{{.ResultHref}}">Lanjutkan</a>
+                {{else}}
+                <a class="link-quiet" href="{{.ResultHref}}">Lihat hasil</a>
+                {{end}}
+              </td>
+            </tr>
+            {{end}}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <p class="page-sub">Skor yang tidak ditampilkan guru muncul sebagai —.</p>
+    {{else}}
+    <div class="empty-panel">
+      <span class="empty-icon"><svg width="26" height="26" aria-hidden="true"><use href="#i-play"></use></svg></span>
+      <h2>Belum ada percobaan.</h2>
+      <p>Percobaan pertama akan tercatat setelah Anda memulai kuis dari halaman kuis.</p>
+      <a class="btn btn-solid theme-primary" href="{{.Data.RetryHref}}">Buka halaman kuis</a>
+    </div>
+    {{end}}
+  </section>
+
+</div>
+{{end}}

@@ -1,105 +1,163 @@
-{{define "partials/title"}}Dasbor siswa — Twisty Quiz{{end}}
 {{define "content"}}
-<div class="d-flex flex-column gap-4">
+<div class="page-stack">
 
-  <div>
-    <h1 class="h1 mb-1">Halo, Ayu</h1>
-    <p class="mb-0 fg-secondary">Kelas XII IPA 2 · SMA Nusantara · Rabu, 21 Oktober 2026.</p>
-  </div>
-
-  {{/* STUDENT family state demos (spec §15.8) — this page owns them; the
-       empty copy is this screen's pinned text. */}}
-  <div hidden data-state-demo="loading">
-    <div class="card p-4" aria-busy="true">
-      {{template "partials/skeleton.html" .}}
+  <header class="page-head">
+    <div>
+      <span class="eyebrow">Dasbor siswa</span>
+      <h1 class="h1">Halo, {{.Data.GreetingName}}</h1>
+      <p class="page-sub">{{with .User}}{{.ClassLabel}}{{end}} · {{.Data.DateLine}}</p>
     </div>
-  </div>
-  <div hidden data-state-demo="empty">
-    <div class="card p-4 text-center">
-      <span class="d-inline-flex align-items-center justify-content-center rounded-circle mb-2" style="width: 56px; height: 56px; background-color: #F4F6F8; color: #687182">
-        <svg width="28" height="28" aria-hidden="true"><use href="#i-quiz"></use></svg>
-      </span>
-      <h2 class="h2 mb-1">Tidak ada kuis aktif.</h2>
-      <p class="mb-0 fg-secondary" style="font-size: 14px">Kuis baru akan muncul di sini saat guru membukanya.</p>
-    </div>
-  </div>
-  <div hidden data-state-demo="error">
-    {{template "partials/banner-error" .}}
-  </div>
+    <a class="btn btn-outline theme-primary" href="/join">
+      <svg width="17" height="17" aria-hidden="true"><use href="#i-bolt"></use></svg>
+      Gabung kuis
+    </a>
+  </header>
 
-  {{/* Active quiz card — the single primary action of this page. */}}
-  <div class="card p-4 d-flex flex-column gap-3">
-    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
-      <div class="d-flex align-items-center gap-3">
-        <span class="d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 40px; height: 40px; background-color: #EEF4FA; color: #293681">
-          <svg width="20" height="20" aria-hidden="true"><use href="#i-quiz"></use></svg>
-        </span>
-        <div>
-          <h2 class="h2 mb-0">Kuis Pengetahuan Umum — Sesi 1</h2>
-          <span class="fg-secondary" style="font-size: 13px">5 soal · 20 menit · Percobaan tunggal</span>
+  <section aria-label="Ringkasan kuis Anda">
+    <div class="row g-3">
+      <div class="col-6 md:col-4 xl:col">
+        <div class="card metric-tile p-3 h-100">
+          <span class="metric-label">Kuis tersedia</span>
+          <span class="metric-value">{{.Data.Stats.Assigned}}</span>
+          <span class="metric-foot">Sesuai kelas Anda</span>
         </div>
       </div>
-      <span class="badge theme-primary">Terbuka</span>
+      <div class="col-6 md:col-4 xl:col">
+        <div class="card metric-tile p-3 h-100">
+          <span class="metric-label">Terdaftar</span>
+          <span class="metric-value">{{.Data.Stats.Registered}}</span>
+          <span class="metric-foot">Belum dimulai</span>
+        </div>
+      </div>
+      <div class="col-6 md:col-4 xl:col">
+        <div class="card metric-tile p-3 h-100">
+          <span class="metric-label">Sedang berjalan</span>
+          <span class="metric-value">{{.Data.Stats.InProgress}}</span>
+          <span class="metric-foot">Percobaan aktif</span>
+        </div>
+      </div>
+      <div class="col-6 md:col-4 xl:col">
+        <div class="card metric-tile p-3 h-100">
+          <span class="metric-label">Selesai</span>
+          <span class="metric-value">{{.Data.Stats.Completed}}</span>
+          <span class="metric-foot">Kuis dengan jawaban terkirim</span>
+        </div>
+      </div>
+      <div class="col-12 md:col-4 xl:col">
+        <div class="card metric-tile p-3 h-100">
+          <span class="metric-label">Skor terbaik</span>
+          {{with .Data.Stats.BestScore}}
+          <span class="metric-value metric-accent">{{.}}</span>
+          {{else}}
+          <span class="metric-value">—</span>
+          {{end}}
+          <span class="metric-foot">Dari kuis yang menampilkan skor</span>
+        </div>
+      </div>
     </div>
-    <a class="btn btn-solid theme-primary align-self-start" href="/attempt">Mulai kuis</a>
-  </div>
+  </section>
 
-  {{/* Upcoming quizzes — word badge, never colour alone. */}}
-  <div class="card p-4 d-flex flex-column gap-3">
-    <h2 class="h2 mb-0">Akan datang</h2>
-    <ul class="list-group">
-      <li class="list-group-item d-flex flex-wrap align-items-center justify-content-between gap-3 p-3">
-        <span class="d-flex align-items-center gap-3">
-          <span class="d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 40px; height: 40px; background-color: #F4F6F8; color: #121721">
-            <svg width="20" height="20" aria-hidden="true"><use href="#i-clock"></use></svg>
-          </span>
-          <span>
-            <span class="d-block fw-semibold">Fisika Kinematika — Kuis 3</span>
-            <span class="d-block fg-secondary" style="font-size: 13px; font-variant-numeric: tabular-nums">Besok, 09.00 WIB</span>
-          </span>
-        </span>
-        <span class="badge" style="background-color: #F4F6F8; color: #121721">Terjadwal</span>
-      </li>
-      <li class="list-group-item d-flex flex-wrap align-items-center justify-content-between gap-3 p-3">
-        <span class="d-flex align-items-center gap-3">
-          <span class="d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 40px; height: 40px; background-color: #F4F6F8; color: #121721">
-            <svg width="20" height="20" aria-hidden="true"><use href="#i-clock"></use></svg>
-          </span>
-          <span>
-            <span class="d-block fw-semibold">Sejarah Indonesia — Kuis 1</span>
-            <span class="d-block fg-secondary" style="font-size: 13px; font-variant-numeric: tabular-nums">24 Okt 2026, 10.00 WIB</span>
-          </span>
-        </span>
-        <span class="badge" style="background-color: #F4F6F8; color: #121721">Terjadwal</span>
-      </li>
-    </ul>
-  </div>
+  {{if or .Data.Ready .Data.Live .Data.Latest .Data.Recent}}
 
-  {{/* Recent results — score pill + word badge. */}}
-  <div class="card p-4 d-flex flex-column gap-3">
-    <h2 class="h2 mb-0">Hasil terakhir</h2>
-    <ul class="list-group">
-      <li class="list-group-item d-flex flex-wrap align-items-center justify-content-between gap-3 p-3">
-        <span>
-          <span class="d-block fw-semibold">Biologi Sel — Kuis 4</span>
-          <span class="d-block fg-secondary" style="font-size: 13px; font-variant-numeric: tabular-nums">20 Okt 2026</span>
-        </span>
-        <span class="d-flex align-items-center gap-2">
-          <span class="badge" style="background-color: #EEF4FA; color: #293681; font-variant-numeric: tabular-nums">84</span>
-          <span class="badge theme-success">Selesai</span>
-        </span>
-      </li>
-      <li class="list-group-item d-flex flex-wrap align-items-center justify-content-between gap-3 p-3">
-        <span>
-          <span class="d-block fw-semibold">Kimia Organik — Kuis 2</span>
-          <span class="d-block fg-secondary" style="font-size: 13px; font-variant-numeric: tabular-nums">15 Okt 2026</span>
-        </span>
-        <span class="d-flex align-items-center gap-2">
-          <span class="badge" style="background-color: #EEF4FA; color: #293681; font-variant-numeric: tabular-nums">92</span>
-          <span class="badge theme-success">Selesai</span>
-        </span>
-      </li>
-    </ul>
-  </div>
+  {{if .Data.Ready}}
+  <section class="d-flex flex-column gap-3">
+    <div class="row-between">
+      <div>
+        <h2 class="section-title">Siap dimulai</h2>
+        <p class="section-sub">Kuis yang sudah Anda daftar dan belum dikerjakan.</p>
+      </div>
+      <span class="page-sub">{{len .Data.Ready}} kuis</span>
+    </div>
+    <div class="row g-3">
+      {{range .Data.Ready}}
+      <div class="col-12 lg:col-6">{{template "partials/quiz-card.html" .}}</div>
+      {{end}}
+    </div>
+  </section>
+  {{end}}
+
+  {{if .Data.Live}}
+  <section class="d-flex flex-column gap-3">
+    <div class="row-between">
+      <div>
+        <h2 class="section-title">Sedang berjalan</h2>
+        <p class="section-sub">Lanjutkan dari soal terakhir yang sudah tersimpan.</p>
+      </div>
+      <span class="page-sub">{{len .Data.Live}} percobaan</span>
+    </div>
+    <div class="row g-3">
+      {{range .Data.Live}}
+      <div class="col-12 lg:col-6">{{template "partials/quiz-card.html" .}}</div>
+      {{end}}
+    </div>
+  </section>
+  {{end}}
+
+  {{if .Data.Latest}}
+  <section class="d-flex flex-column gap-3">
+    <div class="row-between">
+      <div>
+        <h2 class="section-title">Baru untuk Anda</h2>
+        <p class="section-sub">Kuis terbuka yang sesuai kelas Anda dan belum diikuti.</p>
+      </div>
+    </div>
+    <div class="row g-3">
+      {{range .Data.Latest}}
+      <div class="col-12 lg:col-6">{{template "partials/quiz-card.html" .}}</div>
+      {{end}}
+    </div>
+  </section>
+  {{end}}
+
+  {{if .Data.Recent}}
+  <section class="d-flex flex-column gap-3">
+    <div class="row-between">
+      <div>
+        <h2 class="section-title">Hasil terbaru</h2>
+        <p class="section-sub">Percobaan yang sudah dikirim, terbaru lebih dulu.</p>
+      </div>
+      <a class="link-quiet" href="/student/history">Riwayat lengkap</a>
+    </div>
+    <div class="card p-0">
+      <div class="table-responsive">
+        <table class="table table-clean">
+          <caption class="visually-hidden">Hasil kuis terbaru Anda</caption>
+          <thead>
+            <tr>
+              <th scope="col">Kuis</th>
+              <th scope="col">Dikirim</th>
+              <th scope="col">Skor</th>
+              <th scope="col">Status</th>
+              <th scope="col"><span class="visually-hidden">Aksi</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            {{range .Data.Recent}}
+            <tr>
+              <td class="cell-title">{{.Quiz.Title}}</td>
+              <td class="num">{{with .SubmittedAt}}{{.DateTime}}{{else}}—{{end}}</td>
+              <td class="num">{{with .Score}}{{template "partials/score.html" .}}{{else}}—{{end}}</td>
+              <td>
+                {{if .Waiting}}
+                <span class="badge theme-warning">Menunggu nilai</span>
+                {{else}}
+                <span class="badge theme-success">Selesai</span>
+                {{end}}
+              </td>
+              <td class="text-end"><a class="link-quiet" href="{{.Href}}">Lihat hasil</a></td>
+            </tr>
+            {{end}}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <p class="page-sub">Skor yang tidak ditampilkan guru muncul sebagai —.</p>
+  </section>
+  {{end}}
+
+  {{else}}
+  {{template "partials/empty-state.html" .Data.Empty}}
+  {{end}}
+
 </div>
 {{end}}

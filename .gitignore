@@ -2,3 +2,10 @@
 *.exe
 *.test
 .env
+coverage.out
+*.log
+
+# local agent/tooling state
+.codegraph/
+.omp/
+.superpowers/

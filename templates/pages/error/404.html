@@ -1,10 +1,10 @@
-{{define "partials/title"}}Halaman tidak ditemukan — Twisty Quiz{{end}}
-{{define "content"}}
-<div class="d-flex flex-column align-items-center text-center gap-3">
-  <span class="badge" style="background-color: #EEF4FA; color: #293681">404</span>
-  <svg width="32" height="32" aria-hidden="true"><use href="#i-warn"></use></svg>
-  <h1 class="h1">Halaman tidak ditemukan</h1>
-  <p class="mb-0 fg-secondary">Halaman yang Anda tuju tidak ada atau sudah dipindahkan. Periksa kembali alamat yang Anda buka, atau kembali ke halaman utama.</p>
-  <a class="btn btn-solid theme-primary" href="/">Kembali ke beranda</a>
-</div>
-{{end}}
+{{define "content"}}{{with .Data}}<div class="text-center">
+  <span class="eyebrow">Error {{.Code}}</span>
+  <p class="display-4 fw-bold mb-2" style="color: var(--bs-primary-base)">{{.Code}}</p>
+  <h1 class="h2 mb-2">{{.Title}}</h1>
+  <p class="page-sub measure mx-auto mb-4">{{.Message}}</p>
+  <div class="d-flex flex-wrap justify-content-center gap-2">
+    <a class="btn btn-solid theme-primary" href="{{.HomeHref}}">Kembali ke halaman masuk</a>
+    <a class="btn btn-outline theme-primary" href="/join">Gabung lewat kode</a>
+  </div>
+</div>{{end}}{{end}}

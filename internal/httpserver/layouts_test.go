@@ -65,7 +65,7 @@ func TestLayoutWrappersArePresent(t *testing.T) {
 	body, _ := io.ReadAll(resp.Body)
 	html := string(body)
 
-	bootstrapIdx := strings.Index(html, `href="/static/bootstrap/bootstrap.min.css"`)
+	bootstrapIdx := strings.Index(html, `href="/static/vendor/bootstrap/bootstrap.min.css"`)
 	tokensIdx := strings.Index(html, `href="/static/css/tokens.css"`)
 	if bootstrapIdx < 0 || tokensIdx < 0 {
 		t.Fatalf("page must link both stylesheets (bootstrap=%d tokens=%d)", bootstrapIdx, tokensIdx)
@@ -74,7 +74,7 @@ func TestLayoutWrappersArePresent(t *testing.T) {
 		t.Error("tokens.css link must appear AFTER bootstrap.min.css (spec §15.1)")
 	}
 	for _, want := range []string{
-		`type="module" src="/static/bootstrap/bootstrap.bundle.min.js"`,
+		`type="module" src="/static/vendor/bootstrap/bootstrap.bundle.min.js"`,
 		`<html lang="id"`,
 		`data-bs-theme="light"`,
 	} {

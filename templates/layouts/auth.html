@@ -4,6 +4,7 @@
 {{template "partials/head.html" .}}</head>
 <body>
 {{template "partials/icons.html" .}}
+{{template "partials/demo-strip.html" .}}
 {{/* Two-panel auth shell — structure follows docs/template/LOGIN.html
      (framed canvas > .login-layout grid: brand panel left, auth column
      right; one column below lg with the panel collapsing to a compact
@@ -31,8 +32,8 @@
         <div class="hero-visual" aria-hidden="true">
           <div class="question-mock">
             <div class="mock-head">
-              <span class="mock-pill">Biologi Sel — Kuis 4</span>
-              <span class="mock-count">4 / 10</span>
+              <span class="mock-pill">Contoh soal</span>
+              <span class="mock-count">Soal 4</span>
             </div>
             <p class="mock-question">Organel apa yang berfungsi sebagai tempat respirasi sel untuk menghasilkan energi?</p>
             <div class="mock-options">
@@ -52,13 +53,13 @@
           <div class="float-card score-float">
             <span class="score-ring"><span>78</span></span>
             <span class="float-copy">
-              <strong>Rata-rata kelas</strong>
-              <small>Ujian terakhir</small>
+              <strong>Progres kelas</strong>
+              <small>Contoh tampilan</small>
             </span>
           </div>
           <div class="float-card live-float">
             <span class="live-dot"></span>
-            3 kuis aktif
+            Kuis aktif
           </div>
         </div>
         <div class="hero-proof">
@@ -70,17 +71,18 @@
             <span class="avatar av-5">EN</span>
           </div>
           <div class="proof-copy">
-            <strong>1.240+ siswa aktif</strong>
-            <span>belajar dengan Twisty Quiz.</span>
+            <strong>Belajar bersama</strong>
+            <span>di Twisty Quiz.</span>
           </div>
           <span class="proof-star">
             <svg width="13" height="13" aria-hidden="true"><use href="#i-clock"></use></svg>
-            12 mnt rata-rata selesai
+            Selesai lebih cepat
           </span>
         </div>
       </section>
       <div class="auth-column">
         <div class="auth-card">
+          {{template "partials/flash.html" .}}
           {{template "content" .}}
         </div>
       </div>

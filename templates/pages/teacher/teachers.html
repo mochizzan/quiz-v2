@@ -1,77 +1,129 @@
-{{define "partials/title"}}Kelola guru — Twisty Quiz{{end}}
+{{define "partials/title"}}Guru — Twisty Quiz{{end}}
 {{define "content"}}
-<div class="d-flex flex-column gap-4">
+<div class="page-stack">
 
-  <h1 class="h1 mb-0">Kelola guru</h1>
-
-  {{/* Menunggu persetujuan — destructive-ish confirm goes through the shared
-       confirm dialog, never window.confirm (spec §9). */}}
-  <div class="card p-4 d-flex flex-column gap-3">
-    <h2 class="h2 mb-0">Menunggu persetujuan (1)</h2>
-    <ul class="list-group">
-      <li class="list-group-item d-flex flex-wrap align-items-center justify-content-between gap-3 p-3">
-        <span class="d-flex align-items-center gap-3">
-          <span class="badge" style="background-color: #EEF4FA; color: #293681">DS</span>
-          <span>
-            <span class="d-block fw-semibold">Dewi Safitri</span>
-            <span class="d-block fg-secondary" style="font-size: 13px">dewi.safitri@sma-nusantara.sch.id · Matematika</span>
-          </span>
-        </span>
-        <span class="d-flex flex-wrap align-items-center gap-2">
-          <span class="badge theme-warning">Menunggu persetujuan</span>
-          <button type="button" class="btn btn-solid theme-primary" data-bs-toggle="dialog" data-bs-target="#dialog-confirm">Setujui</button>
-          <button type="button" class="btn btn-outline theme-primary" data-bs-toggle="dialog" data-bs-target="#dialog-confirm">Tolak</button>
-        </span>
-      </li>
-    </ul>
+  <div class="page-head">
+    <div>
+      <span class="eyebrow">Manajemen</span>
+      <h1 class="h1">Guru</h1>
+      <p class="page-sub">Setujui pendaftaran guru baru dan lihat daftar guru aktif.</p>
+    </div>
   </div>
 
-  {{/* Guru aktif — word status badges + nonaktifkan action. */}}
-  <div class="card p-4 d-flex flex-column gap-3">
-    <h2 class="h2 mb-0">Guru aktif (3)</h2>
-    <ul class="list-group">
-      <li class="list-group-item d-flex flex-wrap align-items-center justify-content-between gap-3 p-3">
-        <span class="d-flex align-items-center gap-3">
-          <span class="badge" style="background-color: #EEF4FA; color: #293681">RW</span>
-          <span>
-            <span class="d-block fw-semibold">Ratna Wijaya</span>
-            <span class="d-block fg-secondary" style="font-size: 13px">ratna.wijaya@sma-nusantara.sch.id · Biologi &amp; Genetika</span>
-          </span>
-        </span>
-        <span class="d-flex flex-wrap align-items-center gap-2">
-          <span class="badge theme-success">Guru aktif</span>
-          <button type="button" class="btn btn-outline theme-primary" data-bs-toggle="dialog" data-bs-target="#dialog-confirm">Nonaktifkan</button>
-        </span>
-      </li>
-      <li class="list-group-item d-flex flex-wrap align-items-center justify-content-between gap-3 p-3">
-        <span class="d-flex align-items-center gap-3">
-          <span class="badge" style="background-color: #EEF4FA; color: #293681">AP</span>
-          <span>
-            <span class="d-block fw-semibold">Agus Pratama</span>
-            <span class="d-block fg-secondary" style="font-size: 13px">agus.pratama@sma-nusantara.sch.id · Fisika</span>
-          </span>
-        </span>
-        <span class="d-flex flex-wrap align-items-center gap-2">
-          <span class="badge theme-success">Guru aktif</span>
-          <button type="button" class="btn btn-outline theme-primary" data-bs-toggle="dialog" data-bs-target="#dialog-confirm">Nonaktifkan</button>
-        </span>
-      </li>
-      <li class="list-group-item d-flex flex-wrap align-items-center justify-content-between gap-3 p-3">
-        <span class="d-flex align-items-center gap-3">
-          <span class="badge" style="background-color: #EEF4FA; color: #293681">SM</span>
-          <span>
-            <span class="d-block fw-semibold">Siti Marlina</span>
-            <span class="d-block fg-secondary" style="font-size: 13px">siti.marlina@sma-nusantara.sch.id · Sejarah</span>
-          </span>
-        </span>
-        <span class="d-flex flex-wrap align-items-center gap-2">
-          <span class="badge" style="background-color: #F4F6F8; color: #121721">Nonaktif</span>
-          <button type="button" class="btn btn-outline theme-primary">Aktifkan</button>
-        </span>
-      </li>
-    </ul>
+  <div class="tabs-scroll">
+    <nav class="pill-tabs" aria-label="Bagian manajemen">
+      <a class="pill-tab" href="/teacher/students">Siswa</a>
+      <a class="pill-tab" href="/teacher/anonymous">Peserta anonim</a>
+      <a class="pill-tab" href="/teacher/majors">Jurusan</a>
+      <a class="pill-tab active" href="/teacher/teachers" aria-current="page">Guru</a>
+    </nav>
   </div>
 
-  {{template "partials/dialogs.html" .}}
+  <section class="card" aria-labelledby="teacher-pending-title">
+    <div class="p-4">
+      <div class="row-between">
+        <div>
+          <h2 class="section-title" id="teacher-pending-title">Menunggu persetujuan</h2>
+          <p class="section-sub">Periksa identitas guru sebelum menyetujui akunnya.</p>
+        </div>
+        <span class="badge bg-2 fg-body num">{{len .Data.Pending}}</span>
+      </div>
+    </div>
+
+    {{if .Data.Pending}}
+    <div class="table-responsive">
+      <table class="table table-clean mb-0">
+        <caption class="visually-hidden">Pendaftaran guru yang menunggu persetujuan</caption>
+        <thead>
+          <tr>
+            <th scope="col">Nama</th>
+            <th scope="col">Email</th>
+            <th scope="col">Status</th>
+            <th scope="col" class="text-end">Aksi</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{range .Data.Pending}}
+          <tr>
+            <td>
+              <span class="d-inline-flex align-items-center gap-2">
+                <span class="badge bg-2 fg-body">{{.Initials}}</span>
+                <span class="cell-title">{{.FullName}}</span>
+              </span>
+            </td>
+            <td class="cell-sub">{{.Email}}</td>
+            <td><span class="badge theme-warning">{{.Status.Label}}</span></td>
+            <td class="text-end">
+              {{if .CanApprove}}
+              <form method="post" action="{{.ApproveHref}}" class="d-inline-flex">
+                <input type="hidden" name="csrf_token" value="{{$.CSRF}}">
+                <button class="btn btn-sm btn-solid theme-primary" type="submit">
+                  <svg width="16" height="16" aria-hidden="true"><use href="#i-check"></use></svg>
+                  Setujui
+                </button>
+              </form>
+              {{end}}
+            </td>
+          </tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+    {{else}}
+    <div class="p-4 pt-0">
+      {{template "partials/empty-state.html" .Data.Empty}}
+    </div>
+    {{end}}
+  </section>
+
+  <section class="card" aria-labelledby="teacher-active-title">
+    <div class="p-4">
+      <div class="row-between">
+        <div>
+          <h2 class="section-title" id="teacher-active-title">Guru aktif</h2>
+          <p class="section-sub">Akun yang sudah dapat membuat dan mengelola kuis.</p>
+        </div>
+        <span class="badge bg-2 fg-body num">{{len .Data.Active}}</span>
+      </div>
+    </div>
+
+    {{if .Data.Active}}
+    <div class="table-responsive">
+      <table class="table table-clean mb-0">
+        <caption class="visually-hidden">Daftar guru aktif</caption>
+        <thead>
+          <tr>
+            <th scope="col">Nama</th>
+            <th scope="col">Email</th>
+            <th scope="col">Disetujui</th>
+            <th scope="col">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{range .Data.Active}}
+          <tr>
+            <td>
+              <span class="d-inline-flex align-items-center gap-2">
+                <span class="badge bg-2 fg-body">{{.Initials}}</span>
+                <span class="cell-title">{{.FullName}}</span>
+              </span>
+            </td>
+            <td class="cell-sub">{{.Email}}</td>
+            <td class="cell-sub">
+              {{if .ApprovedBy}}{{.ApprovedBy}}{{else}}—{{end}}{{if .ApprovedAt}} · {{.ApprovedAt.DateTime}}{{end}}
+            </td>
+            <td><span class="badge theme-success">{{.Status.Label}}</span></td>
+          </tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+    {{else}}
+    <div class="p-4 pt-0">
+      <p class="page-sub mb-0">Belum ada guru aktif.</p>
+    </div>
+    {{end}}
+  </section>
+
 </div>
 {{end}}

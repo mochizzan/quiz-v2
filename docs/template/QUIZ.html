@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Kuis Interaktif — Twisty Quiz Prototype</title>
+
+<!-- Bootstrap (component library) -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<!-- Bootstrap Icons -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+
+<style>
+  @font-face {
+    font-family: 'Gotham Rounded';
+    src: local('Gotham Rounded');
+    font-weight: 400 700;
+  }
+
+  :root {
+    /* === Quiz palette === */
+    --q-navy:        #293681;
+    --q-navy-light:  #EEF1FB;
+    --q-blue:        #4274D9;
+    --q-blue-light:  #EAF2FD;
+    --q-sky:         #95CCDD;
+    --q-sky-light:   #EAF6FA;
+    --q-mint:        #D0E7E6;
+
+    /* === Twisty structural tokens === */
+    --canvas:         #EEF2F1;
+    --card:           #FFFFFF;
+    --surface-muted:  #F4F7F7;
+    --surface-pill:   #E4EAEA;
+    --text-primary:   #121721;
+    --text-secondary: #687182;
+    --text-muted:     #94A3B8;
+    --border-light:   #E2E6EB;
+
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 18px;
+    --radius-card: 24px;
+    --radius-container: 32px;
+    --radius-full: 9999px;
+
+    --shadow-card: 0 10px 25px -4px rgba(18,23,33,0.06);
+    --shadow-floating: 0 14px 35px -6px rgba(18,23,33,0.12);
+    --shadow-sticky: 0 -8px 24px rgba(18,23,33,0.08);
+
+    --fs-xs: 11px; --fs-sm: 12px; --fs-base: 14px; --fs-md: 16px;
+    --fs-lg: 18px; --fs-xl: 22px; --fs-2xl: 28px;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    font-family: 'Gotham Rounded','Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    background: var(--canvas);
+    color: var(--text-primary);
+    min-height: 100vh;
+    padding-bottom: 90px;
+  }
+
+  @media (min-width: 992px) {
+    body { padding-bottom: 40px; }
+  }
+
+  a { text-decoration: none; }
+
+  /* ===== Top Bar ===== */
+  .quiz-topbar {
+    background: var(--q-navy);
+    color: #fff;
+    padding: 14px 0;
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+    box-shadow: var(--shadow-floating);
+    margin-bottom: 16px;
+  }
+  @media (min-width: 992px) {
+    .quiz-topbar {
+      padding: 18px 0;
+      border-radius: 0 0 var(--radius-container) var(--radius-container);
+      margin-bottom: 24px;
+    }
+  }
+
+  .quiz-topbar .brand-badge {
+    width: 34px; height: 34px; border-radius: var(--radius-md);
+    background: var(--q-blue);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: var(--fs-md);
+  }
+  .quiz-topbar .brand-title {
+    font-weight: 700; font-size: var(--fs-sm); letter-spacing: 0.5px;
+  }
+  .quiz-topbar .quiz-meta-title {
+    font-size: var(--fs-xs); color: rgba(255,255,255,0.75);
+  }
+  
+  .student-chip {
+    background: rgba(255,255,255,0.12);
+    border-radius: var(--radius-full);
+    padding: 4px 12px 4px 4px;
+    display: flex; align-items: center; gap: 8px;
+    font-size: var(--fs-xs);
+  }
+  .student-chip .avatar {
+    width: 24px; height: 24px; border-radius: 50%;
+    background: var(--q-sky); color: var(--q-navy);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 10px;
+  }
+
+  .top-progress-wrap { margin-top: 10px; }
+  .top-progress-wrap .progress {
+    height: 6px; border-radius: var(--radius-full);
+    background: rgba(255,255,255,0.18);
+  }
+  .top-progress-wrap .progress-bar {
+    background: var(--q-sky);
+    border-radius: var(--radius-full);
+    transition: width .35s ease;
+  }
+  .top-progress-label {
+    font-size: var(--fs-xs); color: rgba(255,255,255,0.8); margin-top: 4px;
+  }
+
+  /* ===== Cards ===== */
+  .card-surface {
+    background: var(--card);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-card);
+    border: 1px solid var(--border-light);
+    padding: 18px;
+  }
+  @media (min-width: 992px) {
+    .card-surface { padding: 24px; }
+  }
+
+  /* ===== Mobile Question Horizontal Ribbon ===== */
+  .mobile-ribbon-container {
+    background: var(--card);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-light);
+    padding: 10px 12px;
+    margin-bottom: 14px;
+    box-shadow: var(--shadow-card);
+  }
+  .mobile-ribbon-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 8px; font-size: var(--fs-xs); font-weight: 700; color: var(--text-secondary);
+  }
+  .mobile-nav-scroll {
+    display: flex; gap: 8px; overflow-x: auto;
+    padding-bottom: 4px; scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .mobile-nav-scroll::-webkit-scrollbar { display: none; }
+
+  .mobile-nav-pill {
+    min-width: 38px; height: 38px; border-radius: var(--radius-md);
+    display: flex; align-items: center; justify-content: center;
+    font-size: var(--fs-sm); font-weight: 700;
+    background: var(--surface-pill); color: var(--text-secondary);
+    border: 1.5px solid transparent; flex-shrink: 0;
+    cursor: pointer; transition: all .18s ease;
+  }
+  .mobile-nav-pill.answered {
+    background: var(--q-blue-light); color: var(--q-blue); border-color: var(--q-blue);
+  }
+  .mobile-nav-pill.active {
+    background: var(--q-navy); color: #fff !important; border-color: var(--q-navy);
+    box-shadow: 0 4px 10px rgba(41,54,129,0.3);
+  }
+
+  /* ===== Desktop Sidebar ===== */
+  .sidebar-title { font-size: var(--fs-base); font-weight: 700; margin-bottom: 2px; }
+  .sidebar-sub { font-size: var(--fs-sm); color: var(--text-secondary); margin-bottom: 14px; }
+  .nav-progress {
+    height: 8px; border-radius: var(--radius-full);
+    background: var(--surface-pill); overflow: hidden; margin-bottom: 16px;
+  }
+  .nav-progress-bar {
+    height: 100%; background: linear-gradient(90deg, var(--q-blue), var(--q-navy));
+    border-radius: var(--radius-full); transition: width .35s ease;
+  }
+
+  .question-nav-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 12px; border-radius: var(--radius-lg);
+    cursor: pointer; margin-bottom: 8px;
+    border: 1px solid transparent; transition: all .18s ease;
+  }
+  .question-nav-item:hover { background: var(--surface-muted); }
+  .question-nav-item.active { background: var(--q-navy-light); border-color: var(--q-blue); }
+  
+  .qn-circle {
+    width: 32px; height: 32px; min-width: 32px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: var(--fs-sm); font-weight: 700;
+    background: var(--surface-pill); color: var(--text-secondary);
+  }
+  .question-nav-item.answered .qn-circle { background: var(--q-blue); color: #fff; }
+  .question-nav-item.active .qn-circle { background: var(--q-navy); color: #fff; }
+  .qn-text {
+    font-size: var(--fs-sm); color: var(--text-primary);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 170px;
+  }
+  .qn-type { font-size: var(--fs-xs); color: var(--text-muted); }
+
+  .legend { display: flex; gap: 14px; margin-top: 16px; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: var(--fs-xs); color: var(--text-secondary); }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+
+  /* ===== Mobile Offcanvas Grid Drawer ===== */
+  .offcanvas-bottom-quiz {
+    border-top-left-radius: var(--radius-card);
+    border-top-right-radius: var(--radius-card);
+    max-height: 80vh;
+  }
+  .grid-nav-container {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); gap: 10px;
+  }
+  .grid-nav-btn {
+    height: 52px; border-radius: var(--radius-md);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: var(--surface-pill); border: 1.5px solid transparent;
+    font-weight: 700; font-size: var(--fs-base); color: var(--text-primary);
+    cursor: pointer; transition: all .15s ease;
+  }
+  .grid-nav-btn.answered {
+    background: var(--q-blue-light); color: var(--q-blue); border-color: var(--q-blue);
+  }
+  .grid-nav-btn.active {
+    background: var(--q-navy); color: #fff !important; border-color: var(--q-navy);
+  }
+  .grid-nav-btn .sub-icon { font-size: 10px; margin-top: -2px; }
+
+  /* ===== Sticky Mobile Bottom Nav ===== */
+  .mobile-bottom-bar {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: #ffffff;
+    border-top: 1px solid var(--border-light);
+    box-shadow: var(--shadow-sticky);
+    padding: 10px 16px;
+    z-index: 1040;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  }
+
+  /* ===== Question Area ===== */
+  .question-type-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 12px; border-radius: var(--radius-full);
+    font-size: var(--fs-xs); font-weight: 700;
+    background: var(--q-sky-light); color: var(--q-navy);
+  }
+  .question-number-tag { font-size: var(--fs-xs); color: var(--text-muted); font-weight: 700; letter-spacing: .5px; }
+  .question-text {
+    font-size: var(--fs-md); font-weight: 600; line-height: 1.5;
+    margin: 12px 0 18px; color: var(--text-primary);
+  }
+  @media (min-width: 992px) {
+    .question-text { font-size: var(--fs-lg); margin: 14px 0 22px; }
+  }
+
+  .option-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 14px; border-radius: var(--radius-lg);
+    border: 1.5px solid var(--border-light);
+    background: var(--surface-muted);
+    margin-bottom: 10px; cursor: pointer; min-height: 48px;
+    transition: all .18s ease;
+  }
+  .option-row:hover { border-color: var(--q-sky); }
+  .option-row.selected { border-color: var(--q-blue); background: var(--q-blue-light); }
+  .option-row input[type="radio"] { width: 18px; height: 18px; accent-color: var(--q-navy); cursor: pointer; }
+  .option-label-letter {
+    width: 28px; height: 28px; min-width: 28px; border-radius: 50%;
+    background: var(--surface-pill); color: var(--text-secondary);
+    display: flex; align-items: center; justify-content: center;
+    font-size: var(--fs-sm); font-weight: 700;
+  }
+  .option-row.selected .option-label-letter { background: var(--q-navy); color: #fff; }
+  .option-text { font-size: var(--fs-base); color: var(--text-primary); }
+
+  textarea.essay-input {
+    width: 100%; border-radius: var(--radius-lg);
+    border: 1.5px solid var(--border-light);
+    background: var(--surface-muted);
+    padding: 14px; font-size: var(--fs-base);
+    min-height: 150px; resize: vertical; font-family: inherit;
+    transition: border-color .18s ease;
+  }
+  textarea.essay-input:focus { outline: none; border-color: var(--q-blue); background: #fff; }
+  .char-count { font-size: var(--fs-xs); color: var(--text-muted); margin-top: 6px; text-align: right; }
+
+  .autosave-indicator {
+    font-size: var(--fs-xs); color: var(--q-blue);
+    display: flex; align-items: center; gap: 6px;
+    opacity: 0; transition: opacity .3s ease;
+  }
+  .autosave-indicator.show { opacity: 1; }
+
+  .nav-buttons {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-top: 20px; gap: 10px; flex-wrap: wrap;
+  }
+
+  .btn-pill {
+    border-radius: var(--radius-full); padding: 9px 18px;
+    font-weight: 600; font-size: var(--fs-sm); border: none;
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  @media (min-width: 992px) {
+    .btn-pill { padding: 10px 22px; font-size: var(--fs-base); }
+  }
+  
+  .btn-navy { background: var(--q-navy); color: #fff; }
+  .btn-navy:hover { background: #1f2a68; color: #fff; }
+  .btn-blue { background: var(--q-blue); color: #fff; }
+  .btn-blue:hover { background: #3663c2; color: #fff; }
+  .btn-outline-soft { background: var(--card); color: var(--text-secondary); border: 1.5px solid var(--border-light); }
+  .btn-outline-soft:hover { background: var(--surface-muted); color: var(--text-primary); }
+
+  /* ===== Review Page ===== */
+  .review-header-icon {
+    width: 44px; height: 44px; border-radius: var(--radius-md);
+    background: var(--q-navy-light); color: var(--q-navy);
+    display: flex; align-items: center; justify-content: center; font-size: 20px;
+  }
+  .unanswered-alert {
+    background: #FFF4EC; border: 1px solid #F8D9C2; border-radius: var(--radius-lg);
+    padding: 12px 16px; display: flex; gap: 10px; align-items: flex-start; margin-bottom: 18px;
+  }
+  .unanswered-alert i { color: #E27B21; font-size: 18px; margin-top: 2px; }
+
+  .review-item {
+    border: 1px solid var(--border-light); border-radius: var(--radius-lg);
+    padding: 16px; margin-bottom: 12px; background: var(--surface-muted);
+  }
+  .review-item .rq-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+  .rq-num { font-size: var(--fs-xs); color: var(--text-muted); font-weight: 700; letter-spacing: .5px; text-transform: uppercase; }
+  .rq-text { font-size: var(--fs-base); font-weight: 600; margin: 4px 0 8px; }
+  .rq-answer-box {
+    background: #fff; border-radius: var(--radius-md); padding: 10px 12px;
+    font-size: var(--fs-sm); color: var(--text-secondary); border: 1px solid var(--border-light);
+  }
+  .status-badge {
+    font-size: var(--fs-xs); font-weight: 700; padding: 4px 10px; border-radius: var(--radius-full);
+    white-space: nowrap;
+  }
+  .status-answered { background: var(--q-navy); color: #fff; }
+  .status-unanswered { background: var(--surface-pill); color: var(--text-secondary); }
+
+  /* ===== Submitted View ===== */
+  .success-circle {
+    width: 76px; height: 76px; border-radius: 50%;
+    background: var(--q-navy-light); color: var(--q-navy);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 36px; margin: 0 auto 16px;
+  }
+  .summary-stat {
+    background: var(--surface-muted); border-radius: var(--radius-lg);
+    padding: 14px; text-align: center;
+  }
+  .summary-stat .val { font-size: var(--fs-lg); font-weight: 700; color: var(--q-navy); }
+  .summary-stat .lbl { font-size: var(--fs-xs); color: var(--text-secondary); margin-top: 2px; }
+
+  /* Overlay Spinner */
+  .submit-overlay {
+    position: fixed; inset: 0; background: rgba(18,23,33,0.55);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 2000;
+  }
+  .submit-overlay .box {
+    background: #fff; border-radius: var(--radius-card); padding: 28px 36px;
+    text-align: center; box-shadow: var(--shadow-floating);
+  }
+
+  .d-none-important { display: none !important; }
+</style>
+</head>
+<body>
+
+<!-- ======================= TOP BAR ======================= -->
+<div class="quiz-topbar">
+  <div class="container">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <div class="d-flex align-items-center gap-2">
+        <div class="brand-badge"><i class="bi bi-stars"></i></div>
+        <div>
+          <div class="brand-title">TWISTY QUIZ</div>
+          <div class="quiz-meta-title" id="quizTitleTop">Kuis Pengetahuan Umum — Sesi 1</div>
+        </div>
+      </div>
+      <div class="student-chip">
+        <div class="avatar">AL</div>
+        <span>Ayu Lestari &middot; XII IPA 2</span>
+      </div>
+    </div>
+    <div class="top-progress-wrap" id="topProgressWrap">
+      <div class="progress"><div class="progress-bar" id="topProgressBar" style="width:0%"></div></div>
+      <div class="d-flex justify-content-between align-items-center">
+        <div class="top-progress-label" id="topProgressLabel">Soal 1 dari 5</div>
+        <div class="top-progress-label" id="topAnsweredCountLabel">Terjawab: 0/5</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- ======================= QUIZ VIEW ======================= -->
+  <div id="view-quiz">
+
+    <!-- Mobile Horizontal Quick Ribbon (Visible on Mobile & Tablet) -->
+    <div class="mobile-ribbon-container d-lg-none">
+      <div class="mobile-ribbon-header">
+        <span><i class="bi bi-grid-3x3-gap-fill text-primary me-1"></i> NAVIGASI CEPAT</span>
+        <button class="btn btn-sm btn-pill btn-outline-soft py-1 px-2" data-bs-toggle="offcanvas" data-bs-target="#offcanvasNav">
+          Lihat Semua <i class="bi bi-chevron-up"></i>
+        </button>
+      </div>
+      <div class="mobile-nav-scroll" id="mobileQuestionRibbon"></div>
+    </div>
+
+    <div class="row g-4">
+      <!-- Desktop Sidebar Navigator (Visible on Desktop) -->
+      <div class="col-lg-4 d-none d-lg-block">
+        <div class="card-surface quiz-sidebar">
+          <div class="sidebar-title">Navigasi Soal</div>
+          <div class="sidebar-sub">Klik nomor untuk berpindah soal</div>
+          <div class="nav-progress"><div class="nav-progress-bar" id="sideProgressBar" style="width:0%"></div></div>
+          <div id="questionNavList"></div>
+          <div class="legend">
+            <div class="legend-item"><span class="legend-dot" style="background:var(--q-navy)"></span> Soal aktif</div>
+            <div class="legend-item"><span class="legend-dot" style="background:var(--q-blue)"></span> Sudah dijawab</div>
+            <div class="legend-item"><span class="legend-dot" style="background:var(--surface-pill)"></span> Belum dijawab</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Question Card -->
+      <div class="col-lg-8">
+        <div class="card-surface">
+          <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-2">
+            <div>
+              <div class="question-number-tag" id="questionNumberTag">SOAL 1 DARI 5</div>
+            </div>
+            <span class="question-type-badge" id="questionTypeBadge"><i class="bi bi-ui-radios"></i> Pilihan Ganda</span>
+          </div>
+
+          <div class="question-text" id="questionText">Memuat soal...</div>
+
+          <div id="answerArea"></div>
+
+          <div class="d-flex justify-content-end mt-2">
+            <div class="autosave-indicator" id="autosaveIndicator"><i class="bi bi-check-circle-fill"></i> Jawaban tersimpan otomatis</div>
+          </div>
+
+          <!-- Desktop Bottom Navigation -->
+          <div class="nav-buttons d-none d-lg-flex">
+            <button class="btn btn-pill btn-outline-soft" id="btnPrev"><i class="bi bi-arrow-left"></i> Sebelumnya</button>
+            <div class="d-flex gap-2">
+              <button class="btn btn-pill btn-outline-soft btn-go-review"><i class="bi bi-clipboard-check"></i> Tinjau Jawaban</button>
+              <button class="btn btn-pill btn-navy btn-next">Selanjutnya <i class="bi bi-arrow-right"></i></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mobile Sticky Bottom Toolbar (Thumb Reachable) -->
+  <div class="mobile-bottom-bar d-lg-none" id="mobileStickyBar">
+    <button class="btn btn-pill btn-outline-soft py-2 px-3" id="btnPrevMobile">
+      <i class="bi bi-arrow-left"></i> <span class="d-none d-sm-inline">Sebelumnya</span>
+    </button>
+    <button class="btn btn-pill btn-outline-soft py-2 px-3" data-bs-toggle="offcanvas" data-bs-target="#offcanvasNav">
+      <i class="bi bi-grid-fill"></i> Daftar Soal
+    </button>
+    <button class="btn btn-pill btn-navy py-2 px-3 btn-next-mobile">
+      <span class="btn-next-text">Selanjutnya</span> <i class="bi bi-arrow-right"></i>
+    </button>
+  </div>
+
+  <!-- ======================= REVIEW VIEW ======================= -->
+  <div id="view-review" class="d-none">
+    <div class="card-surface">
+      <div class="d-flex align-items-center gap-3 mb-3">
+        <div class="review-header-icon"><i class="bi bi-clipboard2-check"></i></div>
+        <div>
+          <h2 style="font-size:var(--fs-xl);font-weight:700;margin:0;">Tinjau Jawaban Anda</h2>
+          <div style="color:var(--text-secondary);font-size:var(--fs-sm);">Periksa kembali sebelum mengumpulkan kuis</div>
+        </div>
+      </div>
+
+      <div id="unansweredAlertBox"></div>
+
+      <div id="reviewList"></div>
+
+      <div class="nav-buttons">
+        <button class="btn btn-pill btn-outline-soft" id="btnBackToQuiz"><i class="bi bi-arrow-left"></i> Kembali ke Soal</button>
+        <button class="btn btn-pill btn-navy" id="btnOpenConfirm" data-bs-toggle="modal" data-bs-target="#confirmModal">
+          <i class="bi bi-send-check"></i> Kumpulkan Jawaban
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================= SUBMITTED VIEW ======================= -->
+  <div id="view-submitted" class="d-none">
+    <div class="card-surface text-center" style="max-width:640px;margin:0 auto;">
+      <div class="success-circle"><i class="bi bi-check-lg"></i></div>
+      <h2 style="font-size:var(--fs-xl);font-weight:700;">Jawaban Berhasil Dikumpulkan!</h2>
+      <p style="color:var(--text-secondary);font-size:var(--fs-base);">
+        Terima kasih, Ayu. Jawaban kuis <strong id="quizTitleBottom"></strong> Anda telah berhasil disimpan oleh sistem.
+      </p>
+
+      <div class="row g-3 my-4">
+        <div class="col-4">
+          <div class="summary-stat"><div class="val" id="statTotal">0</div><div class="lbl">Total Soal</div></div>
+        </div>
+        <div class="col-4">
+          <div class="summary-stat"><div class="val" id="statAnswered">0</div><div class="lbl">Terjawab</div></div>
+        </div>
+        <div class="col-4">
+          <div class="summary-stat"><div class="val" id="statUnanswered">0</div><div class="lbl">Kosong</div></div>
+        </div>
+      </div>
+
+      <div style="font-size:var(--fs-sm);color:var(--text-muted);margin-bottom:20px;">
+        Waktu pengumpulkan: <span id="submitTime">-</span>
+      </div>
+
+      <button class="btn btn-pill btn-blue" id="btnRestart"><i class="bi bi-arrow-counterclockwise"></i> Ulangi Simulasi</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- ======================= OFFCANVAS QUESTION DRAWER ======================= -->
+<div class="offcanvas offcanvas-bottom offcanvas-bottom-quiz" tabindex="-1" id="offcanvasNav" aria-labelledby="offcanvasNavLabel">
+  <div class="offcanvas-header border-bottom pb-2">
+    <div>
+      <h5 class="offcanvas-title font-weight-bold" id="offcanvasNavLabel" style="font-weight:700; font-size:var(--fs-md);">Daftar Navigasi Soal</h5>
+      <span class="text-muted" style="font-size:var(--fs-xs);" id="drawerProgressSubtitle">5 Soal &middot; 0 Terjawab</span>
+    </div>
+    <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+  </div>
+  <div class="offcanvas-body">
+    <div class="grid-nav-container mb-3" id="offcanvasNavGrid"></div>
+    <div class="legend border-top pt-2">
+      <div class="legend-item"><span class="legend-dot" style="background:var(--q-navy)"></span> Aktif</div>
+      <div class="legend-item"><span class="legend-dot" style="background:var(--q-blue)"></span> Terjawab</div>
+      <div class="legend-item"><span class="legend-dot" style="background:var(--surface-pill)"></span> Belum Dijawab</div>
+    </div>
+  </div>
+</div>
+
+<!-- ======================= CONFIRM MODAL ======================= -->
+<div class="modal fade" id="confirmModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border-radius: var(--radius-card); border:none; box-shadow: var(--shadow-floating);">
+      <div class="modal-body p-4 text-center">
+        <div class="review-header-icon mx-auto mb-3" style="background:var(--q-sky-light);color:var(--q-navy);">
+          <i class="bi bi-exclamation-circle"></i>
+        </div>
+        <h5 style="font-weight:700;">Konfirmasi Pengumpulan</h5>
+        <p style="color:var(--text-secondary);font-size:var(--fs-sm);" id="confirmModalText">
+          Apakah Anda yakin ingin mengumpulkan jawaban sekarang? Jawaban tidak dapat diubah setelah dikumpulkan.
+        </p>
+        <div class="d-flex justify-content-center gap-2 mt-3">
+          <button type="button" class="btn btn-pill btn-outline-soft" data-bs-dismiss="modal">Batal</button>
+          <button type="button" class="btn btn-pill btn-navy" id="btnConfirmSubmit">Ya, Kumpulkan Sekarang</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Submitting Overlay -->
+<div class="submit-overlay d-none" id="submitOverlay">
+  <div class="box">
+    <div class="spinner-border mb-3" role="status" style="color:var(--q-navy);width:3rem;height:3rem;"></div>
+    <div style="font-weight:700;">Mengirim jawaban Anda...</div>
+    <div style="font-size:var(--fs-sm);color:var(--text-secondary);">Mohon tunggu sebentar</div>
+  </div>
+</div>
+
+<!-- jQuery -->
+<script src="https://code.jquery.com/jquery-4.0.0-beta.min.js"></script>
+<!-- Bootstrap JS Bundle -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+$(function () {
+
+  /* ===================== DUMMY QUIZ DATA ===================== */
+  const quizData = {
+    title: "Kuis Pengetahuan Umum — Sesi 1",
+    questions: [
+      {
+        id: 1,
+        type: "single",
+        text: "Manakah planet yang dikenal sebagai 'Planet Merah' dalam tata surya kita?",
+        options: ["Venus", "Mars", "Jupiter", "Saturnus"],
+        answer: null
+      },
+      {
+        id: 2,
+        type: "essay",
+        text: "Jelaskan menurut pendapat Anda, apa manfaat utama mempelajari pemrograman bagi pelajar SMA? (minimal 3 kalimat)",
+        answer: ""
+      },
+      {
+        id: 3,
+        type: "single",
+        text: "Apa nama senyawa kimia yang memiliki rumus molekul H2O?",
+        options: ["Hidrogen Peroksida", "Karbon Monoksida", "Air", "Amonia"],
+        answer: null
+      },
+      {
+        id: 4,
+        type: "single",
+        text: "Siapakah pencipta lagu kebangsaan Indonesia Raya?",
+        options: ["Sutantan", "W.R. Soepratman", "Ismail Marzuki", "C. Simanjuntak"],
+        answer: null
+      },
+      {
+        id: 5,
+        type: "essay",
+        text: "Tuliskan ringkasan singkat mengenai dampak kecerdasan buatan (AI) terhadap efisiensi pembelajaran modern.",
+        answer: ""
+      }
+    ]
+  };
+
+  let currentIndex = 0;
+  const letters = ["A", "B", "C", "D", "E", "F"];
+
+  /* ===================== HELPERS ===================== */
+  function isAnswered(q) {
+    if (q.type === "single") return q.answer !== null && q.answer !== undefined;
+    if (q.type === "essay") return q.answer && q.answer.trim().length > 0;
+    return false;
+  }
+
+  function answeredCount() { return quizData.questions.filter(isAnswered).length; }
+  function totalCount() { return quizData.questions.length; }
+
+  /* ===================== TOP PROGRESS ===================== */
+  function updateTopProgress() {
+    const pct = ((currentIndex + 1) / totalCount()) * 100;
+    $("#topProgressBar").css("width", pct + "%");
+    $("#topProgressLabel").text("Soal " + (currentIndex + 1) + " dari " + totalCount());
+    $("#topAnsweredCountLabel").text("Terjawab: " + answeredCount() + "/" + totalCount());
+    $("#quizTitleTop").text(quizData.title);
+  }
+
+  /* ===================== RENDER NAVIGATORS (ALL PLATFORMS) ===================== */
+  function renderNavigator() {
+    const total = totalCount();
+    const answered = answeredCount();
+
+    // 1. Desktop Sidebar Navigation
+    const $list =$("#questionNavList").empty();
+    quizData.questions.forEach((q, idx) => {
+      const qAnswered = isAnswered(q);
+      const active = idx === currentIndex;
+      const $item =$(`
+        <div class="question-nav-item ${active ? 'active' : ''} ${qAnswered ? 'answered' : ''}" data-idx="${idx}">
+          <div class="qn-circle">${qAnswered ? '<i class="bi bi-check"></i>' : (idx + 1)}</div>
+          <div>
+            <div class="qn-text">${q.text}</div>
+            <div class="qn-type">${q.type === 'single' ? 'Pilihan Ganda' : 'Esai'}</div>
+          </div>
+        </div>
+      `);
+      $item.on("click", function () {
+        currentIndex = idx;
+        renderQuestion();
+      });
+      $list.append($item);
+    });
+
+    const pct = (answered / total) * 100;
+    $("#sideProgressBar").css("width", pct + "%");
+
+    // 2. Mobile Horizontal Ribbon Navigation
+    const $ribbon = $("#mobileQuestionRibbon").empty();
+    quizData.questions.forEach((q, idx) => {
+      const qAnswered = isAnswered(q);
+      const active = idx === currentIndex;
+      const $pill = $(`
+        <div class="mobile-nav-pill ${active ? 'active' : ''} ${qAnswered ? 'answered' : ''}">
+          ${qAnswered && !active ? '<i class="bi bi-check"></i>' : (idx + 1)}
+        </div>
+      `);
+      $pill.on("click", function () {
+        currentIndex = idx;
+        renderQuestion();
+      });
+      $ribbon.append($pill);
+    });
+
+    // Auto-scroll mobile ribbon to keep active pill centered
+    const $activePill = $ribbon.find(".mobile-nav-pill.active");
+    if ($activePill.length) {
+      $activePill[0].scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    }
+
+    // 3. Offcanvas Grid Navigation
+    const $grid = $("#offcanvasNavGrid").empty();
+    quizData.questions.forEach((q, idx) => {
+      const qAnswered = isAnswered(q);
+      const active = idx === currentIndex;
+      const $gridBtn = $(`
+        <div class="grid-nav-btn ${active ? 'active' : ''} ${qAnswered ? 'answered' : ''}">
+          <div>${idx + 1}</div>
+          <div class="sub-icon">${qAnswered ? '<i class="bi bi-check-lg"></i>' : ''}</div>
+        </div>
+      `);
+      $gridBtn.on("click", function () {
+        currentIndex = idx;
+        renderQuestion();
+        const offcanvasEl = document.getElementById('offcanvasNav');
+        const bsOffcanvas = bootstrap.Offcanvas.getInstance(offcanvasEl);
+        if (bsOffcanvas) bsOffcanvas.hide();
+      });
+      $grid.append($gridBtn);
+    });
+
+    $("#drawerProgressSubtitle").text(`${total} Soal \u00B7 ${answered} Terjawab`);
+  }
+
+  /* ===================== RENDER QUESTION ===================== */
+  function renderQuestion() {
+    const q = quizData.questions[currentIndex];
+    $("#questionNumberTag").text("SOAL " + (currentIndex + 1) + " DARI " + totalCount());
+    $("#questionText").text(q.text);
+
+    if (q.type === "single") {
+      $("#questionTypeBadge").html('<i class="bi bi-ui-radios"></i> Pilihan Ganda');
+      const $area = $("#answerArea").empty();
+      q.options.forEach((opt, i) => {
+        const selected = q.answer === i;
+        const $row = $(`
+          <div class="option-row ${selected ? 'selected' : ''}" data-opt="${i}">
+            <input type="radio" name="opt" ${selected ? 'checked' : ''}>
+            <div class="option-label-letter">${letters[i]}</div>
+            <div class="option-text">${opt}</div>
+          </div>
+        `);
+        $row.on("click", function () {
+          q.answer = i;
+          renderQuestion();
+          flashAutosave();
+        });
+        $area.append($row);
+      });
+    } else if (q.type === "essay") {
+      $("#questionTypeBadge").html('<i class="bi bi-pencil-square"></i> Esai');
+      const $area = $("#answerArea").empty();
+      const $textarea = $(`<textarea class="essay-input" placeholder="Tulis jawaban Anda di sini...">${q.answer || ""}</textarea>`);
+      const $count = $(`<div class="char-count">${(q.answer || "").length} karakter</div>`);
+      $textarea.on("input", function () {
+        q.answer = $(this).val();
+        $count.text(q.answer.length + " karakter");
+        renderNavigator();
+        flashAutosave();
+      });
+      $area.append($textarea).append($count);
+    }
+
+    // Prev Button State
+    $("#btnPrev, #btnPrevMobile").prop("disabled", currentIndex === 0);
+
+    // Next / Review Button State
+    if (currentIndex === totalCount() - 1) {
+      $(".btn-next").html('Tinjau Jawaban <i class="bi bi-arrow-right"></i>');
+      $(".btn-next-text").text('Tinjau Jawaban');
+    } else {
+      $(".btn-next").html('Selanjutnya <i class="bi bi-arrow-right"></i>');
+      $(".btn-next-text").text('Selanjutnya');
+    }
+
+    updateTopProgress();
+    renderNavigator();
+  }
+
+  let autosaveTimer;
+  function flashAutosave() {
+    clearTimeout(autosaveTimer);
+    $("#autosaveIndicator").addClass("show");
+    autosaveTimer = setTimeout(() => $("#autosaveIndicator").removeClass("show"), 1200);
+  }
+
+  /* ===================== NAV BUTTON ACTIONS ===================== */
+  $("#btnPrev, #btnPrevMobile").on("click", function () {
+    if (currentIndex > 0) { currentIndex--; renderQuestion(); }
+  });
+
+  $(".btn-next, .btn-next-mobile").on("click", function () {
+    if (currentIndex < totalCount() - 1) {
+      currentIndex++;
+      renderQuestion();
+    } else {
+      goToReview();
+    }
+  });
+
+  $(".btn-go-review").on("click", goToReview);
+
+  function goToReview() {
+    $("#view-quiz").addClass("d-none");
+    $("#view-review").removeClass("d-none");
+    $("#mobileStickyBar").addClass("d-none");
+    $("#topProgressWrap").addClass("d-none-important");
+    renderReview();
+    window.scrollTo({top:0, behavior:"smooth"});
+  }
+
+  $("#btnBackToQuiz").on("click", function () {
+    $("#view-review").addClass("d-none");
+    $("#view-quiz").removeClass("d-none");
+    $("#mobileStickyBar").removeClass("d-none");
+    $("#topProgressWrap").removeClass("d-none-important");
+    renderQuestion();
+  });
+
+  /* ===================== REVIEW RENDER ===================== */
+  function renderReview() {
+    const unanswered = quizData.questions.filter(q => !isAnswered(q));
+
+    const $alertBox = $("#unansweredAlertBox").empty();
+    if (unanswered.length > 0) {
+      $alertBox.append(`
+        <div class="unanswered-alert">
+          <i class="bi bi-exclamation-triangle-fill"></i>
+          <div>
+            <div style="font-weight:700;font-size:var(--fs-sm);">Anda memiliki ${unanswered.length} soal yang belum dijawab</div>
+            <div style="font-size:var(--fs-xs);color:var(--text-secondary);">
+              Soal nomor ${unanswered.map(q => quizData.questions.indexOf(q) + 1).join(", ")} belum terisi.
+            </div>
+          </div>
+        </div>
+      `);
+    } else {
+      $alertBox.append(`
+        <div class="unanswered-alert" style="background:var(--q-navy-light);border-color:var(--q-sky);">
+          <i class="bi bi-check-circle-fill" style="color:var(--q-navy);"></i>
+          <div>
+            <div style="font-weight:700;font-size:var(--fs-sm);color:var(--q-navy);">Semua soal telah dijawab</div>
+            <div style="font-size:var(--fs-xs);color:var(--text-secondary);">Anda siap untuk mengumpulkan jawaban.</div>
+          </div>
+        </div>
+      `);
+    }
+
+    const $list = $("#reviewList").empty();
+    quizData.questions.forEach((q, idx) => {
+      const answered = isAnswered(q);
+      let answerPreview = "";
+      if (q.type === "single") {
+        answerPreview = answered ? (letters[q.answer] + ". " + q.options[q.answer]) : "—";
+      } else {
+        answerPreview = answered ? q.answer : "—";
+      }
+
+      const $item = $(`
+        <div class="review-item">
+          <div class="rq-head">
+            <div>
+              <div class="rq-num">Soal ${idx + 1} &middot; ${q.type === 'single' ? 'Pilihan Ganda' : 'Esai'}</div>
+              <div class="rq-text">${q.text}</div>
+            </div>
+            <span class="status-badge ${answered ? 'status-answered' : 'status-unanswered'}">
+              ${answered ? 'Terjawab' : 'Belum'}
+            </span>
+          </div>
+          <div class="rq-answer-box">${answerPreview}</div>
+          <div class="text-end mt-2">
+            <button class="btn btn-sm btn-pill btn-outline-soft btn-edit-answer" data-idx="${idx}">
+              <i class="bi bi-pencil"></i> Ubah
+            </button>
+          </div>
+        </div>
+      `);
+      $list.append($item);
+    });
+
+    $(".btn-edit-answer").on("click", function () {
+      currentIndex = parseInt($(this).data("idx"));
+      $("#view-review").addClass("d-none");
+      $("#view-quiz").removeClass("d-none");
+      $("#mobileStickyBar").removeClass("d-none");
+      $("#topProgressWrap").removeClass("d-none-important");
+      renderQuestion();
+      window.scrollTo({top:0, behavior:"smooth"});
+    });
+  }
+
+  /* ===================== SUBMIT FLOW ===================== */
+  $("#btnConfirmSubmit").on("click", function () {
+    const modalEl = document.getElementById("confirmModal");
+    const modal = bootstrap.Modal.getInstance(modalEl);
+    if (modal) modal.hide();
+
+    setTimeout(() => {
+      $("#submitOverlay").removeClass("d-none");
+      setTimeout(() => {
+        $("#submitOverlay").addClass("d-none");
+        showSubmitted();
+      }, 1400);
+    }, 300);
+  });
+
+  function showSubmitted() {
+    $("#view-review").addClass("d-none");
+    $("#view-quiz").addClass("d-none");
+    $("#mobileStickyBar").addClass("d-none");
+    $("#view-submitted").removeClass("d-none");
+
+    const total = totalCount();
+    const answered = answeredCount();
+    $("#statTotal").text(total);
+    $("#statAnswered").text(answered);
+    $("#statUnanswered").text(total - answered);
+    $("#quizTitleBottom").text(quizData.title);
+
+    const now = new Date();
+    const formatted = now.toLocaleDateString('id-ID', { day:'2-digit', month:'long', year:'numeric' }) +
+      ", " + now.toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit' }) + " WIB";
+    $("#submitTime").text(formatted);
+
+    window.scrollTo({top:0, behavior:"smooth"});
+  }
+
+  $("#btnRestart").on("click", function () {
+    quizData.questions.forEach(q => {
+      q.answer = (q.type === "single") ? null : "";
+    });
+    currentIndex = 0;
+    $("#view-submitted").addClass("d-none");
+    $("#view-quiz").removeClass("d-none");
+    $("#mobileStickyBar").removeClass("d-none");
+    $("#topProgressWrap").removeClass("d-none-important");
+    renderQuestion();
+    window.scrollTo({top:0, behavior:"smooth"});
+  });
+
+  /* ===================== INIT ===================== */
+  renderQuestion();
+});
+</script>
+
+</body>
+</html>

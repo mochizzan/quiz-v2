@@ -1,0 +1,1 @@
+{{define "partials/tabs.html"}}{{if .}}<div class="tabs-scroll"><nav class="pill-tabs" aria-label="Saring daftar">{{range .}}<a class="pill-tab{{if .Active}} active{{end}}" href="{{.Href}}"{{if .Active}} aria-current="page"{{end}}>{{.Label}}{{if .Count}} <span class="count">{{.Count}}</span>{{end}}</a>{{end}}</nav></div>{{end}}{{end}}

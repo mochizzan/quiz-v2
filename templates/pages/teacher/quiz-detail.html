@@ -1,0 +1,422 @@
+{{define "partials/title"}}{{if .Data.Quiz.Title}}{{.Data.Quiz.Title}}{{else}}Detail kuis{{end}} — Twisty Quiz{{end}}
+{{define "partials/page-style"}}
+/* Quiz builder. The question list owns the reading column; settings, sharing
+   and lifecycle sit in a rail that sticks on wide screens. */
+.builder-layout { display: grid; grid-template-columns: 1fr; gap: 20px; align-items: start; }
+@media (min-width: 1024px) { .builder-layout { grid-template-columns: minmax(0, 1fr) 340px; } }
+@media (min-width: 1280px) { .builder-rail { position: sticky; top: 92px; } }
+.builder-rail { display: flex; flex-direction: column; gap: 16px; }
+
+.quiz-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 24px; margin: 0; padding: 16px 0; border-top: 1px solid #ECEFF2; border-bottom: 1px solid #ECEFF2; }
+@media (min-width: 1024px) { .quiz-facts { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+.quiz-fact dt { color: #687182; font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
+.quiz-fact dd { margin: 3px 0 0; color: #121721; font-size: 13px; font-weight: 600; line-height: 1.45; }
+.quiz-fact-wide { grid-column: span 2; }
+@media (min-width: 1024px) { .quiz-fact-wide { grid-column: auto; } }
+
+.builder-card { overflow: hidden; }
+.builder-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 10px; padding: 20px 22px; border-bottom: 1px solid #ECEFF2; }
+.builder-body { padding: 16px 18px; }
+.builder-count { color: #687182; font-size: 12px; font-variant-numeric: tabular-nums; }
+
+.question-list { list-style: none; margin: 0; padding: 0; }
+.question-row { align-items: flex-start; }
+.question-index { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; flex-shrink: 0; margin-top: 1px; border-radius: 50%; background: #EEF4FA; color: #293681; font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.question-main { display: flex; flex-direction: column; gap: 6px; flex: 1 1 auto; min-width: 0; }
+.question-top { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.question-text { margin: 0; color: #121721; font-size: 14px; font-weight: 600; line-height: 1.5; }
+.question-meta { display: flex; flex-wrap: wrap; gap: 2px 14px; color: #687182; font-size: 12px; }
+.question-key { color: #237A57; font-weight: 600; }
+.question-tools { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 4px; flex-shrink: 0; }
+.question-tools form { margin: 0; }
+.move-controls { display: inline-flex; gap: 2px; }
+.builder-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 18px 18px; border-top: 1px solid #ECEFF2; }
+.builder-foot .btn { flex-shrink: 0; }
+
+.readonly-note { margin: 0; color: #687182; font-size: 12px; line-height: 1.5; }
+.settings-form { display: flex; flex-direction: column; gap: 2px; margin-top: 6px; }
+.switch-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; padding: 10px 0; border-bottom: 1px solid #ECEFF2; }
+.switch-row:last-of-type { border-bottom: 0; }
+.switch-row .form-label { margin: 0; font-size: 13px; }
+.switch-row .field-help { margin-top: 2px; }
+.switch { position: relative; display: inline-flex; width: 40px; height: 24px; flex-shrink: 0; margin-top: 2px; }
+.switch-input { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.switch-track { display: block; width: 40px; height: 24px; border-radius: 9999px; background: #E2E7EC; transition: background-color .15s ease; pointer-events: none; }
+.switch-thumb { display: block; width: 18px; height: 18px; margin: 3px; border-radius: 50%; background: #FFFFFF; box-shadow: 0 1px 2px rgba(18, 23, 33, .18); transition: transform .15s ease; }
+.switch-input:checked + .switch-track { background: #293681; }
+.switch-input:checked + .switch-track .switch-thumb { transform: translateX(16px); }
+.switch-input:focus-visible + .switch-track { box-shadow: 0 0 0 3px rgba(66, 116, 217, .36); }
+@media (prefers-reduced-motion: reduce) { .switch-track, .switch-thumb { transition: none; } }
+.field-row { padding: 10px 0 2px; }
+.setting-number { max-width: 120px; font-variant-numeric: tabular-nums; }
+.settings-list { margin: 4px 0 0; }
+.setting-item dt { margin: 0; }
+.setting-item dd { margin: 0; }
+.share-copy .form-control { font-variant-numeric: normal; letter-spacing: 0; font-size: 13px; }
+.code-panel .setting-label { display: block; }
+.share-audience { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid #ECEFF2; border-bottom: 1px solid #ECEFF2; }
+.share-audience .setting-label { margin: 0; }
+.lifecycle-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.lifecycle-links { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 12px; font-size: 13px; }
+{{end}}
+{{define "content"}}
+{{with .Data}}
+{{$editable := .Editable}}
+{{$shareable := or .Editable (eq .State "open")}}
+<div class="page-stack">
+
+  <a class="link-quiet d-inline-flex align-items-center gap-2" href="/teacher/quizzes">
+    <svg width="16" height="16" aria-hidden="true"><use href="#i-arrow-left"></use></svg>
+    Kembali ke daftar kuis
+  </a>
+
+  <header class="page-head">
+    <div class="min-w-0">
+      <span class="eyebrow">Kuis</span>
+      <h1 class="h1">{{if .Quiz.Title}}{{.Quiz.Title}}{{else}}Detail kuis{{end}}</h1>
+      <p class="page-sub">{{if .Description}}{{.Description}}{{else}}Kelola soal, pengaturan, dan akses kuis ini.{{end}}</p>
+    </div>
+    <div class="d-flex flex-wrap align-items-center gap-2">
+      <span class="{{.State.BadgeClass}}">{{.State.Label}}</span>
+      {{if $editable}}
+      <a class="btn btn-solid theme-primary" href="{{.AddQuestionHref}}">
+        <svg width="18" height="18" aria-hidden="true"><use href="#i-plus"></use></svg>
+        Tambah soal
+      </a>
+      {{end}}
+      {{if eq .State "open"}}
+      <a class="btn btn-outline theme-primary" href="{{.MonitorHref}}">
+        <svg width="18" height="18" aria-hidden="true"><use href="#i-radio"></use></svg>
+        Monitor
+      </a>
+      {{end}}
+      {{if ne .State "draft"}}
+      <a class="btn btn-outline theme-primary" href="{{.ResultsHref}}">
+        <svg width="18" height="18" aria-hidden="true"><use href="#i-clipboard"></use></svg>
+        Hasil
+      </a>
+      {{end}}
+    </div>
+  </header>
+
+  {{template "partials/stepper.html" 2}}
+
+  <dl class="quiz-facts" aria-label="Ringkasan kuis">
+    <div class="quiz-fact">
+      <dt>Jadwal</dt>
+      <dd>{{if .StartsAt}}{{if .EndsAt}}{{.StartsAt.DateTimeRange .EndsAt}}{{else}}Mulai {{.StartsAt.DateTime}}{{end}}{{else}}{{if .EndsAt}}Hingga {{.EndsAt.DateTime}}{{else}}Tanpa batas waktu{{end}}{{end}}</dd>
+    </div>
+    <div class="quiz-fact">
+      <dt>Audiens</dt>
+      <dd>{{.Visibility.Label}} · {{.Audience}}</dd>
+    </div>
+    <div class="quiz-fact">
+      <dt>Guru</dt>
+      <dd>{{if .TeacherName}}{{.TeacherName}}{{else}}—{{end}}</dd>
+    </div>
+    <div class="quiz-fact">
+      <dt>Dibuat</dt>
+      <dd>{{.CreatedAt.Short}}</dd>
+    </div>
+    <div class="quiz-fact">
+      <dt>Jumlah soal</dt>
+      <dd class="num">{{.QuestionCount}} soal</dd>
+    </div>
+  </dl>
+
+  <div class="builder-layout">
+
+    <section class="card builder-card" aria-labelledby="builder-title">
+      <div class="builder-head">
+        <div>
+          <h2 class="section-title" id="builder-title">Soal</h2>
+          <p class="section-sub">Urutan di sini adalah urutan yang dilihat siswa.</p>
+        </div>
+        {{if $editable}}<span class="builder-count">{{len .Questions}} soal tersusun</span>{{else}}<span class="badge bg-2 fg-secondary">Terkunci</span>{{end}}
+      </div>
+
+      {{if .Questions}}
+      {{if $editable}}
+      <form method="post" action="/teacher/quizzes/{{.Quiz.ID}}/questions/reorder">
+        <input type="hidden" name="csrf_token" value="{{$.CSRF}}">
+        <input type="hidden" id="question-order" name="order">
+      {{end}}
+
+        <div class="builder-body">
+          <ol class="question-list"{{if $editable}} data-sortable{{end}}>
+            {{range $i, $q := .Questions}}
+            <li class="question-row"{{if $editable}} data-sortable-item data-id="{{$q.ID}}"{{end}}>
+              {{if $editable}}
+              <span class="drag-handle" aria-hidden="true" title="Seret untuk mengubah urutan">
+                <svg width="16" height="16" aria-hidden="true"><use href="#i-grip"></use></svg>
+              </span>
+              {{end}}
+
+              <span class="question-index">{{$q.Position}}</span>
+
+              <div class="question-main">
+                <div class="question-top">
+                  <span class="badge bg-2 fg-secondary">{{$q.Type.Label}}</span>
+                  {{if $q.HasImage}}
+                  <span class="badge theme-info d-inline-flex align-items-center gap-1">
+                    <svg width="13" height="13" aria-hidden="true"><use href="#i-image"></use></svg>
+                    Ada gambar
+                  </span>
+                  {{end}}
+                </div>
+                <p class="question-text">{{$q.Body}}</p>
+                <div class="question-meta">
+                  {{if $q.Type.IsObjective}}<span class="num">{{$q.OptionCount}} pilihan</span>{{end}}
+                  <span class="question-key">{{if $q.Type.IsObjective}}Kunci: {{$q.CorrectLabel}}{{else}}{{$q.CorrectLabel}}{{end}}</span>
+                </div>
+              </div>
+
+              {{if $editable}}
+              <div class="question-tools">
+                <span class="move-controls">
+                  <button class="btn btn-sm btn-text" type="button" data-move-up aria-label="Naikkan soal {{$q.Position}}">
+                    <svg width="15" height="15" aria-hidden="true"><use href="#i-chev-up"></use></svg>
+                  </button>
+                  <button class="btn btn-sm btn-text" type="button" data-move-down aria-label="Turunkan soal {{$q.Position}}">
+                    <svg width="15" height="15" aria-hidden="true"><use href="#i-chev-down"></use></svg>
+                  </button>
+                </span>
+                <a class="btn btn-sm btn-outline theme-primary" href="{{$q.EditHref}}">Edit</a>
+                <button class="btn btn-sm btn-outline theme-danger" type="submit" form="delete-question-{{$q.ID}}" aria-label="Hapus soal {{$q.Position}}">
+                  <svg width="15" height="15" aria-hidden="true"><use href="#i-trash"></use></svg>
+                </button>
+              </div>
+              {{end}}
+            </li>
+            {{end}}
+          </ol>
+        </div>
+
+        {{if $editable}}
+        <div class="builder-foot">
+          <p class="field-help mb-0">Seret kartu atau gunakan tombol naik/turun, lalu simpan urutan. Pengurutan memerlukan JavaScript.</p>
+          <button class="btn btn-outline theme-primary" type="submit">
+            <svg width="16" height="16" aria-hidden="true"><use href="#i-check"></use></svg>
+            Simpan urutan
+          </button>
+        </div>
+        </form>
+
+        {{/* Delete forms cannot nest inside the reorder form; the row buttons
+             point at these forms with the form="" attribute. */}}
+        {{range .Questions}}
+        <form id="delete-question-{{.ID}}" method="post" action="{{.DeleteHref}}" data-confirm="Hapus soal {{.Position}}? Jawaban siswa pada soal ini ikut terhapus.">
+          <input type="hidden" name="csrf_token" value="{{$.CSRF}}">
+        </form>
+        {{end}}
+        {{end}}
+      {{else}}
+      <div class="builder-body">
+        {{template "partials/empty-state.html" .Empty}}
+      </div>
+      {{end}}
+    </section>
+
+    <aside class="builder-rail" aria-label="Pengaturan dan akses kuis">
+
+      <section class="card p-4" aria-labelledby="settings-title">
+        <div class="row-between">
+          <h2 class="section-title" id="settings-title">Pengaturan</h2>
+          {{if not $editable}}<span class="badge bg-2 fg-secondary">Terkunci</span>{{end}}
+        </div>
+
+        {{if $editable}}
+        <form class="settings-form" method="post" action="/teacher/quizzes/{{.Quiz.ID}}" data-validate>
+          <input type="hidden" name="csrf_token" value="{{$.CSRF}}">
+
+          <div class="switch-row">
+            <div class="min-w-0">
+              <label class="form-label" for="setting-randomize-questions">Acak urutan soal</label>
+              <p class="field-help">Setiap siswa mendapat urutan berbeda.</p>
+            </div>
+            <span class="switch">
+              <input class="switch-input" type="checkbox" id="setting-randomize-questions" name="randomize_questions" value="1"{{if .Settings.RandomizeQuestions}} checked{{end}}>
+              <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
+            </span>
+          </div>
+
+          <div class="switch-row">
+            <div class="min-w-0">
+              <label class="form-label" for="setting-randomize-answers">Acak pilihan jawaban</label>
+              <p class="field-help">Posisi pilihan berubah tiap tampilan.</p>
+            </div>
+            <span class="switch">
+              <input class="switch-input" type="checkbox" id="setting-randomize-answers" name="randomize_answers" value="1"{{if .Settings.RandomizeAnswers}} checked{{end}}>
+              <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
+            </span>
+          </div>
+
+          <div class="switch-row">
+            <div class="min-w-0">
+              <label class="form-label" for="setting-allow-retake">Izinkan percobaan ulang</label>
+              <p class="field-help">Siswa dapat mengulang sampai batas percobaan.</p>
+            </div>
+            <span class="switch">
+              <input class="switch-input" type="checkbox" id="setting-allow-retake" name="allow_retake" value="1"{{if .Settings.AllowRetake}} checked{{end}}>
+              <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
+            </span>
+          </div>
+
+          <div class="field-row">
+            <label class="form-label" for="setting-max-attempts">Batas percobaan</label>
+            <input class="form-control setting-number" type="number" id="setting-max-attempts" name="max_attempts" value="{{.Settings.MaxAttempts}}" min="1" max="10" step="1" inputmode="numeric" aria-describedby="setting-max-attempts-help">
+            <p class="field-help" id="setting-max-attempts-help">Dipakai saat percobaan ulang diizinkan.</p>
+          </div>
+
+          <div class="field-row">
+            <label class="form-label" for="setting-review-mode">Tampilan hasil siswa</label>
+            <select class="form-control" id="setting-review-mode" name="review_mode">
+              <option value="questions_and_key"{{if eq .Settings.ReviewMode "questions_and_key"}} selected{{end}}>Soal dan kunci jawaban</option>
+              <option value="key_only"{{if eq .Settings.ReviewMode "key_only"}} selected{{end}}>Hanya kunci jawaban</option>
+              <option value="questions_only"{{if eq .Settings.ReviewMode "questions_only"}} selected{{end}}>Hanya soal</option>
+              <option value="answers_only"{{if eq .Settings.ReviewMode "answers_only"}} selected{{end}}>Jawaban siswa tanpa penilaian</option>
+            </select>
+          </div>
+
+          <div class="switch-row">
+            <div class="min-w-0">
+              <label class="form-label" for="setting-show-score">Tampilkan skor</label>
+              <p class="field-help">Skor tampil di hasil dan riwayat siswa.</p>
+            </div>
+            <span class="switch">
+              <input class="switch-input" type="checkbox" id="setting-show-score" name="show_score" value="1"{{if .Settings.ShowScore}} checked{{end}}>
+              <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
+            </span>
+          </div>
+
+          <button class="btn btn-solid theme-primary w-100 mt-3" type="submit">
+            <svg width="16" height="16" aria-hidden="true"><use href="#i-check"></use></svg>
+            Simpan pengaturan
+          </button>
+        </form>
+        {{else}}
+        <dl class="settings-list">
+          <div class="setting-item">
+            <dt class="setting-label">Acak soal</dt>
+            <dd class="setting-value">{{if .Settings.RandomizeQuestions}}Ya{{else}}Tidak{{end}}</dd>
+          </div>
+          <div class="setting-item">
+            <dt class="setting-label">Acak pilihan jawaban</dt>
+            <dd class="setting-value">{{if .Settings.RandomizeAnswers}}Ya{{else}}Tidak{{end}}</dd>
+          </div>
+          <div class="setting-item">
+            <dt class="setting-label">Percobaan ulang</dt>
+            <dd class="setting-value">{{if .Settings.AllowRetake}}Ya, maksimal {{.Settings.MaxAttempts}}{{else}}Tidak{{end}}</dd>
+          </div>
+          <div class="setting-item">
+            <dt class="setting-label">Tampilan hasil</dt>
+            <dd class="setting-value">{{.Settings.ReviewMode.Label}}</dd>
+          </div>
+          <div class="setting-item">
+            <dt class="setting-label">Tampilkan skor</dt>
+            <dd class="setting-value">{{if .Settings.ShowScore}}Ya{{else}}Tidak{{end}}</dd>
+          </div>
+        </dl>
+        <p class="readonly-note mt-3">{{if eq .State "open"}}Kuis sedang dibuka. Pengaturan hanya dapat diubah pada draf.{{else}}Kuis sudah ditutup. Pengaturan dikunci.{{end}}</p>
+        {{end}}
+      </section>
+
+      <section class="card p-4" aria-labelledby="share-title">
+        <h2 class="section-title" id="share-title">Bagikan</h2>
+
+        {{if eq .Visibility "public"}}
+        <p class="section-sub">Kode enam digit untuk bergabung tanpa akun.</p>
+        <div class="code-panel mt-3">
+          <span class="setting-label">Kode kuis</span>
+          {{with .Code}}
+          <div class="row-between mt-1">
+            <span class="code-value">{{.}}</span>
+            {{if $shareable}}
+            <button class="btn btn-sm btn-outline theme-primary" type="button" data-copy="quiz-code" data-copy-text="{{.}}" aria-label="Salin kode kuis">
+              <svg width="15" height="15" aria-hidden="true"><use href="#i-copy"></use></svg>
+              Salin
+            </button>
+            {{end}}
+          </div>
+          {{else}}
+          <p class="mb-0 mt-1 fg-secondary">Kode dibuat saat kuis dibuka.</p>
+          {{end}}
+        </div>
+        {{else}}
+        <div class="share-audience mt-3">
+          <span class="setting-label">Audiens</span>
+          <span class="setting-value">{{.Audience}}</span>
+        </div>
+        <p class="field-help">Kuis privat tidak memakai kode. Bagikan tautan undangan; siswa harus masuk dengan akun yang sesuai.</p>
+        {{end}}
+
+        <div class="mt-3">
+          <label class="form-label" for="invite-url">Tautan undangan</label>
+          <div class="copy-field share-copy">
+            <input class="form-control" type="text" id="invite-url" value="{{.InviteURL}}" readonly>
+            {{if $shareable}}
+            <button class="btn btn-outline theme-primary" type="button" data-copy="invite-url" aria-label="Salin tautan undangan" title="Salin tautan undangan">
+              <svg width="16" height="16" aria-hidden="true"><use href="#i-copy"></use></svg>
+            </button>
+            {{end}}
+          </div>
+          <p class="field-help">{{if $editable}}Tautan dan kode aktif setelah kuis dibuka.{{else if eq .State "open"}}Bagikan tautan ini selama kuis dibuka.{{else}}Kuis sudah ditutup; tautan tidak lagi menerima peserta.{{end}}</p>
+        </div>
+      </section>
+
+      <section class="card p-4" aria-labelledby="lifecycle-title">
+        <h2 class="section-title" id="lifecycle-title">Status kuis</h2>
+        <p class="section-sub">
+          {{if eq .State "draft"}}Kuis masih draf. Buka kuis agar siswa dapat bergabung.
+          {{else if eq .State "open"}}Kuis sedang dibuka. Tutup kuis untuk menghentikan pendaftaran baru.
+          {{else}}Kuis sudah ditutup. Hasil tetap dapat dibuka dan dinilai.{{end}}
+        </p>
+
+        {{with .PublishAction}}
+        <form class="mt-3" method="post" action="{{.Href}}" data-confirm="Buka kuis {{$.Data.Quiz.Title}}? Siswa dapat mulai bergabung setelah kuis dibuka.">
+          <input type="hidden" name="csrf_token" value="{{$.CSRF}}">
+          <button class="btn btn-solid theme-primary w-100" type="submit"{{if not $.Data.CanPublish}} disabled{{if $.Data.PublishBlockedReason}} aria-describedby="publish-blocked"{{end}}{{end}}>
+            <svg width="16" height="16" aria-hidden="true"><use href="#i-play"></use></svg>
+            {{.Label}}
+          </button>
+        </form>
+        {{if and (not $.Data.CanPublish) $.Data.PublishBlockedReason}}
+        <p class="field-help mt-2 mb-0" id="publish-blocked">{{$.Data.PublishBlockedReason}}</p>
+        {{end}}
+        {{end}}
+
+        <div class="lifecycle-actions">
+          {{with .CloseAction}}
+          <form method="post" action="{{.Href}}" data-confirm="Tutup kuis {{$.Data.Quiz.Title}}? Peserta tidak dapat lagi bergabung atau mengubah jawaban.">
+            <input type="hidden" name="csrf_token" value="{{$.CSRF}}">
+            <button class="btn btn-outline theme-primary w-100" type="submit">
+              <svg width="16" height="16" aria-hidden="true"><use href="#i-lock"></use></svg>
+              {{.Label}}
+            </button>
+          </form>
+          {{end}}
+
+          {{with .DeleteAction}}
+          <form method="post" action="{{.Href}}" data-confirm="Hapus kuis {{$.Data.Quiz.Title}}? Seluruh soal dan draf ini akan hilang.">
+            <input type="hidden" name="csrf_token" value="{{$.CSRF}}">
+            <button class="btn btn-outline theme-danger w-100" type="submit">
+              <svg width="16" height="16" aria-hidden="true"><use href="#i-trash"></use></svg>
+              {{.Label}}
+            </button>
+          </form>
+          {{end}}
+        </div>
+
+        <div class="lifecycle-links">
+          {{if ne .State "draft"}}<a class="link-quiet" href="{{.ResultsHref}}">Lihat hasil</a>{{end}}
+          {{if eq .State "open"}}<a class="link-quiet" href="{{.MonitorHref}}">Monitor langsung</a>{{end}}
+          {{if ne .State "draft"}}<a class="link-quiet" href="{{.GradingHref}}">Nilai esai</a>{{end}}
+          {{if $editable}}<a class="link-quiet" href="{{.EditHref}}">Ubah data kuis</a>{{end}}
+        </div>
+      </section>
+
+    </aside>
+  </div>
+</div>
+{{end}}
+{{end}}

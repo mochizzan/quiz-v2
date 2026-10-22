@@ -1,15 +1,54 @@
-{{define "partials/title"}}Menunggu persetujuan — Twisty Quiz{{end}}
 {{define "partials/page-style"}}{{template "partials/auth-style.html" .}}{{end}}
 {{define "content"}}
-<div class="d-flex flex-column align-items-center text-center gap-3">
-  <span class="d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 56px; height: 56px; background-color: #EEF4FA; color: #293681">
+{{/* Teacher approval holding screen. The same template carries the three
+     closed PendingState values; the route supplies the state, the copy below
+     never recomputes it. */}}
+<div class="auth-heading text-center">
+  {{if eq .Data.State "approved"}}
+  <span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-subtle-success fg-success p-3 mb-3">
+    <svg width="28" height="28" aria-hidden="true"><use href="#i-check"></use></svg>
+  </span>
+  {{else if eq .Data.State "expired"}}
+  <span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-subtle-warning fg-warning p-3 mb-3">
     <svg width="28" height="28" aria-hidden="true"><use href="#i-clock"></use></svg>
   </span>
-  <h1 class="h1 mb-0">Menunggu persetujuan admin</h1>
-  <p class="mb-0 fg-secondary">Akun Anda sebagai guru sedang ditinjau oleh admin SMA Nusantara. Anda akan menerima email setelah disetujui.</p>
-  <div class="d-flex gap-2 mt-2">
-    <a class="btn btn-solid theme-primary" href="/login">Kembali ke masuk</a>
-    <a class="btn btn-outline theme-primary" href="/register">Daftar akun lain</a>
-  </div>
+  {{else}}
+  <span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-subtle-primary fg-primary p-3 mb-3">
+    <svg width="28" height="28" aria-hidden="true"><use href="#i-clock"></use></svg>
+  </span>
+  {{end}}
+  <span class="auth-kicker">Akun guru</span>
+  <h1 class="h1 auth-title">
+    {{if eq .Data.State "approved"}}Akun disetujui{{else if eq .Data.State "expired"}}Persetujuan kedaluwarsa{{else}}Menunggu persetujuan{{end}}
+  </h1>
+  <p class="auth-subtitle mx-auto">
+    {{if eq .Data.State "approved"}}Akun Anda sudah aktif dan siap dipakai.{{else if eq .Data.State "expired"}}Permintaan persetujuan ini sudah tidak berlaku.{{else}}Pendaftaran Anda sudah kami terima.{{end}}
+  </p>
 </div>
+
+<div class="alert theme-{{if eq .Data.State "approved"}}success{{else if eq .Data.State "expired"}}warning{{else}}info{{end}} text-center" role="status">
+  <strong class="d-block mb-1">{{.Data.State.Label}}</strong>
+  <span>
+    {{if eq .Data.State "approved"}}
+      {{with .Data.FullName}}{{.}} sekarang dapat masuk dan mengelola kuis.{{else}}Akun Anda sekarang dapat masuk dan mengelola kuis.{{end}}
+    {{else if eq .Data.State "expired"}}
+      Ajukan pendaftaran ulang agar permintaan baru sampai ke guru di sekolah Anda.
+    {{else}}
+      Guru aktif di sekolah Anda perlu menyetujui akun ini. Kabar persetujuan dikirim ke email yang Anda daftarkan.
+    {{end}}
+  </span>
+</div>
+
+<div class="d-grid gap-2 mt-2">
+  {{if eq .Data.State "approved"}}
+  <a class="btn btn-solid theme-primary auth-submit" href="{{.Data.LoginHref}}">Masuk ke akun</a>
+  {{else if eq .Data.State "expired"}}
+  <a class="btn btn-solid theme-primary auth-submit" href="/register/teacher">Daftar ulang</a>
+  <a class="btn btn-outline theme-primary auth-submit" href="{{.Data.LoginHref}}">Kembali ke masuk</a>
+  {{else}}
+  <a class="btn btn-solid theme-primary auth-submit" href="{{.Data.LoginHref}}">Kembali ke masuk</a>
+  {{end}}
+</div>
+
+<p class="field-help text-center mt-3 mb-0">Butuh bantuan? Hubungi admin sekolah Anda.</p>
 {{end}}

@@ -4,10 +4,13 @@ package httpserver
 // routes_<group>.go file and registers itself from init(), so parallel page
 // tasks never share a Go file and never touch server.go.
 
-// init registers the home routes: the standalone hello page stays reachable at
-// GET /hello, and GET / redirects (303 See Other) to /login — the login page
-// itself is registered by the auth route group (Task 7).
+// init registers the root route: the bare host is the front door, so it sends
+// every visitor to the single sign-in screen. The role home is resolved after
+// credentials, never from the URL.
 func init() {
-	registerPage(PageRoute{Method: "GET", Path: "/hello", Template: "hello.html"})
-	registerPage(PageRoute{Method: "GET", Path: "/", Redirect: "/login"})
+	registerPage(PageRoute{
+		Method:   "GET",
+		Path:     "/",
+		Redirect: "/login",
+	})
 }

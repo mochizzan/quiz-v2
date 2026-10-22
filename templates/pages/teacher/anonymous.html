@@ -1,46 +1,102 @@
 {{define "partials/title"}}Peserta anonim — Twisty Quiz{{end}}
 {{define "content"}}
-<div class="d-flex flex-column gap-4">
+<div class="page-stack">
 
-  <h1 class="h1 mb-0">Peserta anonim</h1>
+  <div class="page-head">
+    <div>
+      <span class="eyebrow">Manajemen</span>
+      <h1 class="h1">Peserta anonim</h1>
+      <p class="page-sub">Peserta yang bergabung tanpa akun, dikenali lewat cookie peserta.</p>
+    </div>
+    <a class="btn btn-outline theme-primary" href="/teacher/students">
+      <svg width="18" height="18" aria-hidden="true"><use href="#i-users"></use></svg>
+      Daftar siswa
+    </a>
+  </div>
 
-  {{/* Explainer alert — cookies, never localStorage (spec §15.10). */}}
+  <div class="tabs-scroll">
+    <nav class="pill-tabs" aria-label="Bagian manajemen">
+      <a class="pill-tab" href="/teacher/students">Siswa</a>
+      <a class="pill-tab active" href="/teacher/anonymous" aria-current="page">Peserta anonim</a>
+      <a class="pill-tab" href="/teacher/majors">Jurusan</a>
+      <a class="pill-tab" href="/teacher/teachers">Guru</a>
+    </nav>
+  </div>
+
   <div class="alert theme-info mb-0" role="note">
     Peserta tanpa akun diidentifikasi lewat cookie peserta; baris ini tidak terhubung ke akun siswa.
   </div>
 
-  <div class="table-responsive">
-    <table class="table mb-0">
-      <caption class="visually-hidden">Peserta anonim yang mengikuti kuis</caption>
-      <thead>
-        <tr>
-          <th scope="col">Nama</th>
-          <th scope="col">Kuis</th>
-          <th scope="col">Bergabung</th>
-          <th scope="col">Status</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td class="fw-semibold">Peserta 1</td>
-          <td>Biologi Sel — Kuis 4</td>
-          <td class="fg-secondary" style="font-size: 14px; font-variant-numeric: tabular-nums">09.15 WIB</td>
-          <td><span class="badge theme-primary">Mengerjakan</span></td>
-        </tr>
-        <tr>
-          <td class="fw-semibold">Peserta 2</td>
-          <td>Biologi Sel — Kuis 4</td>
-          <td class="fg-secondary" style="font-size: 14px; font-variant-numeric: tabular-nums">09.17 WIB</td>
-          <td><span class="badge theme-primary">Mengerjakan</span></td>
-        </tr>
-        <tr>
-          <td class="fw-semibold">Peserta 3</td>
-          <td>Fisika Kinematika — Kuis 3</td>
-          <td class="fg-secondary" style="font-size: 14px; font-variant-numeric: tabular-nums">08.52 WIB</td>
-          <td><span class="badge theme-success">Selesai</span></td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
+  <section class="card p-4" aria-labelledby="anonymous-filter-title">
+    <h2 class="section-title" id="anonymous-filter-title">Cari peserta</h2>
+    <form class="d-flex flex-wrap align-items-end gap-3 mt-3" method="get" action="/teacher/anonymous">
+      <div class="flex-grow-1">
+        <label class="form-label" for="anonymous-search">Nama peserta</label>
+        <input class="form-control" type="search" id="anonymous-search" name="q" value="{{.Data.Query.Q}}" placeholder="Cari nama">
+      </div>
+      <div class="d-flex flex-wrap gap-2">
+        <button class="btn btn-solid theme-primary" type="submit">
+          <svg width="18" height="18" aria-hidden="true"><use href="#i-search"></use></svg>
+          Cari
+        </button>
+        <a class="btn btn-outline theme-primary" href="/teacher/anonymous">Atur ulang</a>
+      </div>
+    </form>
+  </section>
+
+  <section class="card" aria-labelledby="anonymous-list-title">
+    <div class="p-4">
+      <div class="row-between">
+        <div>
+          <h2 class="section-title" id="anonymous-list-title">Daftar peserta anonim</h2>
+          <p class="section-sub">{{.Data.Rows.Total}} identitas peserta</p>
+        </div>
+      </div>
+    </div>
+
+    {{if .Data.Rows.Empty}}
+    <div class="p-4 pt-0">
+      {{template "partials/empty-state.html" .Data.Empty}}
+    </div>
+    {{else}}
+    <div class="table-responsive">
+      <table class="table table-clean mb-0">
+        <caption class="visually-hidden">Daftar peserta anonim</caption>
+        <thead>
+          <tr>
+            <th scope="col">Nama</th>
+            <th scope="col">Kelas</th>
+            <th scope="col">Kuis diikuti</th>
+            <th scope="col">Aktivitas terakhir</th>
+            <th scope="col" class="text-end">Aksi</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{range .Data.Rows.Items}}
+          <tr>
+            <td class="cell-title">{{.FullName}}</td>
+            <td>{{.ClassLabel}}</td>
+            <td class="num">{{.QuizzesJoined}}</td>
+            <td class="cell-sub">{{if .LastActivity}}{{.LastActivity.DateTime}} WIB{{else}}—{{end}}</td>
+            <td>
+              <div class="d-flex flex-wrap justify-content-end gap-2">
+                <a class="btn btn-sm btn-outline theme-primary" href="{{.EditHref}}">Ubah</a>
+                <form method="post" action="{{.DeleteHref}}" class="d-inline-flex" data-confirm="Hapus {{.FullName}}? Identitas dan riwayat percobaan peserta anonim ini akan dihapus.">
+                  <input type="hidden" name="csrf_token" value="{{$.CSRF}}">
+                  <button class="btn btn-sm btn-outline theme-danger" type="submit">Hapus</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+    <div class="p-4 pt-3">
+      {{template "partials/pagination.html" .Data.Pagination}}
+    </div>
+    {{end}}
+  </section>
+
 </div>
 {{end}}

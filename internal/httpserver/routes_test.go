@@ -1,61 +1,24 @@
 package httpserver
 
 import (
-	"io"
-	"net/http/httptest"
-	"strings"
 	"testing"
-
-	"quiz-v2/internal/config"
 )
 
-// TestRootRedirectsToLogin pins the home route: GET / answers 303 See Other
-// pointing at /login (the login page itself lands in Task 7).
+// TestRootRedirectsToLogin pins the one static redirect in the surface.
 func TestRootRedirectsToLogin(t *testing.T) {
-	app := New(config.Config{Addr: ":8080"})
-	resp, err := app.Test(httptest.NewRequest("GET", "/", nil))
-	if err != nil {
-		t.Fatal(err)
+	var root *PageRoute
+	for _, p := range RegisteredPages() {
+		if p.Method == "GET" && p.Path == "/" {
+			route := p
+			root = &route
+			break
+		}
 	}
-	if resp.StatusCode != 303 {
-		t.Fatalf("status = %d, want 303", resp.StatusCode)
+	if root == nil {
+		t.Fatal("GET / is not registered")
 	}
-	if loc := resp.Header.Get("Location"); loc != "/login" {
-		t.Errorf("Location = %q, want /login", loc)
-	}
-}
-
-// TestRegisteredRouteRendersTemplate pins registerPage + the registry loop in
-// NewWithStore: a route registered at init/test time is served by the app with
-// its template through the view loader.
-func TestRegisteredRouteRendersTemplate(t *testing.T) {
-	registerPage(PageRoute{Method: "GET", Path: "/__test", Template: "hello.html", Nav: "x"})
-
-	app := New(config.Config{Addr: ":8080"})
-	resp, err := app.Test(httptest.NewRequest("GET", "/__test", nil))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if resp.StatusCode != 200 {
-		t.Fatalf("status = %d, want 200", resp.StatusCode)
-	}
-	body, _ := io.ReadAll(resp.Body)
-	if !strings.Contains(string(body), "Halo, Dunia!") {
-		t.Errorf("body must contain the hello copy, got %q", string(body))
-	}
-}
-
-// TestUnknownPathReturns404 pins the catch-all: an unregistered path answers
-// 404. The body is deliberately NOT asserted — Task 6 replaces the plain-text
-// fallback with the styled pages/error/404.html.
-func TestUnknownPathReturns404(t *testing.T) {
-	app := New(config.Config{Addr: ":8080"})
-	resp, err := app.Test(httptest.NewRequest("GET", "/definitely-missing", nil))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if resp.StatusCode != 404 {
-		t.Fatalf("status = %d, want 404", resp.StatusCode)
+	if root.Redirect != "/login" {
+		t.Errorf("GET / redirect = %q, want /login", root.Redirect)
 	}
 }
 
@@ -64,18 +27,74 @@ func TestUnknownPathReturns404(t *testing.T) {
 func TestRegisteredPagesIsCopy(t *testing.T) {
 	first := RegisteredPages()
 	if len(first) == 0 {
-		t.Fatal("RegisteredPages() is empty; routes_home.go must register at least /hello")
+		t.Fatal("RegisteredPages() is empty")
 	}
 	original := first[0]
 	originalLen := len(first)
-
-	first[0] = PageRoute{Method: "POST", Path: "/__mutated", Template: "nope.html"}
-
+	first[0] = PageRoute{Method: "POST", Path: "/__mutated"}
 	second := RegisteredPages()
 	if len(second) != originalLen {
 		t.Fatalf("len = %d after mutating copy, want %d", len(second), originalLen)
 	}
-	if second[0] != original {
-		t.Errorf("registry mutated through the copy: got %+v, want %+v", second[0], original)
+	if second[0].Method != original.Method || second[0].Path != original.Path || second[0].Template != original.Template {
+		t.Errorf("registry mutated through the copy: got %s %s (%s), want %s %s (%s)",
+			second[0].Method, second[0].Path, second[0].Template,
+			original.Method, original.Path, original.Template)
+	}
+}
+
+// TestRouteLessOrdersStaticBeforeParams guards the Fiber registration order:
+// static paths must beat parameterised paths, and deeper parameterised paths
+// beat their prefixes.
+func TestRouteLessOrdersStaticBeforeParams(t *testing.T) {
+	cases := []struct {
+		name string
+		a, b PageRoute
+	}{
+		{
+			name: "static new before id",
+			a:    PageRoute{Method: "GET", Path: "/teacher/quizzes/new"},
+			b:    PageRoute{Method: "GET", Path: "/teacher/quizzes/:id"},
+		},
+		{
+			name: "results before id",
+			a:    PageRoute{Method: "GET", Path: "/teacher/quizzes/:id/results"},
+			b:    PageRoute{Method: "GET", Path: "/teacher/quizzes/:id"},
+		},
+		{
+			name: "questions qid before questions new? static wins",
+			a:    PageRoute{Method: "GET", Path: "/teacher/quizzes/:id/questions/new"},
+			b:    PageRoute{Method: "GET", Path: "/teacher/quizzes/:id/questions/:qid"},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if !routeLess(tc.a, tc.b) {
+				t.Errorf("routeLess(%q, %q) = false, want true", tc.a.Path, tc.b.Path)
+			}
+			if routeLess(tc.b, tc.a) {
+				t.Errorf("routeLess(%q, %q) = true, want false", tc.b.Path, tc.a.Path)
+			}
+		})
+	}
+}
+
+// TestWithParamSubstitutesAllTokens pins the PRG helper.
+func TestWithParamSubstitutesAllTokens(t *testing.T) {
+	got := withParam("/teacher/quizzes/:id/questions/:qid", PageRequest{
+		Params: map[string]string{"id": "7", "qid": "702"},
+	})
+	if want := "/teacher/quizzes/7/questions/702"; got != want {
+		t.Errorf("withParam = %q, want %q", got, want)
+	}
+}
+
+// TestActionAppendsFlash covers the query separator cases.
+func TestActionAppendsFlash(t *testing.T) {
+	if got := action("/student", "welcome")(PageRequest{}); got != "/student?flash=welcome" {
+		t.Errorf("action = %q, want /student?flash=welcome", got)
+	}
+	if got := action("/join?state=unknown", "x")(PageRequest{}); got != "/join?state=unknown&flash=x" {
+		t.Errorf("action = %q, want /join?state=unknown&flash=x", got)
 	}
 }

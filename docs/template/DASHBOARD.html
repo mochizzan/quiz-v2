@@ -1,0 +1,3021 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Twisty Quiz System | Teacher Dashboard</title>
+  
+  <!-- Typography: Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+  
+  <!-- Bootstrap CSS & FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+  <style>
+    /* ==========================================================================
+       TWISTY DESIGN SYSTEM TOKENS & PALETTE INTEGRATION
+       ========================================================================== */
+    :root {
+      /* Twisty Core Brand & Accents */
+      --tw-coral: #E24A21;
+      --tw-coral-light: #FDF0ED;
+      --tw-blue-accent: #5589C3;
+      --tw-blue-light: #EEF4FA;
+      --tw-dark: #121721;
+      
+      /* Specified Educational Palette */
+      --edu-navy: #293681;
+      --edu-blue: #4274D9;
+      --edu-sky: #95CCDD;
+      --edu-mint: #D0E7E6;
+      --edu-mint-light: #EBF5F5;
+
+      /* Twisty Neutrals */
+      --tw-app-bg: #838EA0;
+      --tw-surface-canvas: #EDF0F4;
+      --tw-surface-card: #FFFFFF;
+      --tw-surface-muted: #F4F6F8;
+      --tw-surface-pill: #E2E7EC;
+      --tw-text-primary: #121721;
+      --tw-text-secondary: #687182;
+      --tw-text-muted: #94A3B8;
+      --tw-border-light: #E2E6EB;
+      --tw-border-subtle: #ECEFF2;
+
+      /* Typography */
+      --tw-font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+      /* Radius */
+      --tw-radius-sm: 8px;
+      --tw-radius-md: 12px;
+      --tw-radius-lg: 18px;
+      --tw-radius-card: 24px;
+      --tw-radius-container: 32px;
+      --tw-radius-full: 9999px;
+
+      /* Elevation & Soft Shadows */
+      --tw-shadow-flat: 0 1px 2px rgba(18, 23, 33, 0.02);
+      --tw-shadow-card: 0 10px 25px -4px rgba(18, 23, 33, 0.04);
+      --tw-shadow-floating: 0 14px 35px -6px rgba(18, 23, 33, 0.08);
+      --tw-shadow-tooltip: 0 4px 14px rgba(18, 23, 33, 0.14);
+      --tw-shadow-glow: 0 0 0 4px rgba(66, 116, 217, 0.15);
+    }
+
+    /* Reset & Base */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: var(--tw-font-family);
+      background-color: var(--tw-surface-canvas);
+      color: var(--tw-text-primary);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      line-height: 1.5;
+      padding-bottom: 48px;
+    }
+
+    /* Container Shell */
+    .app-viewport-shell {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 16px 24px;
+    }
+
+    @media (min-width: 1440px) {
+      .app-viewport-shell {
+        padding: 24px 32px;
+      }
+    }
+
+    @media (max-width: 767.98px) {
+      .app-viewport-shell {
+        padding: 12px 16px;
+      }
+    }
+
+    /* ==========================================================================
+       TOP HORIZONTAL NAVIGATION BAR (TWISTY SYSTEM)
+       ========================================================================== */
+    .twisty-nav-container {
+      background: var(--tw-surface-card);
+      border-radius: var(--tw-radius-full);
+      padding: 10px 20px;
+      box-shadow: var(--tw-shadow-card);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+      border: 1px solid rgba(226, 230, 235, 0.6);
+      position: sticky;
+      top: 16px;
+      z-index: 1020;
+      backdrop-filter: blur(12px);
+      transition: all 0.2s ease;
+    }
+
+    @media (max-width: 991.98px) {
+      .twisty-nav-container {
+        padding: 8px 14px;
+        margin-bottom: 18px;
+        top: 10px;
+        border-radius: 20px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .twisty-nav-container {
+        padding: 8px 12px;
+      }
+    }
+
+    .twisty-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: var(--tw-text-primary);
+      flex-shrink: 0;
+    }
+
+    .brand-mark {
+      width: 38px;
+      height: 38px;
+      background: linear-gradient(135deg, var(--edu-navy) 0%, var(--edu-blue) 100%);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #FFFFFF;
+      font-weight: 800;
+      font-size: 18px;
+      box-shadow: 0 4px 10px rgba(41, 54, 129, 0.25);
+      position: relative;
+    }
+
+    .brand-mark::after {
+      content: '';
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      background: var(--tw-coral);
+      border-radius: 50%;
+      top: -2px;
+      right: -2px;
+      border: 2px solid #FFFFFF;
+    }
+
+    .brand-title {
+      font-size: 16px;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      color: var(--tw-text-primary);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+
+    .brand-title span.badge-role {
+      font-size: 11px;
+      font-weight: 700;
+      background: var(--tw-coral-light);
+      color: var(--tw-coral);
+      padding: 2px 8px;
+      border-radius: var(--tw-radius-full);
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    .nav-links-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    .nav-item-link {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--tw-text-secondary);
+      padding: 8px 16px;
+      border-radius: var(--tw-radius-full);
+      text-decoration: none;
+      transition: all 0.18s ease-in-out;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      position: relative;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .nav-item-link:hover {
+      color: var(--tw-text-primary);
+      background-color: var(--tw-surface-muted);
+    }
+
+    .nav-item-link.active {
+      color: var(--tw-text-primary);
+      background-color: var(--tw-surface-pill);
+      font-weight: 700;
+    }
+
+    .nav-item-link.active::after {
+      content: '';
+      position: absolute;
+      bottom: 4px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 14px;
+      height: 2.5px;
+      background: var(--tw-coral);
+      border-radius: var(--tw-radius-full);
+    }
+
+    .nav-actions-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    /* Pill Search Bar */
+    .nav-search-bar {
+      position: relative;
+      width: 220px;
+    }
+
+    .nav-search-bar input {
+      width: 100%;
+      height: 38px;
+      background: var(--tw-surface-muted);
+      border: 1px solid transparent;
+      border-radius: var(--tw-radius-full);
+      padding: 0 38px 0 16px;
+      font-size: 13px;
+      color: var(--tw-text-primary);
+      outline: none;
+      transition: all 0.2s ease;
+    }
+
+    .nav-search-bar input:focus {
+      background: #FFFFFF;
+      border-color: var(--edu-blue);
+      box-shadow: var(--tw-shadow-glow);
+    }
+
+    .nav-search-bar input::placeholder {
+      color: var(--tw-text-muted);
+    }
+
+    .nav-search-bar .search-icon {
+      position: absolute;
+      right: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--tw-text-muted);
+      font-size: 13px;
+      pointer-events: none;
+    }
+
+    /* Icon Buttons */
+    .round-icon-btn {
+      width: 38px;
+      height: 38px;
+      border-radius: var(--tw-radius-full);
+      background: var(--tw-surface-muted);
+      border: 1px solid var(--tw-border-light);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--tw-text-secondary);
+      font-size: 14px;
+      cursor: pointer;
+      position: relative;
+      transition: all 0.18s ease;
+      flex-shrink: 0;
+    }
+
+    .round-icon-btn:hover {
+      background: #FFFFFF;
+      color: var(--tw-text-primary);
+      box-shadow: var(--tw-shadow-flat);
+    }
+
+    .round-icon-btn .notification-dot {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      width: 8px;
+      height: 8px;
+      background: var(--tw-coral);
+      border-radius: 50%;
+      border: 2px solid #FFFFFF;
+    }
+
+    /* User Profile Pill */
+    .user-profile-badge {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 3px 12px 3px 4px;
+      border-radius: var(--tw-radius-full);
+      background: var(--tw-surface-muted);
+      border: 1px solid var(--tw-border-light);
+      cursor: pointer;
+      transition: all 0.18s ease;
+      flex-shrink: 0;
+    }
+
+    .user-profile-badge:hover {
+      background: #FFFFFF;
+      box-shadow: var(--tw-shadow-flat);
+    }
+
+    .avatar-wrapper {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--edu-blue) 0%, var(--tw-blue-accent) 100%);
+      color: #FFFFFF;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .user-meta-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--tw-text-primary);
+      line-height: 1.2;
+    }
+
+    .user-meta-sub {
+      font-size: 11px;
+      color: var(--tw-text-secondary);
+    }
+
+    /* Mobile Navbar Hamburger & Offcanvas Drawer */
+    .nav-toggle-btn {
+      color: var(--tw-dark);
+      background: var(--tw-surface-muted);
+      font-size: 15px;
+    }
+
+    .twisty-offcanvas {
+      background-color: var(--tw-surface-card);
+      border-top-left-radius: 24px;
+      border-bottom-left-radius: 24px;
+      border: none;
+      box-shadow: -10px 0 40px rgba(18, 23, 33, 0.15);
+      width: 320px !important;
+      max-width: 86vw;
+    }
+
+    .twisty-offcanvas .offcanvas-header {
+      padding: 20px 22px 16px;
+      border-bottom: 1px solid var(--tw-border-subtle);
+    }
+
+    .twisty-offcanvas .offcanvas-body {
+      padding: 20px 22px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .mobile-nav-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .mobile-nav-link {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 16px;
+      border-radius: var(--tw-radius-md);
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--tw-text-secondary);
+      text-decoration: none;
+      transition: all 0.18s ease;
+    }
+
+    .mobile-nav-link i {
+      font-size: 16px;
+      width: 22px;
+      text-align: center;
+    }
+
+    .mobile-nav-link:hover,
+    .mobile-nav-link:focus {
+      background-color: var(--tw-surface-muted);
+      color: var(--tw-text-primary);
+    }
+
+    .mobile-nav-link.active {
+      background-color: var(--tw-surface-pill);
+      color: var(--tw-dark);
+      font-weight: 700;
+      border-left: 3px solid var(--tw-coral);
+    }
+
+    .mobile-quick-card {
+      background: var(--tw-surface-muted);
+      border-radius: var(--tw-radius-md);
+      padding: 14px;
+      border: 1px solid var(--tw-border-subtle);
+    }
+
+    /* Small Screen Tweaks */
+    @media (max-width: 576px) {
+      .brand-title span.badge-role {
+        display: none;
+      }
+      .brand-mark {
+        width: 34px;
+        height: 34px;
+        font-size: 16px;
+      }
+      .brand-title {
+        font-size: 15px;
+      }
+      .round-icon-btn {
+        width: 35px;
+        height: 35px;
+      }
+      .avatar-wrapper {
+        width: 28px;
+        height: 28px;
+        font-size: 11px;
+      }
+      .user-profile-badge {
+        padding: 3px;
+        gap: 0;
+      }
+      .user-profile-badge i.fa-angle-down {
+        display: none;
+      }
+    }
+
+    /* ==========================================================================
+       WELCOME BANNER & DASHBOARD ACTION BAR
+       ========================================================================== */
+    .dashboard-header-bar {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .welcome-text-group h1 {
+      font-size: 26px;
+      font-weight: 700;
+      color: var(--tw-text-primary);
+      margin: 0 0 4px 0;
+      letter-spacing: -0.5px;
+    }
+
+    @media (max-width: 576px) {
+      .welcome-text-group h1 {
+        font-size: 21px;
+      }
+    }
+
+    .welcome-text-group p {
+      font-size: 14px;
+      color: var(--tw-text-secondary);
+      margin: 0;
+    }
+
+    .header-controls-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    /* Filter Pill Dropdowns */
+    .twisty-pill-select {
+      background: var(--tw-surface-card);
+      border: 1px solid var(--tw-border-light);
+      border-radius: var(--tw-radius-full);
+      padding: 8px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--tw-text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      box-shadow: var(--tw-shadow-flat);
+      transition: all 0.18s ease;
+      white-space: nowrap;
+    }
+
+    .twisty-pill-select:hover {
+      background: #FFFFFF;
+      color: var(--tw-text-primary);
+      border-color: var(--tw-border-light);
+    }
+
+    .twisty-pill-select i {
+      font-size: 11px;
+      color: var(--tw-text-muted);
+    }
+
+    /* Primary CTA Button */
+    .btn-create-quiz {
+      background: linear-gradient(135deg, var(--edu-navy) 0%, var(--edu-blue) 100%);
+      color: #FFFFFF;
+      border: none;
+      border-radius: var(--tw-radius-full);
+      padding: 10px 22px;
+      font-size: 14px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 8px 20px -3px rgba(41, 54, 129, 0.35);
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      white-space: nowrap;
+    }
+
+    .btn-create-quiz:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 24px -4px rgba(41, 54, 129, 0.45);
+      color: #FFFFFF;
+    }
+
+    .btn-create-quiz i {
+      font-size: 13px;
+    }
+
+    /* ==========================================================================
+       SUMMARY STAT CARDS (TWISTY HIGH-RADIUS CARDS)
+       ========================================================================== */
+    .stats-grid-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 18px;
+      margin-bottom: 28px;
+    }
+
+    @media (max-width: 1100px) {
+      .stats-grid-row {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 576px) {
+      .stats-grid-row {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .stat-card-twisty {
+      background: var(--tw-surface-card);
+      border-radius: var(--tw-radius-card);
+      padding: 20px 22px;
+      box-shadow: var(--tw-shadow-card);
+      border: 1px solid rgba(226, 230, 235, 0.6);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .stat-card-twisty:hover {
+      transform: translateY(-3px);
+      box-shadow: var(--tw-shadow-floating);
+    }
+
+    .stat-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .stat-icon-badge {
+      width: 40px;
+      height: 40px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+    }
+
+    .stat-icon-badge.coral {
+      background: var(--tw-coral-light);
+      color: var(--tw-coral);
+    }
+
+    .stat-icon-badge.blue {
+      background: var(--tw-blue-light);
+      color: var(--tw-blue-accent);
+    }
+
+    .stat-icon-badge.mint {
+      background: var(--edu-mint-light);
+      color: var(--edu-navy);
+    }
+
+    .stat-icon-badge.dark {
+      background: #EAECEF;
+      color: var(--tw-dark);
+    }
+
+    .stat-tag-pill {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: var(--tw-radius-full);
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .tag-live {
+      background: var(--tw-coral-light);
+      color: var(--tw-coral);
+    }
+
+    .tag-positive {
+      background: #ECFDF5;
+      color: #059669;
+    }
+
+    .tag-review {
+      background: #FEF3C7;
+      color: #D97706;
+    }
+
+    .tag-neutral {
+      background: var(--tw-surface-pill);
+      color: var(--tw-text-secondary);
+    }
+
+    .pulse-dot {
+      width: 6px;
+      height: 6px;
+      background: var(--tw-coral);
+      border-radius: 50%;
+      animation: pulseAnim 1.4s infinite;
+    }
+
+    @keyframes pulseAnim {
+      0% { transform: scale(0.9); opacity: 0.8; }
+      50% { transform: scale(1.4); opacity: 1; }
+      100% { transform: scale(0.9); opacity: 0.8; }
+    }
+
+    .stat-metric-large {
+      font-size: 28px;
+      font-weight: 800;
+      color: var(--tw-text-primary);
+      letter-spacing: -0.6px;
+      line-height: 1.1;
+      margin-bottom: 4px;
+    }
+
+    .stat-label-sub {
+      font-size: 13px;
+      color: var(--tw-text-secondary);
+      font-weight: 500;
+      margin: 0;
+    }
+
+    .stat-micro-footer {
+      margin-top: 10px;
+      font-size: 11px;
+      color: var(--tw-text-muted);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* ==========================================================================
+       MAIN ASYMMETRIC 2-COLUMN DASHBOARD GRID (TWISTY LAYOUT)
+       ========================================================================== */
+    .dashboard-main-grid {
+      display: grid;
+      grid-template-columns: 55% 45%;
+      gap: 24px;
+      align-items: start;
+    }
+
+    @media (max-width: 1024px) {
+      .dashboard-main-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Primary Cards General Styling */
+    .twisty-card {
+      background: var(--tw-surface-card);
+      border-radius: var(--tw-radius-card);
+      padding: 24px;
+      box-shadow: var(--tw-shadow-card);
+      border: 1px solid rgba(226, 230, 235, 0.6);
+      margin-bottom: 24px;
+      position: relative;
+    }
+
+    @media (max-width: 576px) {
+      .twisty-card {
+        padding: 18px;
+      }
+    }
+
+    .twisty-card.prominent {
+      box-shadow: var(--tw-shadow-floating);
+    }
+
+    .card-header-flex {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .card-title-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .card-title-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 10px;
+      background: var(--tw-surface-muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--edu-navy);
+      font-size: 14px;
+    }
+
+    .card-title-text {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--tw-text-primary);
+      margin: 0;
+      letter-spacing: -0.3px;
+    }
+
+    /* ==========================================================================
+       FEATURE 1: ACTIVE QUIZZES LIVE MONITOR
+       ========================================================================== */
+    .active-quiz-banner-card {
+      background: linear-gradient(135deg, #FFFFFF 0%, var(--edu-mint-light) 100%);
+      border: 1.5px solid rgba(149, 204, 221, 0.4);
+      border-radius: var(--tw-radius-lg);
+      padding: 20px;
+      margin-bottom: 16px;
+      position: relative;
+      transition: all 0.2s ease;
+    }
+
+    .active-quiz-banner-card:hover {
+      border-color: var(--edu-blue);
+      box-shadow: var(--tw-shadow-floating);
+    }
+
+    .active-quiz-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 12px;
+      gap: 10px;
+    }
+
+    .course-badge-pill {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: var(--tw-radius-full);
+      background: var(--edu-mint);
+      color: var(--edu-navy);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      display: inline-block;
+      margin-bottom: 6px;
+    }
+
+    .active-quiz-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--tw-text-primary);
+      margin: 0;
+    }
+
+    .live-timer-capsule {
+      background: var(--tw-dark);
+      color: #FFFFFF;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 5px 12px;
+      border-radius: var(--tw-radius-full);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 4px 10px rgba(18, 23, 33, 0.2);
+      white-space: nowrap;
+    }
+
+    .active-progress-section {
+      margin: 16px 0;
+    }
+
+    .progress-labels-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 6px;
+      color: var(--tw-text-secondary);
+    }
+
+    .progress-labels-row span.highlight {
+      color: var(--edu-navy);
+      font-weight: 700;
+    }
+
+    .twisty-progress-track {
+      width: 100%;
+      height: 8px;
+      background: #E2E8F0;
+      border-radius: var(--tw-radius-full);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .twisty-progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, var(--edu-blue) 0%, var(--edu-navy) 100%);
+      border-radius: var(--tw-radius-full);
+      transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .active-actions-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-top: 10px;
+      border-top: 1px dashed var(--tw-border-light);
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .student-avatars-preview {
+      display: flex;
+      align-items: center;
+    }
+
+    .student-avatars-preview .avatar-tiny {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      border: 2px solid #FFFFFF;
+      margin-left: -8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 700;
+      color: #FFFFFF;
+      background: var(--tw-blue-accent);
+    }
+
+    .student-avatars-preview .avatar-tiny:first-child {
+      margin-left: 0;
+      background: var(--edu-navy);
+    }
+
+    .student-avatars-preview .avatar-tiny.extra {
+      background: var(--tw-dark);
+      font-size: 9px;
+    }
+
+    .btn-live-monitor {
+      background: #FFFFFF;
+      border: 1px solid var(--tw-border-light);
+      border-radius: var(--tw-radius-full);
+      padding: 6px 14px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--tw-text-primary);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      transition: all 0.18s ease;
+    }
+
+    .btn-live-monitor:hover {
+      background: var(--tw-dark);
+      color: #FFFFFF;
+      border-color: var(--tw-dark);
+    }
+
+    .mini-quiz-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      background: var(--tw-surface-muted);
+      border-radius: var(--tw-radius-lg);
+      margin-top: 12px;
+      border: 1px solid var(--tw-border-subtle);
+      gap: 12px;
+    }
+
+    .mini-quiz-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .mini-quiz-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 10px;
+      background: var(--tw-surface-pill);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      color: var(--tw-text-secondary);
+      flex-shrink: 0;
+    }
+
+    .mini-quiz-details h4 {
+      font-size: 13px;
+      font-weight: 700;
+      margin: 0;
+      color: var(--tw-text-primary);
+    }
+
+    .mini-quiz-details span {
+      font-size: 11px;
+      color: var(--tw-text-secondary);
+    }
+
+    /* ==========================================================================
+       FEATURE 2: PIN-CHART TRACKER
+       ========================================================================== */
+    .chart-metric-display-bar {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .big-metric-text {
+      font-size: 32px;
+      font-weight: 800;
+      color: var(--tw-text-primary);
+      letter-spacing: -0.8px;
+    }
+
+    .big-metric-text span.badge-growth {
+      font-size: 13px;
+      font-weight: 700;
+      color: #059669;
+      background: #D1FAE5;
+      padding: 3px 8px;
+      border-radius: var(--tw-radius-full);
+      vertical-align: middle;
+      margin-left: 8px;
+    }
+
+    .chart-stage-area {
+      position: relative;
+      padding: 40px 10px 10px 10px;
+      height: 220px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--tw-border-light);
+    }
+
+    .chart-active-tooltip {
+      position: absolute;
+      top: 0px;
+      background: var(--tw-dark);
+      color: #FFFFFF;
+      padding: 6px 12px;
+      border-radius: var(--tw-radius-full);
+      font-size: 12px;
+      font-weight: 700;
+      box-shadow: var(--tw-shadow-tooltip);
+      pointer-events: none;
+      transform: translateX(-50%);
+      transition: left 0.3s cubic-bezier(0.16, 1, 0.3, 1), top 0.2s ease;
+      white-space: nowrap;
+      z-index: 10;
+    }
+
+    .chart-active-tooltip::after {
+      content: '';
+      position: absolute;
+      bottom: -4px;
+      left: 50%;
+      transform: translateX(-50%);
+      border-width: 5px 5px 0 5px;
+      border-style: solid;
+      border-color: var(--tw-dark) transparent transparent transparent;
+    }
+
+    .chart-pin-column {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+      cursor: pointer;
+      padding-bottom: 8px;
+    }
+
+    .pin-capsule-bg {
+      position: absolute;
+      bottom: 0;
+      width: 44px;
+      height: 100%;
+      border-radius: 22px;
+      background: transparent;
+      transition: background 0.2s ease;
+      z-index: 1;
+    }
+
+    .chart-pin-column:hover .pin-capsule-bg,
+    .chart-pin-column.active .pin-capsule-bg {
+      background: var(--tw-surface-muted);
+    }
+
+    .pin-stem-line {
+      width: 2px;
+      background: var(--tw-border-light);
+      border-radius: 2px;
+      position: relative;
+      z-index: 2;
+      transition: height 0.4s ease, background 0.2s ease;
+    }
+
+    .pin-dot-head {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--edu-blue);
+      border: 3px solid #FFFFFF;
+      box-shadow: 0 2px 6px rgba(66, 116, 217, 0.3);
+      position: absolute;
+      top: -6px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 3;
+      transition: all 0.2s ease;
+    }
+
+    .chart-pin-column.active .pin-dot-head {
+      background: var(--tw-coral);
+      transform: translateX(-50%) scale(1.3);
+      box-shadow: 0 2px 8px rgba(226, 74, 33, 0.5);
+    }
+
+    .chart-pin-column.active .pin-stem-line {
+      background: var(--tw-coral);
+    }
+
+    .frequency-subticks {
+      display: flex;
+      gap: 2px;
+      margin-top: 4px;
+      z-index: 2;
+    }
+
+    .subtick {
+      width: 2px;
+      height: 8px;
+      background: #CBD5E1;
+      border-radius: 1px;
+    }
+
+    .chart-pin-column.active .subtick {
+      background: var(--tw-dark);
+      height: 12px;
+    }
+
+    .chart-days-row {
+      display: flex;
+      justify-content: space-between;
+      padding-top: 12px;
+    }
+
+    .day-pill-btn {
+      flex: 1;
+      text-align: center;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--tw-text-secondary);
+      padding: 6px 0;
+      border-radius: var(--tw-radius-full);
+      cursor: pointer;
+      transition: all 0.18s ease;
+      background: transparent;
+      border: none;
+    }
+
+    .day-pill-btn:hover {
+      color: var(--tw-text-primary);
+      background: var(--tw-surface-pill);
+    }
+
+    .day-pill-btn.active {
+      background: var(--tw-dark);
+      color: #FFFFFF;
+      box-shadow: 0 3px 8px rgba(18, 23, 33, 0.25);
+    }
+
+    /* ==========================================================================
+       FEATURE 3: RECENT QUIZZES ACCORDION
+       ========================================================================== */
+    .tab-pills-row {
+      display: flex;
+      gap: 6px;
+      background: var(--tw-surface-muted);
+      padding: 4px;
+      border-radius: var(--tw-radius-full);
+      border: 1px solid var(--tw-border-subtle);
+      overflow-x: auto;
+    }
+
+    .tab-pill-action {
+      border: none;
+      background: transparent;
+      padding: 6px 14px;
+      border-radius: var(--tw-radius-full);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--tw-text-secondary);
+      cursor: pointer;
+      transition: all 0.18s ease;
+      white-space: nowrap;
+    }
+
+    .tab-pill-action.active {
+      background: #FFFFFF;
+      color: var(--tw-text-primary);
+      box-shadow: var(--tw-shadow-flat);
+      font-weight: 700;
+    }
+
+    .recent-quizzes-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .quiz-accordion-item {
+      background: var(--tw-surface-muted);
+      border: 1px solid var(--tw-border-subtle);
+      border-radius: var(--tw-radius-lg);
+      overflow: hidden;
+      transition: all 0.2s ease;
+    }
+
+    .quiz-accordion-item:hover {
+      background: #FFFFFF;
+      border-color: var(--tw-border-light);
+      box-shadow: var(--tw-shadow-card);
+    }
+
+    .quiz-accordion-item.expanded {
+      background: #FFFFFF;
+      border-color: var(--edu-blue);
+      box-shadow: var(--tw-shadow-floating);
+    }
+
+    .quiz-row-header {
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      user-select: none;
+      gap: 10px;
+    }
+
+    .quiz-identity-cell {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .quiz-type-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+
+    .quiz-type-icon.bio {
+      background: var(--edu-mint-light);
+      color: var(--edu-navy);
+    }
+
+    .quiz-type-icon.chem {
+      background: var(--tw-coral-light);
+      color: var(--tw-coral);
+    }
+
+    .quiz-type-icon.neuro {
+      background: var(--tw-blue-light);
+      color: var(--edu-blue);
+    }
+
+    .quiz-info-text h3 {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--tw-text-primary);
+      margin: 0 0 3px 0;
+    }
+
+    .quiz-meta-subline {
+      font-size: 12px;
+      color: var(--tw-text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .quiz-row-badges {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .status-badge-pill {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: var(--tw-radius-full);
+      text-transform: capitalize;
+      white-space: nowrap;
+    }
+
+    .badge-completed {
+      background: var(--tw-dark);
+      color: #FFFFFF;
+    }
+
+    .badge-grading {
+      background: var(--tw-coral-light);
+      color: var(--tw-coral);
+    }
+
+    .chevron-round-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--tw-surface-pill);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      color: var(--tw-text-secondary);
+      transition: transform 0.25s ease, background 0.2s ease;
+    }
+
+    .quiz-accordion-item.expanded .chevron-round-btn {
+      transform: rotate(180deg);
+      background: var(--tw-dark);
+      color: #FFFFFF;
+    }
+
+    .quiz-expanded-content {
+      padding: 0 18px 18px 18px;
+      display: none;
+      border-top: 1px solid var(--tw-border-subtle);
+      margin-top: 6px;
+      padding-top: 16px;
+    }
+
+    .expanded-tags-cluster {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+
+    .pill-detail-tag {
+      font-size: 11px;
+      font-weight: 600;
+      background: var(--tw-surface-pill);
+      color: var(--tw-text-primary);
+      padding: 3px 10px;
+      border-radius: var(--tw-radius-full);
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .quiz-description-excerpt {
+      font-size: 13px;
+      color: var(--tw-text-secondary);
+      line-height: 1.5;
+      margin-bottom: 14px;
+    }
+
+    .stats-breakdown-mini-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      background: var(--tw-surface-muted);
+      padding: 12px;
+      border-radius: var(--tw-radius-md);
+      margin-bottom: 14px;
+    }
+
+    .breakdown-box {
+      text-align: center;
+    }
+
+    .breakdown-box .val {
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--tw-text-primary);
+    }
+
+    .breakdown-box .lbl {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--tw-text-muted);
+      text-transform: uppercase;
+    }
+
+    .detail-actions-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .btn-action-pill {
+      font-size: 12px;
+      font-weight: 600;
+      padding: 6px 14px;
+      border-radius: var(--tw-radius-full);
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid var(--tw-border-light);
+      background: #FFFFFF;
+      color: var(--tw-text-primary);
+      cursor: pointer;
+      transition: all 0.18s ease;
+      white-space: nowrap;
+    }
+
+    .btn-action-pill:hover {
+      background: var(--tw-surface-muted);
+      border-color: var(--tw-dark);
+    }
+
+    .btn-action-pill.primary {
+      background: var(--edu-blue);
+      color: #FFFFFF;
+      border-color: var(--edu-blue);
+    }
+
+    .btn-action-pill.primary:hover {
+      background: var(--edu-navy);
+      border-color: var(--edu-navy);
+    }
+
+    /* ==========================================================================
+       FEATURE 4: AI QUESTION BANK
+       ========================================================================== */
+    .ai-assistant-card {
+      background: linear-gradient(135deg, #121721 0%, #293681 100%);
+      border-radius: var(--tw-radius-card);
+      padding: 24px;
+      color: #FFFFFF;
+      position: relative;
+      overflow: hidden;
+      box-shadow: var(--tw-shadow-floating);
+    }
+
+    .ai-assistant-card::before {
+      content: '';
+      position: absolute;
+      top: -50px;
+      right: -50px;
+      width: 160px;
+      height: 160px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(149, 204, 221, 0.3) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .ai-card-content {
+      position: relative;
+      z-index: 2;
+    }
+
+    .ai-sparkle-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      padding: 4px 12px;
+      border-radius: var(--tw-radius-full);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+      color: var(--edu-mint);
+    }
+
+    .ai-assistant-card h2 {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .ai-assistant-card p {
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.8);
+      margin-bottom: 16px;
+      line-height: 1.5;
+    }
+
+    .ai-quick-input-box {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: var(--tw-radius-lg);
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .ai-quick-input-box input {
+      background: transparent;
+      border: none;
+      outline: none;
+      color: #FFFFFF;
+      font-size: 13px;
+      width: 100%;
+    }
+
+    .ai-quick-input-box input::placeholder {
+      color: rgba(255, 255, 255, 0.45);
+    }
+
+    .btn-ai-generate {
+      background: #FFFFFF;
+      color: var(--tw-dark);
+      border: none;
+      border-radius: var(--tw-radius-full);
+      padding: 9px 20px;
+      font-size: 13px;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+      white-space: nowrap;
+    }
+
+    .btn-ai-generate:hover {
+      background: var(--edu-mint);
+      transform: translateY(-2px);
+    }
+
+    /* ==========================================================================
+       FEATURE 5: STUDENT FEED
+       ========================================================================== */
+    .student-activity-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      background: var(--tw-surface-muted);
+      border-radius: var(--tw-radius-lg);
+      margin-bottom: 8px;
+      transition: background 0.18s ease;
+      gap: 10px;
+    }
+
+    .student-activity-row:hover {
+      background: #FFFFFF;
+      box-shadow: var(--tw-shadow-flat);
+    }
+
+    .student-info-mini {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .student-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 700;
+      color: #FFFFFF;
+      flex-shrink: 0;
+    }
+
+    .student-name-box h5 {
+      font-size: 13px;
+      font-weight: 700;
+      margin: 0;
+      color: var(--tw-text-primary);
+    }
+
+    .student-name-box span {
+      font-size: 11px;
+      color: var(--tw-text-secondary);
+    }
+
+    .score-pill-tag {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: var(--tw-radius-full);
+      white-space: nowrap;
+    }
+
+    .score-pill-tag.high {
+      background: #D1FAE5;
+      color: #065F46;
+    }
+
+    .score-pill-tag.flagged {
+      background: var(--tw-coral-light);
+      color: var(--tw-coral);
+    }
+
+    /* Modals & Dialogs */
+    .custom-twisty-modal .modal-content {
+      border-radius: var(--tw-radius-container);
+      border: 1px solid var(--tw-border-light);
+      box-shadow: 0 25px 60px -15px rgba(18, 23, 33, 0.25);
+      padding: 10px;
+      background: #FFFFFF;
+    }
+
+    .custom-twisty-modal .modal-header {
+      border-bottom: 1px solid var(--tw-border-subtle);
+      padding: 18px 24px;
+    }
+
+    .custom-twisty-modal .modal-title {
+      font-weight: 700;
+      font-size: 20px;
+      color: var(--tw-text-primary);
+    }
+
+    .custom-twisty-modal .modal-body {
+      padding: 24px;
+    }
+
+    .form-group-twisty {
+      margin-bottom: 18px;
+    }
+
+    .form-group-twisty label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--tw-text-primary);
+      margin-bottom: 6px;
+      display: block;
+    }
+
+    .twisty-form-input,
+    .twisty-form-select {
+      width: 100%;
+      height: 44px;
+      background: var(--tw-surface-muted);
+      border: 1px solid var(--tw-border-light);
+      border-radius: var(--tw-radius-md);
+      padding: 0 14px;
+      font-size: 13px;
+      color: var(--tw-text-primary);
+      outline: none;
+      transition: all 0.2s ease;
+    }
+
+    .twisty-form-input:focus,
+    .twisty-form-select:focus {
+      background: #FFFFFF;
+      border-color: var(--edu-blue);
+      box-shadow: var(--tw-shadow-glow);
+    }
+
+    .question-type-pills {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .q-type-btn {
+      border: 1px solid var(--tw-border-light);
+      background: var(--tw-surface-muted);
+      border-radius: var(--tw-radius-full);
+      padding: 6px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--tw-text-secondary);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .q-type-btn.active {
+      background: var(--tw-dark);
+      color: #FFFFFF;
+      border-color: var(--tw-dark);
+    }
+
+    /* Toast Notification */
+    .toast-twisty-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 1090;
+      max-width: 90vw;
+    }
+
+    .toast-twisty {
+      background: var(--tw-dark);
+      color: #FFFFFF;
+      padding: 14px 20px;
+      border-radius: var(--tw-radius-full);
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 13px;
+      font-weight: 600;
+      animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(40px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ========================================================================
+       APPLICATION VIEWPORT SHELL
+       ======================================================================== -->
+  <div class="app-viewport-shell">
+
+    <!-- 1. TOP RESPONSIVE HORIZONTAL NAVIGATION -->
+    <header class="twisty-nav-container">
+      <!-- Brand Identity -->
+      <a href="#" class="twisty-brand" title="Twisty Quiz Management">
+        <div class="brand-mark">
+          Q
+        </div>
+        <div class="brand-title">
+          TWISTY <span style="font-weight: 400; color: var(--tw-text-secondary);">QUIZ</span>
+          <span class="badge-role">Instructor</span>
+        </div>
+      </a>
+
+      <!-- Horizontal Navigation Links (Desktop: lg+) -->
+      <nav class="d-none d-lg-block">
+        <ul class="nav-links-wrapper">
+          <li><a href="#dashboard" class="nav-item-link active" data-page="dashboard"><i class="fa-solid fa-chart-pie me-1"></i> Dashboard</a></li>
+          <li><a href="#quizzes" class="nav-item-link mock-nav" data-page="quizzes"><i class="fa-solid fa-list-check me-1"></i> Quizzes</a></li>
+          <li><a href="#questions" class="nav-item-link mock-nav" data-page="questions"><i class="fa-solid fa-database me-1"></i> Question Bank</a></li>
+          <li><a href="#students" class="nav-item-link mock-nav" data-page="students"><i class="fa-solid fa-user-graduate me-1"></i> Students</a></li>
+          <li><a href="#grading" class="nav-item-link mock-nav" data-page="grading"><i class="fa-solid fa-marker me-1"></i> Results & Grading</a></li>
+          <li><a href="#settings" class="nav-item-link mock-nav" data-page="settings"><i class="fa-solid fa-sliders me-1"></i> Settings</a></li>
+        </ul>
+      </nav>
+
+      <!-- Right Action Tools -->
+      <div class="nav-actions-group">
+        <!-- Desktop Search Input (md+) -->
+        <div class="nav-search-bar d-none d-md-block">
+          <input type="text" id="globalQuizSearch" placeholder="Search quizzes, students...">
+          <i class="fa-solid fa-magnifying-glass search-icon"></i>
+        </div>
+
+        <!-- Notification Bell -->
+        <button class="round-icon-btn" id="notifBtn" title="Alerts & Submissions">
+          <i class="fa-regular fa-bell"></i>
+          <span class="notification-dot"></span>
+        </button>
+
+        <!-- Course Switcher Pill (Desktop: xl+) -->
+        <div class="twisty-pill-select d-none d-xl-flex" id="courseTermDropdown">
+          <i class="fa-solid fa-graduation-cap text-primary"></i>
+          <span>Spring 2025 • Term 2</span>
+          <i class="fa-solid fa-chevron-down ms-1"></i>
+        </div>
+
+        <!-- User Profile Pill -->
+        <div class="user-profile-badge" id="userProfileBtn">
+          <div class="avatar-wrapper">
+            <span>DR</span>
+          </div>
+          <div class="d-none d-sm-block text-start">
+            <div class="user-meta-name">Dr. Vance</div>
+            <div class="user-meta-sub">Biology & Genetics</div>
+          </div>
+          <i class="fa-solid fa-angle-down text-muted ms-1" style="font-size: 11px;"></i>
+        </div>
+
+        <!-- Mobile/Tablet Hamburger Toggle Button (< lg) -->
+        <button class="round-icon-btn nav-toggle-btn d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#twistyMobileNav" aria-controls="twistyMobileNav" aria-label="Open Navigation Menu">
+          <i class="fa-solid fa-bars"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- RESPONSIVE MOBILE OFFCANVAS DRAWER -->
+    <div class="offcanvas offcanvas-end twisty-offcanvas" tabindex="-1" id="twistyMobileNav" aria-labelledby="twistyMobileNavLabel">
+      <div class="offcanvas-header">
+        <div class="d-flex align-items-center gap-2">
+          <div class="brand-mark" style="width: 32px; height: 32px; font-size: 15px;">Q</div>
+          <span class="brand-title" id="twistyMobileNavLabel">TWISTY <span style="font-weight: 400; color: var(--tw-text-secondary);">QUIZ</span></span>
+        </div>
+        <button type="button" class="btn-close text-reset shadow-none" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+      </div>
+      
+      <div class="offcanvas-body">
+        <div>
+          <!-- Mobile In-Drawer Search Bar -->
+          <div class="nav-search-bar w-100 mb-3">
+            <input type="text" id="mobileGlobalQuizSearch" placeholder="Search quizzes, students...">
+            <i class="fa-solid fa-magnifying-glass search-icon"></i>
+          </div>
+
+          <!-- Mobile Navigation Links -->
+          <ul class="mobile-nav-list mb-4">
+            <li>
+              <a href="#dashboard" class="mobile-nav-link active" data-page="dashboard">
+                <i class="fa-solid fa-chart-pie text-primary"></i> Dashboard
+              </a>
+            </li>
+            <li>
+              <a href="#quizzes" class="mobile-nav-link mock-nav" data-page="quizzes">
+                <i class="fa-solid fa-list-check"></i> Quizzes
+              </a>
+            </li>
+            <li>
+              <a href="#questions" class="mobile-nav-link mock-nav" data-page="questions">
+                <i class="fa-solid fa-database"></i> Question Bank
+              </a>
+            </li>
+            <li>
+              <a href="#students" class="mobile-nav-link mock-nav" data-page="students">
+                <i class="fa-solid fa-user-graduate"></i> Students
+              </a>
+            </li>
+            <li>
+              <a href="#grading" class="mobile-nav-link mock-nav" data-page="grading">
+                <i class="fa-solid fa-marker"></i> Results & Grading
+              </a>
+            </li>
+            <li>
+              <a href="#settings" class="mobile-nav-link mock-nav" data-page="settings">
+                <i class="fa-solid fa-sliders"></i> Settings
+              </a>
+            </li>
+          </ul>
+
+          <!-- Active Term Capsule -->
+          <div class="mobile-quick-card mb-3">
+            <div class="text-secondary mb-1" style="font-size: 11px; font-weight: 700; text-transform: uppercase;">Current Academic Term</div>
+            <div class="d-flex align-items-center justify-content-between">
+              <span style="font-size: 13px; font-weight: 600;"><i class="fa-solid fa-graduation-cap text-primary me-2"></i>Spring 2025 • Term 2</span>
+              <button class="btn btn-sm btn-light rounded-pill py-0 px-2" style="font-size: 11px;" onclick="showToast('Academic term filter changed')">Change</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mobile Drawer Footer (Profile Info & Logout) -->
+        <div class="pt-3 border-top">
+          <div class="d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center gap-2">
+              <div class="avatar-wrapper" style="width: 36px; height: 36px;">
+                <span>DR</span>
+              </div>
+              <div>
+                <div class="user-meta-name">Dr. Vance</div>
+                <div class="user-meta-sub">Biology & Genetics</div>
+              </div>
+            </div>
+            <button class="round-icon-btn" title="Sign Out" onclick="showToast('Signed out of session')">
+              <i class="fa-solid fa-arrow-right-from-bracket"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. WELCOME HEADER & DASHBOARD TOOLBAR -->
+    <section class="dashboard-header-bar">
+      <div class="welcome-text-group">
+        <h1>Welcome back, Dr. Vance 👋</h1>
+        <p>You have <strong>3 quizzes live</strong> right now with 142 students currently actively testing.</p>
+      </div>
+
+      <div class="header-controls-group">
+        <!-- Date Scope Selector -->
+        <div class="twisty-pill-select" id="dateRangeSelect">
+          <i class="fa-regular fa-calendar"></i>
+          <span id="currentRangeLabel">This Week (Oct 21 – 27)</span>
+          <i class="fa-solid fa-chevron-down"></i>
+        </div>
+
+        <!-- Course Scope Selector -->
+        <div class="twisty-pill-select" id="courseFilterBtn">
+          <i class="fa-solid fa-layer-group"></i>
+          <span>All Classes (4)</span>
+          <i class="fa-solid fa-chevron-down"></i>
+        </div>
+
+        <!-- Primary CTA: Create Quiz Button -->
+        <button class="btn-create-quiz" id="openCreateQuizModalBtn">
+          <i class="fa-solid fa-plus"></i>
+          <span>Create New Quiz</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- 3. SUMMARY STATISTIC CARDS (4 TILES) -->
+    <section class="stats-grid-row">
+      <!-- Stat 1: Active Live Quizzes -->
+      <div class="stat-card-twisty">
+        <div class="stat-header">
+          <div class="stat-icon-badge coral">
+            <i class="fa-solid fa-bolt-lightning"></i>
+          </div>
+          <span class="stat-tag-pill tag-live">
+            <span class="pulse-dot"></span> Live Now
+          </span>
+        </div>
+        <div class="stat-metric-large" id="statActiveCount">3 Quizzes</div>
+        <div class="stat-label-sub">Active Running Tests</div>
+        <div class="stat-micro-footer">
+          <i class="fa-solid fa-user-check text-muted"></i> 142 submissions underway
+        </div>
+      </div>
+
+      <!-- Stat 2: Average Pass Rate -->
+      <div class="stat-card-twisty">
+        <div class="stat-header">
+          <div class="stat-icon-badge blue">
+            <i class="fa-solid fa-chart-line"></i>
+          </div>
+          <span class="stat-tag-pill tag-positive">
+            <i class="fa-solid fa-arrow-trend-up"></i> +5.4%
+          </span>
+        </div>
+        <div class="stat-metric-large">86.2%</div>
+        <div class="stat-label-sub">Average Pass Rate</div>
+        <div class="stat-micro-footer">
+          <i class="fa-regular fa-circle-check text-success"></i> +2.1% higher than midterm avg
+        </div>
+      </div>
+
+      <!-- Stat 3: Submissions Needing Grading -->
+      <div class="stat-card-twisty">
+        <div class="stat-header">
+          <div class="stat-icon-badge mint">
+            <i class="fa-solid fa-clipboard-check"></i>
+          </div>
+          <span class="stat-tag-pill tag-review">
+            18 Pending
+          </span>
+        </div>
+        <div class="stat-metric-large" id="statPendingGrading">18</div>
+        <div class="stat-label-sub">Short Essays to Grade</div>
+        <div class="stat-micro-footer">
+          <i class="fa-regular fa-clock text-warning"></i> 2 assignments due tonight
+        </div>
+      </div>
+
+      <!-- Stat 4: Question Bank Capacity -->
+      <div class="stat-card-twisty">
+        <div class="stat-header">
+          <div class="stat-icon-badge dark">
+            <i class="fa-solid fa-boxes-stacked"></i>
+          </div>
+          <span class="stat-tag-pill tag-neutral">
+            8 Topics
+          </span>
+        </div>
+        <div class="stat-metric-large">1,480</div>
+        <div class="stat-label-sub">Verified Questions</div>
+        <div class="stat-micro-footer">
+          <i class="fa-solid fa-wand-magic-sparkles text-info"></i> 45 created this week with AI
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. DASHBOARD MAIN 2-COLUMN ASYMMETRIC GRID -->
+    <div class="dashboard-main-grid">
+      
+      <!-- ==================== LEFT COLUMN (~55%) ==================== -->
+      <div class="grid-column-left">
+
+        <!-- CARD 1: ACTIVE LIVE QUIZZES & REAL-TIME MONITOR -->
+        <div class="twisty-card prominent">
+          <div class="card-header-flex">
+            <div class="card-title-group">
+              <div class="card-title-icon">
+                <i class="fa-solid fa-tower-broadcast"></i>
+              </div>
+              <div>
+                <h2 class="card-title-text">Live Classroom Monitor</h2>
+                <div class="text-secondary" style="font-size: 12px;">Real-time student progress & pacing</div>
+              </div>
+            </div>
+            <span class="stat-tag-pill tag-live">
+              <span class="pulse-dot"></span> 3 Synchronous Sessions
+            </span>
+          </div>
+
+          <!-- Highlight Active Quiz: Cellular Metabolism -->
+          <div class="active-quiz-banner-card" id="highlightedActiveQuiz">
+            <div class="active-quiz-top">
+              <div>
+                <span class="course-badge-pill">BIOLOGY 101 • SECTION A</span>
+                <h3 class="active-quiz-title">Quiz #4: Cellular Metabolism & ATP Synthesis</h3>
+                <div class="text-secondary mt-1" style="font-size: 12px;">
+                  <i class="fa-regular fa-clock me-1"></i> 45 mins &bull; 25 Questions &bull; Single-Attempt Locked
+                </div>
+              </div>
+              <div class="live-timer-capsule">
+                <i class="fa-solid fa-stopwatch text-warning"></i>
+                <span id="liveCountdown">28:44 Left</span>
+              </div>
+            </div>
+
+            <!-- Progress Meter -->
+            <div class="active-progress-section">
+              <div class="progress-labels-row">
+                <span>Completion Status: <span class="highlight" id="completedStudentCount">58</span> of 72 Students</span>
+                <span class="highlight" id="completedPercentage">80.5%</span>
+              </div>
+              <div class="twisty-progress-track">
+                <div class="twisty-progress-bar" id="liveProgressBar" style="width: 80.5%;"></div>
+              </div>
+            </div>
+
+            <!-- Interactive Sub-bar -->
+            <div class="active-actions-row">
+              <div class="student-avatars-preview">
+                <div class="avatar-tiny">AL</div>
+                <div class="avatar-tiny">MK</div>
+                <div class="avatar-tiny">JD</div>
+                <div class="avatar-tiny">TR</div>
+                <div class="avatar-tiny extra">+68</div>
+                <span class="ms-2 text-secondary" style="font-size: 12px; font-weight: 500;">In exam session</span>
+              </div>
+              <div class="d-flex gap-2">
+                <button class="btn-live-monitor" onclick="quickExtendTime()">
+                  <i class="fa-solid fa-plus text-primary"></i> +5 Mins
+                </button>
+                <button class="btn-live-monitor" id="openLiveMonitorBtn">
+                  <i class="fa-solid fa-desktop text-success"></i> Live Grid
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Mini Active Quiz 2: Genetics Checkpoint -->
+          <div class="mini-quiz-row">
+            <div class="mini-quiz-info">
+              <div class="mini-quiz-icon">
+                <i class="fa-solid fa-dna text-primary"></i>
+              </div>
+              <div class="mini-quiz-details">
+                <h4>Genetics 304: Mendelian Ratios & Inheritance</h4>
+                <span>Section B &bull; 42 Enrolled &bull; Ends in 1 hr 15 mins</span>
+              </div>
+            </div>
+            <button class="btn-live-monitor" onclick="showToast('Opened live status for Genetics 304')">
+              Monitor
+            </button>
+          </div>
+
+          <!-- Mini Active Quiz 3: Safety Prelim -->
+          <div class="mini-quiz-row">
+            <div class="mini-quiz-info">
+              <div class="mini-quiz-icon">
+                <i class="fa-solid fa-flask-vial text-warning"></i>
+              </div>
+              <div class="mini-quiz-details">
+                <h4>Lab Biosafety Protocol Validation</h4>
+                <span>Section D &bull; Self-Paced &bull; 28/30 Completed</span>
+              </div>
+            </div>
+            <span class="stat-tag-pill tag-positive">93% Done</span>
+          </div>
+        </div>
+
+        <!-- CARD 2: PIN-CHART TRACKER -->
+        <div class="twisty-card prominent">
+          <div class="card-header-flex">
+            <div class="card-title-group">
+              <div class="card-title-icon">
+                <i class="fa-solid fa-chart-column"></i>
+              </div>
+              <div>
+                <h2 class="card-title-text">Submissions & Mastery Velocity</h2>
+                <div class="text-secondary" style="font-size: 12px;">Weekly volume and average test accuracy score</div>
+              </div>
+            </div>
+            <div class="twisty-pill-select" id="chartFilterMetric">
+              <span>Submissions & Scores</span>
+              <i class="fa-solid fa-chevron-down ms-1"></i>
+            </div>
+          </div>
+
+          <!-- Big Metric & Stat -->
+          <div class="chart-metric-display-bar">
+            <div>
+              <div class="big-metric-text" id="chartHeadlineMetric">
+                482 <span style="font-size: 18px; font-weight: 600; color: var(--tw-text-secondary);">Submissions</span>
+                <span class="badge-growth">+18.4%</span>
+              </div>
+              <div class="text-secondary" style="font-size: 13px;" id="chartHeadlineSubtitle">
+                Average score achieved: <strong>86.4%</strong> across all departments.
+              </div>
+            </div>
+            <div class="d-none d-sm-flex align-items-center gap-3">
+              <div class="d-flex align-items-center gap-2">
+                <span style="width: 10px; height: 10px; border-radius: 50%; background: var(--edu-blue);"></span>
+                <span style="font-size: 12px; color: var(--tw-text-secondary); font-weight: 600;">Submissions</span>
+              </div>
+              <div class="d-flex align-items-center gap-2">
+                <span style="width: 10px; height: 10px; border-radius: 50%; background: var(--tw-coral);"></span>
+                <span style="font-size: 12px; color: var(--tw-text-secondary); font-weight: 600;">Active Day Peak</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Pin Chart Stage -->
+          <div class="chart-stage-area" id="chartStage">
+            <!-- Floating Tooltip -->
+            <div class="chart-active-tooltip" id="chartTooltip" style="left: 60%; top: 22px;">
+              Thu: 114 Tests &bull; 89% Avg
+            </div>
+
+            <!-- Monday -->
+            <div class="chart-pin-column" data-day="Mon" data-volume="54" data-score="82%" data-percent="45">
+              <div class="pin-capsule-bg"></div>
+              <div class="pin-stem-line" style="height: 70px;">
+                <div class="pin-dot-head"></div>
+              </div>
+              <div class="frequency-subticks">
+                <span class="subtick"></span>
+                <span class="subtick"></span>
+                <span class="subtick"></span>
+              </div>
+            </div>
+
+            <!-- Tuesday -->
+            <div class="chart-pin-column" data-day="Tue" data-volume="68" data-score="84%" data-percent="55">
+              <div class="pin-capsule-bg"></div>
+              <div class="pin-stem-line" style="height: 95px;">
+                <div class="pin-dot-head"></div>
+              </div>
+              <div class="frequency-subticks">
+                <span class="subtick"></span>
+                <span class="subtick"></span>
+                <span class="subtick"></span>
+                <span class="subtick"></span>
+              </div>
+            </div>
+
+            <!-- Wednesday -->
+            <div class="chart-pin-column" data-day="Wed" data-volume="82" data-score="85%" data-percent="65">
+              <div class="pin-capsule-bg"></div>
+              <div class="pin-stem-line" style="height: 120px;">
+                <div class="pin-dot-head"></div>
+              </div>
+              <div class="frequency-subticks">
+                <span class="subtick"></span>
+                <span class="subtick"></span>
+                <span class="subtick"></span>
+                <span class="subtick"></span>
+                <span class="subtick"></span>
+              </div>
+            </div>
+
+            <!-- Thursday (Default Active) -->
+            <div class="chart-pin-column active" data-day="Thu" data-volume="114" data-score="89%" data-percent="90">
+              <div class="pin-capsule-bg"></div>
+              <div class="pin-stem-line" style="height: 155px;">
+                <div class="pin-dot-head"></div>
+              </div>
+              <div class="frequency-subticks">
+                <span class="subtick"></span>
+                <span class="subtick"></span>
+                <span class="subtick"></span>
+                <span class="subtick"></span>
+                <span class="subtick"></span>
+                <span class="subtick"></span>
+              </div>
+            </div>
+
+            <!-- Friday -->
+            <div class="chart-pin-column" data-day="Fri" data-volume="96" data-score="87%" data-percent="75">
+              <div class="pin-capsule-bg"></div>
+              <div class="pin-stem-line" style="height: 135px;">
+                <div class="pin-dot-head"></div>
+              </div>
+              <div class="frequency-subticks">
+                <span class="subtick"></span>
+                <span class="subtick"></span>
+                <span class="subtick"></span>
+                <span class="subtick"></span>
+              </div>
+            </div>
+
+            <!-- Saturday -->
+            <div class="chart-pin-column" data-day="Sat" data-volume="38" data-score="91%" data-percent="30">
+              <div class="pin-capsule-bg"></div>
+              <div class="pin-stem-line" style="height: 55px;">
+                <div class="pin-dot-head"></div>
+              </div>
+              <div class="frequency-subticks">
+                <span class="subtick"></span>
+                <span class="subtick"></span>
+              </div>
+            </div>
+
+            <!-- Sunday -->
+            <div class="chart-pin-column" data-day="Sun" data-volume="30" data-score="88%" data-percent="25">
+              <div class="pin-capsule-bg"></div>
+              <div class="pin-stem-line" style="height: 45px;">
+                <div class="pin-dot-head"></div>
+              </div>
+              <div class="frequency-subticks">
+                <span class="subtick"></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Day Selector Pills -->
+          <div class="chart-days-row" id="chartDayButtons">
+            <button class="day-pill-btn" data-day="Mon">Mon</button>
+            <button class="day-pill-btn" data-day="Tue">Tue</button>
+            <button class="day-pill-btn" data-day="Wed">Wed</button>
+            <button class="day-pill-btn active" data-day="Thu">Thu</button>
+            <button class="day-pill-btn" data-day="Fri">Fri</button>
+            <button class="day-pill-btn" data-day="Sat">Sat</button>
+            <button class="day-pill-btn" data-day="Sun">Sun</button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ==================== RIGHT COLUMN (~45%) ==================== -->
+      <div class="grid-column-right">
+
+        <!-- CARD 3: RECENT QUIZZES ACCORDION LIST -->
+        <div class="twisty-card">
+          <div class="card-header-flex">
+            <div>
+              <h2 class="card-title-text">Recent Quizzes</h2>
+              <div class="text-secondary" style="font-size: 12px;">Review student responses, questions & performance</div>
+            </div>
+            
+            <!-- Filter Tabs -->
+            <div class="tab-pills-row" id="quizStatusTabs">
+              <button class="tab-pill-action active" data-filter="all">All (7)</button>
+              <button class="tab-pill-action" data-filter="grading">Needs Grading (2)</button>
+              <button class="tab-pill-action" data-filter="completed">Completed (5)</button>
+            </div>
+          </div>
+
+          <!-- Search filter for recent quizzes -->
+          <div class="mb-3">
+            <div class="nav-search-bar" style="width: 100%;">
+              <input type="text" id="recentQuizFilterInput" placeholder="Filter recent quizzes by title or subject...">
+              <i class="fa-solid fa-filter search-icon"></i>
+            </div>
+          </div>
+
+          <!-- Accordion List Container -->
+          <div class="recent-quizzes-list" id="recentQuizzesContainer">
+            
+            <!-- Quiz Item 1: Molecular Genetics -->
+            <div class="quiz-accordion-item expanded" data-status="grading" data-subject="biology">
+              <div class="quiz-row-header">
+                <div class="quiz-identity-cell">
+                  <div class="quiz-type-icon bio">
+                    <i class="fa-solid fa-dna"></i>
+                  </div>
+                  <div class="quiz-info-text">
+                    <h3>Molecular Genetics: DNA Replication</h3>
+                    <div class="quiz-meta-subline">
+                      <span><i class="fa-solid fa-book-open me-1"></i> Bio 101</span>
+                      <span>&bull;</span>
+                      <span><i class="fa-solid fa-clock me-1"></i> Yesterday, 3:30 PM</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="quiz-row-badges">
+                  <span class="status-badge-pill badge-grading">8 Needs Grade</span>
+                  <div class="chevron-round-btn">
+                    <i class="fa-solid fa-chevron-down"></i>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Expanded Details -->
+              <div class="quiz-expanded-content" style="display: block;">
+                <div class="expanded-tags-cluster">
+                  <span class="pill-detail-tag"><i class="fa-solid fa-check"></i> 74 Submissions</span>
+                  <span class="pill-detail-tag"><i class="fa-solid fa-clock"></i> Avg 32 min</span>
+                  <span class="pill-detail-tag"><i class="fa-solid fa-layer-group"></i> 20 Multiple Choice</span>
+                  <span class="pill-detail-tag"><i class="fa-solid fa-pen"></i> 2 Free Response</span>
+                </div>
+                <p class="quiz-description-excerpt">
+                  Assesses understanding of helicase, DNA polymerase III, Okazaki fragments, and telomere maintenance in eukaryotic replication forks.
+                </p>
+                <div class="stats-breakdown-mini-grid">
+                  <div class="breakdown-box">
+                    <div class="val text-primary">87.5%</div>
+                    <div class="lbl">Class Avg</div>
+                  </div>
+                  <div class="breakdown-box">
+                    <div class="val text-success">98%</div>
+                    <div class="lbl">High Score</div>
+                  </div>
+                  <div class="breakdown-box">
+                    <div class="val text-danger">Q.14</div>
+                    <div class="lbl">Hardest Item</div>
+                  </div>
+                </div>
+                <div class="detail-actions-footer">
+                  <button class="btn-action-pill primary" onclick="gradeQuizModal('Molecular Genetics')">
+                    <i class="fa-solid fa-marker"></i> Grade 8 Essays
+                  </button>
+                  <button class="btn-action-pill" onclick="showToast('Exporting Gradebook CSV...')">
+                    <i class="fa-solid fa-download"></i> Export CSV
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Quiz Item 2: Neurobiology -->
+            <div class="quiz-accordion-item" data-status="completed" data-subject="neuroscience">
+              <div class="quiz-row-header">
+                <div class="quiz-identity-cell">
+                  <div class="quiz-type-icon neuro">
+                    <i class="fa-solid fa-brain"></i>
+                  </div>
+                  <div class="quiz-info-text">
+                    <h3>Action Potential & Synaptic Transmission</h3>
+                    <div class="quiz-meta-subline">
+                      <span><i class="fa-solid fa-book-open me-1"></i> Neuro 201</span>
+                      <span>&bull;</span>
+                      <span><i class="fa-solid fa-clock me-1"></i> Oct 23</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="quiz-row-badges">
+                  <span class="status-badge-pill badge-completed">Completed</span>
+                  <div class="chevron-round-btn">
+                    <i class="fa-solid fa-chevron-down"></i>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Expanded Details -->
+              <div class="quiz-expanded-content">
+                <div class="expanded-tags-cluster">
+                  <span class="pill-detail-tag">58 Submissions</span>
+                  <span class="pill-detail-tag">Avg 89.2%</span>
+                  <span class="pill-detail-tag">Grading 100% Finalized</span>
+                </div>
+                <p class="quiz-description-excerpt">
+                  Detailed evaluation of voltage-gated sodium/potassium channels and neurotransmitter vesicle release kinetics at the presynaptic membrane.
+                </p>
+                <div class="detail-actions-footer">
+                  <button class="btn-action-pill" onclick="showToast('Loading full question item analytics...')">
+                    <i class="fa-solid fa-chart-pie"></i> View Item Analysis
+                  </button>
+                  <button class="btn-action-pill" onclick="showToast('Summary report sent to students')">
+                    <i class="fa-solid fa-paper-plane"></i> Send Results
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Quiz Item 3: Organic Chemistry -->
+            <div class="quiz-accordion-item" data-status="grading" data-subject="chemistry">
+              <div class="quiz-row-header">
+                <div class="quiz-identity-cell">
+                  <div class="quiz-type-icon chem">
+                    <i class="fa-solid fa-atom"></i>
+                  </div>
+                  <div class="quiz-info-text">
+                    <h3>Stereochemistry & Chiral Molecules</h3>
+                    <div class="quiz-meta-subline">
+                      <span><i class="fa-solid fa-book-open me-1"></i> Chem 220</span>
+                      <span>&bull;</span>
+                      <span><i class="fa-solid fa-clock me-1"></i> Oct 22</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="quiz-row-badges">
+                  <span class="status-badge-pill badge-grading">10 Needs Grade</span>
+                  <div class="chevron-round-btn">
+                    <i class="fa-solid fa-chevron-down"></i>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Expanded Details -->
+              <div class="quiz-expanded-content">
+                <div class="expanded-tags-cluster">
+                  <span class="pill-detail-tag">45 Submissions</span>
+                  <span class="pill-detail-tag">10 Structural Drawings Pending</span>
+                </div>
+                <p class="quiz-description-excerpt">
+                  Requires manual review of enantiomer configurations (R/S) and Fischer projection conversions submitted via sketch tool.
+                </p>
+                <div class="detail-actions-footer">
+                  <button class="btn-action-pill primary" onclick="gradeQuizModal('Stereochemistry')">
+                    <i class="fa-solid fa-marker"></i> Review 10 Drawings
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Quiz Item 4: Cellular Respiration Quick Check -->
+            <div class="quiz-accordion-item" data-status="completed" data-subject="biology">
+              <div class="quiz-row-header">
+                <div class="quiz-identity-cell">
+                  <div class="quiz-type-icon bio">
+                    <i class="fa-solid fa-microscope"></i>
+                  </div>
+                  <div class="quiz-info-text">
+                    <h3>Krebs Cycle & Electron Transport</h3>
+                    <div class="quiz-meta-subline">
+                      <span><i class="fa-solid fa-book-open me-1"></i> Bio 101</span>
+                      <span>&bull;</span>
+                      <span><i class="fa-solid fa-clock me-1"></i> Oct 20</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="quiz-row-badges">
+                  <span class="status-badge-pill badge-completed">Completed</span>
+                  <div class="chevron-round-btn">
+                    <i class="fa-solid fa-chevron-down"></i>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Expanded Details -->
+              <div class="quiz-expanded-content">
+                <div class="expanded-tags-cluster">
+                  <span class="pill-detail-tag">82 Submissions</span>
+                  <span class="pill-detail-tag">Avg Score: 83.4%</span>
+                </div>
+                <p class="quiz-description-excerpt">
+                  Formative quick checkpoint evaluating proton gradient chemiosmosis and ATP synthase rotor mechanics.
+                </p>
+                <div class="detail-actions-footer">
+                  <button class="btn-action-pill" onclick="showToast('Analytics opened')">
+                    <i class="fa-solid fa-chart-simple"></i> Analytics
+                  </button>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- CARD 4: AI QUESTION BANK GENERATOR -->
+        <div class="ai-assistant-card">
+          <div class="ai-card-content">
+            <span class="ai-sparkle-badge">
+              <i class="fa-solid fa-wand-magic-sparkles"></i> AI Quiz Engine
+            </span>
+            <h2>Instant Quiz Generator</h2>
+            <p>Paste syllabus notes, lecture transcripts, or topics to draft 10 high-caliber questions with distractors.</p>
+            
+            <div class="ai-quick-input-box">
+              <i class="fa-solid fa-terminal text-muted"></i>
+              <input type="text" id="aiTopicInput" placeholder="e.g. CRISPR Cas9 Gene Editing mechanisms, Med-School level...">
+            </div>
+
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+              <div class="d-flex gap-2">
+                <span class="stat-tag-pill" style="background: rgba(255,255,255,0.15); color: #FFFFFF;">Junior</span>
+                <span class="stat-tag-pill" style="background: var(--edu-blue); color: #FFFFFF;">Middle</span>
+                <span class="stat-tag-pill" style="background: var(--tw-coral); color: #FFFFFF;">Senior</span>
+              </div>
+              <button class="btn-ai-generate" id="btnRunAiPrompt">
+                <i class="fa-solid fa-bolt text-warning"></i> Generate Quiz
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- CARD 5: LIVE STUDENT ACTIVITY & RECENT SUBMISSIONS -->
+        <div class="twisty-card mt-4">
+          <div class="card-header-flex mb-3">
+            <div>
+              <h2 class="card-title-text" style="font-size: 16px;">Live Student Feed</h2>
+              <div class="text-secondary" style="font-size: 11px;">Recent submissions & Proctoring flags</div>
+            </div>
+            <button class="btn-action-pill" style="font-size: 11px; padding: 4px 10px;" onclick="showToast('Feed refreshed')">
+              <i class="fa-solid fa-arrows-rotate"></i>
+            </button>
+          </div>
+
+          <div id="liveStudentFeedContainer">
+            <!-- Student 1 -->
+            <div class="student-activity-row">
+              <div class="student-info-mini">
+                <div class="student-avatar" style="background: var(--edu-navy);">SL</div>
+                <div class="student-name-box">
+                  <h5>Sarah Lin</h5>
+                  <span>Bio 101 &bull; Submitted 3m ago</span>
+                </div>
+              </div>
+              <span class="score-pill-tag high">96% (24/25)</span>
+            </div>
+
+            <!-- Student 2 -->
+            <div class="student-activity-row">
+              <div class="student-info-mini">
+                <div class="student-avatar" style="background: var(--tw-coral);">DK</div>
+                <div class="student-name-box">
+                  <h5>David Kim</h5>
+                  <span>Bio 101 &bull; Flagged: Tab Switch</span>
+                </div>
+              </div>
+              <span class="score-pill-tag flagged">Review Flag</span>
+            </div>
+
+            <!-- Student 3 -->
+            <div class="student-activity-row">
+              <div class="student-info-mini">
+                <div class="student-avatar" style="background: var(--edu-blue);">ET</div>
+                <div class="student-name-box">
+                  <h5>Elena Torres</h5>
+                  <span>Bio 101 &bull; Submitted 8m ago</span>
+                </div>
+              </div>
+              <span class="score-pill-tag high">92% (23/25)</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div> <!-- End Shell -->
+
+  <!-- ========================================================================
+       MODAL 1: CREATE NEW QUIZ
+       ======================================================================== -->
+  <div class="modal fade custom-twisty-modal" id="createQuizModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div class="d-flex align-items-center gap-3">
+            <div class="stat-icon-badge mint" style="width: 36px; height: 36px;">
+              <i class="fa-solid fa-plus text-primary"></i>
+            </div>
+            <div>
+              <h5 class="modal-title m-0">Create New Assessment</h5>
+              <div class="text-secondary" style="font-size: 12px;">Configure schedule, questions, and grading criteria</div>
+            </div>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="createQuizForm">
+            <div class="row">
+              <!-- Quiz Title -->
+              <div class="col-md-8 form-group-twisty">
+                <label for="newQuizTitle">Quiz Title *</label>
+                <input type="text" id="newQuizTitle" class="twisty-form-input" placeholder="e.g. Midterm Checkpoint: Cell Biology & Organelles" required>
+              </div>
+
+              <!-- Target Course -->
+              <div class="col-md-4 form-group-twisty">
+                <label for="newQuizCourse">Target Class *</label>
+                <select id="newQuizCourse" class="twisty-form-select">
+                  <option value="Bio 101">Biology 101 (Sec A)</option>
+                  <option value="Genetics 304">Genetics 304</option>
+                  <option value="Neuro 201">Neuroscience 201</option>
+                  <option value="Chem 220">Organic Chemistry 220</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="row">
+              <!-- Duration -->
+              <div class="col-md-4 form-group-twisty">
+                <label for="newQuizDuration">Duration (Minutes)</label>
+                <input type="number" id="newQuizDuration" class="twisty-form-input" value="45" min="5" max="180">
+              </div>
+
+              <!-- Question Count -->
+              <div class="col-md-4 form-group-twisty">
+                <label for="newQuizCount">Question Count</label>
+                <input type="number" id="newQuizCount" class="twisty-form-input" value="20" min="1" max="100">
+              </div>
+
+              <!-- Passing Threshold -->
+              <div class="col-md-4 form-group-twisty">
+                <label for="newQuizPass">Passing Score (%)</label>
+                <input type="number" id="newQuizPass" class="twisty-form-input" value="70" min="50" max="100">
+              </div>
+            </div>
+
+            <!-- Question Types Selection -->
+            <div class="form-group-twisty">
+              <label>Included Question Formats</label>
+              <div class="question-type-pills">
+                <button type="button" class="q-type-btn active" data-type="mcq"><i class="fa-solid fa-circle-dot me-1"></i> Multiple Choice</button>
+                <button type="button" class="q-type-btn active" data-type="tf"><i class="fa-solid fa-toggle-on me-1"></i> True / False</button>
+                <button type="button" class="q-type-btn active" data-type="essay"><i class="fa-solid fa-pen-nib me-1"></i> Short Essay</button>
+                <button type="button" class="q-type-btn" data-type="code"><i class="fa-solid fa-diagram-project me-1"></i> Diagram Labeling</button>
+              </div>
+            </div>
+
+            <!-- Quiz Settings Switches -->
+            <div class="row pt-2 pb-2">
+              <div class="col-sm-6 mb-2">
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" id="shuffleQuestions" checked>
+                  <label class="form-check-label" for="shuffleQuestions" style="font-size: 13px; font-weight: 600;">
+                    Shuffle Questions & Options
+                  </label>
+                </div>
+              </div>
+              <div class="col-sm-6 mb-2">
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" id="browserLockdown" checked>
+                  <label class="form-check-label" for="browserLockdown" style="font-size: 13px; font-weight: 600;">
+                    Enable Tab-Switch Proctoring
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <!-- Publishing Actions -->
+            <div class="d-flex align-items-center justify-content-end gap-2 mt-4 pt-3 border-top">
+              <button type="button" class="btn-action-pill" data-bs-dismiss="modal">Cancel</button>
+              <button type="button" class="btn-action-pill" onclick="saveAsDraft()">Save as Draft</button>
+              <button type="submit" class="btn-create-quiz" style="padding: 9px 24px;">
+                <i class="fa-solid fa-rocket me-1"></i> Publish & Schedule
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================
+       MODAL 2: LIVE MONITOR GRID
+       ======================================================================== -->
+  <div class="modal fade custom-twisty-modal" id="liveMonitorModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div class="d-flex align-items-center gap-3">
+            <div class="stat-icon-badge coral" style="width: 36px; height: 36px;">
+              <span class="pulse-dot"></span>
+            </div>
+            <div>
+              <h5 class="modal-title m-0">Live Proctor & Attendance Grid</h5>
+              <div class="text-secondary" style="font-size: 12px;">Bio 101 &bull; Quiz #4: Cellular Metabolism</div>
+            </div>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <div class="d-flex gap-2">
+              <span class="stat-tag-pill tag-positive">58 Completed</span>
+              <span class="stat-tag-pill tag-live">14 In Progress</span>
+              <span class="stat-tag-pill tag-review">1 Flagged</span>
+            </div>
+            <button class="btn-action-pill" onclick="broadcastAnnouncement()">
+              <i class="fa-solid fa-bullhorn text-warning"></i> Broadcast to All
+            </button>
+          </div>
+
+          <div class="table-responsive">
+            <table class="table align-middle" style="font-size: 13px;">
+              <thead>
+                <tr class="text-secondary" style="font-size: 11px; text-transform: uppercase;">
+                  <th>Student</th>
+                  <th>Progress</th>
+                  <th>Time Elapsed</th>
+                  <th>Flag Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="liveStudentsTableBody">
+                <tr>
+                  <td>
+                    <div class="d-flex align-items-center gap-2">
+                      <div class="avatar-tiny" style="background: var(--edu-navy);">AL</div>
+                      <strong>Alex Lawson</strong>
+                    </div>
+                  </td>
+                  <td>25/25 (Done)</td>
+                  <td>32 mins</td>
+                  <td><span class="badge bg-success rounded-pill">Clean</span></td>
+                  <td><button class="btn btn-sm btn-light rounded-pill" onclick="showToast('Alex\'s test sheet previewed')">View</button></td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="d-flex align-items-center gap-2">
+                      <div class="avatar-tiny" style="background: var(--tw-coral);">DK</div>
+                      <strong>David Kim</strong>
+                    </div>
+                  </td>
+                  <td>19/25</td>
+                  <td>28 mins</td>
+                  <td><span class="badge bg-danger rounded-pill">Tab Switch (2x)</span></td>
+                  <td><button class="btn btn-sm btn-outline-danger rounded-pill" onclick="showToast('Warning sent to David Kim')">Warn</button></td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="d-flex align-items-center gap-2">
+                      <div class="avatar-tiny" style="background: var(--edu-blue);">MR</div>
+                      <strong>Maya Rodriguez</strong>
+                    </div>
+                  </td>
+                  <td>22/25</td>
+                  <td>26 mins</td>
+                  <td><span class="badge bg-success rounded-pill">Clean</span></td>
+                  <td><button class="btn btn-sm btn-light rounded-pill" onclick="showToast('Maya\'s test sheet previewed')">View</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Wrapper -->
+  <div class="toast-twisty-container" id="toastContainer"></div>
+
+  <!-- Scripts: jQuery, Bootstrap Bundle, & Application Interactions -->
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+    // System Data & Chart Day Metrics
+    const dayMetrics = {
+      "Mon": { volume: "54 Submissions", score: "82% Avg Score", desc: "Monday start: Diagnostic Quiz active across 2 classes.", pos: "8%" },
+      "Tue": { volume: "68 Submissions", score: "84% Avg Score", desc: "Tuesday check-in: Organic Chem section completed lab checks.", pos: "23%" },
+      "Wed": { volume: "82 Submissions", score: "85% Avg Score", desc: "Wednesday peak: Mid-week formative reviews submitted.", pos: "38%" },
+      "Thu": { volume: "114 Submissions", score: "89% Avg Score", desc: "Thursday weekly high: Biology 101 major module test administered.", pos: "54%" },
+      "Fri": { volume: "96 Submissions", score: "87% Avg Score", desc: "Friday afternoon: Genetics 304 checkpoint completed.", pos: "69%" },
+      "Sat": { volume: "38 Submissions", score: "91% Avg Score", desc: "Saturday voluntary review: Weekend practice attempts.", pos: "82%" },
+      "Sun": { volume: "30 Submissions", score: "88% Avg Score", desc: "Sunday preparatory testing: Early submissions for week 5.", pos: "93%" }
+    };
+
+    $(document).ready(function() {
+
+      // 1. Navigation Non-navigable links feedback (Desktop & Mobile)
+      $('.mock-nav').on('click', function(e) {
+        e.preventDefault();
+        const pageName = $(this).text().trim();
+        showToast(`<i class="fa-solid fa-circle-info text-info"></i> Prototype Mode: "${pageName}" is a preview link. Dashboard is currently active.`);
+        
+        // Auto-close mobile offcanvas on link click
+        const offcanvasEl = document.getElementById('twistyMobileNav');
+        const offcanvasInstance = bootstrap.Offcanvas.getInstance(offcanvasEl);
+        if (offcanvasInstance) offcanvasInstance.hide();
+      });
+
+      // Mobile active nav item switch
+      $('.mobile-nav-link:not(.mock-nav)').on('click', function() {
+        $('.mobile-nav-link').removeClass('active');
+        $(this).addClass('active');
+        const offcanvasEl = document.getElementById('twistyMobileNav');
+        const offcanvasInstance = bootstrap.Offcanvas.getInstance(offcanvasEl);
+        if (offcanvasInstance) offcanvasInstance.hide();
+      });
+
+      // 2. Interactive Chart Pin Selector
+      $('.chart-pin-column, .day-pill-btn').on('click', function() {
+        const selectedDay = $(this).data('day');
+        if (!selectedDay || !dayMetrics[selectedDay]) return;
+
+        $('.chart-pin-column').removeClass('active');
+        $(`.chart-pin-column[data-day="${selectedDay}"]`).addClass('active');
+
+        $('.day-pill-btn').removeClass('active');
+        $(`.day-pill-btn[data-day="${selectedDay}"]`).addClass('active');
+
+        const data = dayMetrics[selectedDay];
+        $('#chartTooltip').css({
+          'left': data.pos,
+          'top': '10px'
+        }).html(`${selectedDay}: ${data.volume.split(' ')[0]} Tests &bull; ${data.score.split(' ')[0]} Avg`);
+
+        $('#chartHeadlineMetric').html(`${data.volume.split(' ')[0]} <span style="font-size: 18px; font-weight: 600; color: var(--tw-text-secondary);">Submissions</span> <span class="badge-growth">+18.4%</span>`);
+        $('#chartHeadlineSubtitle').html(data.desc);
+      });
+
+      // 3. Recent Quizzes Accordion Expand/Collapse
+      $(document).on('click', '.quiz-row-header', function(e) {
+        if ($(e.target).closest('button').length) return;
+
+        const $item = $(this).closest('.quiz-accordion-item');
+        const $content = $item.find('.quiz-expanded-content');
+
+        if ($item.hasClass('expanded')) {
+          $content.slideUp(200, function() {
+            $item.removeClass('expanded');
+          });
+        } else {
+          $('.quiz-accordion-item.expanded').not($item).removeClass('expanded').find('.quiz-expanded-content').slideUp(200);
+          $item.addClass('expanded');
+          $content.slideDown(220);
+        }
+      });
+
+      // 4. Filter Tabs for Recent Quizzes
+      $('#quizStatusTabs .tab-pill-action').on('click', function() {
+        $('#quizStatusTabs .tab-pill-action').removeClass('active');
+        $(this).addClass('active');
+        filterQuizzes();
+      });
+
+      // 5. Live Search Filter for Recent Quizzes
+      $('#recentQuizFilterInput').on('input', function() {
+        filterQuizzes();
+      });
+
+      function filterQuizzes() {
+        const query = $('#recentQuizFilterInput').val().toLowerCase().trim();
+        const activeTab = $('#quizStatusTabs .tab-pill-action.active').data('filter');
+
+        $('.quiz-accordion-item').each(function() {
+          const itemText = $(this).text().toLowerCase();
+          const itemStatus = $(this).data('status');
+
+          const matchesQuery = !query || itemText.includes(query);
+          const matchesTab = (activeTab === 'all') || (activeTab === itemStatus);
+
+          if (matchesQuery && matchesTab) {
+            $(this).fadeIn(150);
+          } else {
+            $(this).hide();
+          }
+        });
+      }
+
+      // 6. Global Search Input Trigger (Desktop + Mobile)
+      $('#globalQuizSearch, #mobileGlobalQuizSearch').on('keyup', function(e) {
+        if (e.key === 'Enter') {
+          const val = $(this).val();
+          if (val) {
+            showToast(`<i class="fa-solid fa-magnifying-glass"></i> Filtered results for "${val}"`);
+            $('#recentQuizFilterInput').val(val).trigger('input');
+            
+            // Auto close offcanvas if searched from mobile drawer
+            const offcanvasEl = document.getElementById('twistyMobileNav');
+            const offcanvasInstance = bootstrap.Offcanvas.getInstance(offcanvasEl);
+            if (offcanvasInstance) offcanvasInstance.hide();
+          }
+        }
+      });
+
+      // 7. Create Quiz Modal Triggers
+      const createModal = new bootstrap.Modal(document.getElementById('createQuizModal'));
+      $('#openCreateQuizModalBtn').on('click', function() {
+        createModal.show();
+      });
+
+      $('.q-type-btn').on('click', function() {
+        $(this).toggleClass('active');
+      });
+
+      // Handle New Quiz Form Submit
+      $('#createQuizForm').on('submit', function(e) {
+        e.preventDefault();
+
+        const title = $('#newQuizTitle').val().trim() || 'Untitled Assessment';
+        const course = $('#newQuizCourse').val();
+        const duration = $('#newQuizDuration').val() || 45;
+        const count = $('#newQuizCount').val() || 20;
+
+        const newQuizHtml = `
+          <div class="quiz-accordion-item expanded" data-status="grading" data-subject="custom" style="display: none; border-left: 4px solid var(--tw-coral);">
+            <div class="quiz-row-header">
+              <div class="quiz-identity-cell">
+                <div class="quiz-type-icon bio" style="background: var(--tw-coral-light); color: var(--tw-coral);">
+                  <i class="fa-solid fa-bolt"></i>
+                </div>
+                <div class="quiz-info-text">
+                  <h3>${title}</h3>
+                  <div class="quiz-meta-subline">
+                    <span><i class="fa-solid fa-book-open me-1"></i> ${course}</span>
+                    <span>&bull;</span>
+                    <span><i class="fa-solid fa-clock me-1"></i> Just now</span>
+                  </div>
+                </div>
+              </div>
+              <div class="quiz-row-badges">
+                <span class="status-badge-pill badge-grading">Live / Active</span>
+                <div class="chevron-round-btn">
+                  <i class="fa-solid fa-chevron-down"></i>
+                </div>
+              </div>
+            </div>
+            <div class="quiz-expanded-content" style="display: block;">
+              <div class="expanded-tags-cluster">
+                <span class="pill-detail-tag">${count} Questions</span>
+                <span class="pill-detail-tag">${duration} Mins</span>
+                <span class="pill-detail-tag">Newly Published</span>
+              </div>
+              <p class="quiz-description-excerpt">
+                Live quiz session created. Students enrolled in ${course} have received invitations and can begin immediately.
+              </p>
+              <div class="detail-actions-footer">
+                <button class="btn-action-pill primary" onclick="showToast('Live proctoring opened for ${title}')">
+                  <i class="fa-solid fa-desktop"></i> Monitor Live
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+
+        $('#recentQuizzesContainer').prepend(newQuizHtml);
+        $('#recentQuizzesContainer .quiz-accordion-item').first().fadeIn(300);
+
+        let currentCount = parseInt($('#statActiveCount').text()) || 3;
+        $('#statActiveCount').text((currentCount + 1) + ' Quizzes');
+
+        createModal.hide();
+        $('#createQuizForm')[0].reset();
+
+        showToast(`<i class="fa-solid fa-check-circle text-success"></i> "${title}" created and scheduled!`);
+      });
+
+      // 8. AI Generator Button Action
+      $('#btnRunAiPrompt').on('click', function() {
+        const inputVal = $('#aiTopicInput').val().trim();
+        const topic = inputVal ? inputVal : 'CRISPR-Cas9 & Gene Therapy';
+
+        $(this).html('<i class="fa-solid fa-spinner fa-spin"></i> Generating...');
+        
+        setTimeout(() => {
+          $(this).html('<i class="fa-solid fa-bolt text-warning"></i> Generate Quiz');
+          showToast(`<i class="fa-solid fa-wand-magic-sparkles text-info"></i> Generated 10 questions on "${topic}"! Saved to Question Bank.`);
+          $('#aiTopicInput').val('');
+        }, 900);
+      });
+
+      // 9. Live Monitor Modal Trigger
+      const liveModal = new bootstrap.Modal(document.getElementById('liveMonitorModal'));
+      $('#openLiveMonitorBtn').on('click', function() {
+        liveModal.show();
+      });
+
+      // 10. Notification Bell click
+      $('#notifBtn').on('click', function() {
+        showToast('<i class="fa-regular fa-bell text-warning"></i> You have 3 notifications: 2 tab switch alerts, 1 essay submitted.');
+      });
+
+      // 11. Dropdown Mock Click handlers
+      $('#courseTermDropdown, #dateRangeSelect, #courseFilterBtn, #userProfileBtn').on('click', function() {
+        showToast('Filter changed: Refreshed dataset view.');
+      });
+
+      startCountdownTimer();
+    });
+
+    // Helper: Save as Draft
+    function saveAsDraft() {
+      const title = $('#newQuizTitle').val().trim() || 'Untitled Draft';
+      const createModalEl = bootstrap.Modal.getInstance(document.getElementById('createQuizModal'));
+      if (createModalEl) createModalEl.hide();
+      $('#createQuizForm')[0].reset();
+      showToast(`<i class="fa-regular fa-bookmark text-info"></i> Saved "${title}" to your draft folder.`);
+    }
+
+    // Helper: Quick Extend Time (+5 mins)
+    function quickExtendTime() {
+      $('#liveCountdown').text("33:44 Left");
+      showToast('<i class="fa-solid fa-clock-rotate-left text-success"></i> Extended quiz duration by 5 minutes for Bio 101.');
+    }
+
+    // Helper: Grade Quiz Modal Action
+    function gradeQuizModal(quizName) {
+      showToast(`<i class="fa-solid fa-highlighter text-primary"></i> Opening scoring rubric for ${quizName}...`);
+      let currentPending = parseInt($('#statPendingGrading').text()) || 18;
+      if (currentPending > 0) {
+        $('#statPendingGrading').text(currentPending - 1);
+      }
+    }
+
+    // Helper: Broadcast Announcement
+    function broadcastAnnouncement() {
+      const msg = prompt("Enter announcement text for all testing students:", "Notice: 15 minutes remaining. Please review your diagram answers.");
+      if (msg) {
+        showToast(`<i class="fa-solid fa-bullhorn text-warning"></i> Broadcasted: "${msg}"`);
+      }
+    }
+
+    // Live countdown simulation
+    function startCountdownTimer() {
+      let totalSeconds = 28 * 60 + 44;
+      setInterval(function() {
+        if (totalSeconds > 0) {
+          totalSeconds--;
+          const minutes = Math.floor(totalSeconds / 60);
+          const seconds = totalSeconds % 60;
+          $('#liveCountdown').text(`${minutes}:${seconds < 10 ? '0' : ''}${seconds} Left`);
+        }
+      }, 1000);
+    }
+
+    // Twisty Style Floating Toast
+    function showToast(htmlMessage) {
+      const toastId = 'toast_' + Date.now();
+      const toastHtml = `
+        <div class="toast-twisty" id="${toastId}">
+          <span>${htmlMessage}</span>
+          <i class="fa-solid fa-xmark ms-2" style="cursor: pointer; opacity: 0.7;" onclick="$('#${toastId}').fadeOut(200, function(){ $(this).remove(); });"></i>
+        </div>
+      `;
+
+      $('#toastContainer').append(toastHtml);
+
+      setTimeout(() => {
+        $(`#${toastId}`).fadeOut(300, function() {
+          $(this).remove();
+        });
+      }, 4200);
+    }
+  </script>
+</body>
+</html>

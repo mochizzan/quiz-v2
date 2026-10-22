@@ -1,114 +1,300 @@
-{{define "partials/title"}}Penilaian esai — Twisty Quiz{{end}}
+{{define "partials/page-style"}}
+/* Grading screen: queue on the left, one essay workspace on the right.
+   Desktop is a 380px + fluid split; below 1024px the panes stack. */
+.grading-counts { display: flex; flex-wrap: wrap; gap: 12px; }
+.grading-count {
+  display: flex;
+  flex-direction: column;
+  min-width: 128px;
+  padding: 12px 16px;
+  border: 1px solid #E2E6EB;
+  border-radius: 18px;
+  background: #FFFFFF;
+}
+.grading-count .metric-value { font-size: 26px; line-height: 30px; }
+.grading-count .metric-foot { margin-top: 2px; }
+
+.grading-queue { padding: 0; overflow: hidden; align-self: start; }
+.grading-queue-head {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border-bottom: 1px solid #ECEFF2;
+}
+.grading-filter { display: flex; align-items: center; gap: 8px; }
+.grading-search { position: relative; flex: 1 1 auto; min-width: 0; }
+.grading-search .form-control { height: 40px; min-height: 40px; padding-left: 38px; }
+.grading-search svg {
+  position: absolute;
+  top: 50%;
+  left: 14px;
+  transform: translateY(-50%);
+  color: #687182;
+  pointer-events: none;
+}
+.grading-filter .btn { flex-shrink: 0; }
+.grading-empty { padding: 16px; }
+.grading-row-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.grading-row-wait { color: #687182; font-size: 11px; font-weight: 600; white-space: nowrap; }
+.grading-row-q { margin-top: 5px; color: #687182; font-size: 12px; line-height: 1.45; }
+.grading-queue-foot { padding: 8px 16px; border-top: 1px solid #ECEFF2; }
+.grading-queue-foot:empty { display: none; }
+
+.grading-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-height: 420px;
+  padding: 24px;
+}
+.grading-detail-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.grading-meta { display: flex; flex-wrap: wrap; gap: 6px 16px; color: #687182; font-size: 12px; }
+.grading-meta span { display: inline-flex; align-items: center; gap: 6px; }
+
+.grading-block { display: flex; flex-direction: column; gap: 8px; }
+.grading-label {
+  color: #687182;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.grading-question { margin: 0; font-size: 16px; font-weight: 600; line-height: 1.5; }
+.grading-answer-text { white-space: pre-wrap; }
+
+.grading-context { display: flex; flex-direction: column; gap: 8px; }
+.grading-context .table-responsive { border: 1px solid #E2E6EB; border-radius: 14px; }
+.grading-context table { min-width: 680px; }
+.grading-context td { vertical-align: top; }
+
+.grading-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-top: 20px;
+  border-top: 1px solid #ECEFF2;
+}
+.grading-form-grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
+.grading-score-field { display: flex; flex-direction: column; gap: 6px; }
+.grading-score-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.grading-score-input { font-variant-numeric: tabular-nums; }
+.grading-suggest {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #687182;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.grading-suggest .score-pill { padding: 2px 8px; font-size: 12px; }
+.grading-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
+.grading-note { margin: 0; color: #687182; font-size: 12px; line-height: 1.5; }
+
+.grading-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 380px;
+  text-align: center;
+}
+.grading-placeholder h2 { margin: 0; font-size: 17px; }
+.grading-placeholder p { margin: 0; max-width: 42ch; color: #687182; font-size: 13px; }
+
+@media (min-width: 768px) {
+  .grading-form-grid { grid-template-columns: 190px minmax(0, 1fr); align-items: start; }
+}
+@media (max-width: 1023.98px) {
+  .grading-detail { min-height: 0; }
+  .grading-placeholder { min-height: 240px; }
+}
+{{end}}
 {{define "content"}}
-<div class="d-flex flex-column gap-4">
+{{with .Data}}
+<div class="page-stack">
 
-  <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
-    <h1 class="h1 mb-0">Penilaian esai</h1>
-    <span class="fg-secondary" style="font-variant-numeric: tabular-nums">18 menunggu · 2 tugas jatuh tempo malam ini</span>
+  <div class="page-head">
+    <div>
+      <span class="eyebrow">Penilaian</span>
+      <h1 class="h1 mb-0">Penilaian esai</h1>
+      <p class="page-sub">Tinjau jawaban esai, beri nilai, lalu lanjut ke esai berikutnya.</p>
+    </div>
+    <div class="grading-counts" aria-label="Ringkasan antrean">
+      <div class="grading-count">
+        <span class="metric-label">Menunggu</span>
+        <span class="metric-value metric-accent">{{.Queue.Counts.Pending}}</span>
+        <span class="metric-foot">esai</span>
+      </div>
+      <div class="grading-count">
+        <span class="metric-label">Dinilai hari ini</span>
+        <span class="metric-value">{{.Queue.Counts.GradedToday}}</span>
+        <span class="metric-foot">esai</span>
+      </div>
+    </div>
   </div>
 
-  {{/* GRADING family state demos (spec §15.8) — this page owns all six. */}}
-  <div hidden data-state-demo="loading">
-    <div class="card p-4" aria-busy="true">
-      {{template "partials/skeleton.html" .}}
-    </div>
-  </div>
-  <div hidden data-state-demo="empty">
-    {{template "partials/empty-state.html" .}}
-  </div>
-  <div hidden data-state-demo="error">
-    <div class="alert theme-danger" role="alert">
-      <strong class="d-block">Gagal menyimpan. Jawaban tidak hilang.</strong>
-      Periksa koneksi Anda, lalu coba lagi.
-      <button type="button" class="btn btn-outline theme-danger ms-2">Coba lagi</button>
-    </div>
-  </div>
-  <div hidden data-state-demo="saving">
-    <div class="d-flex align-items-center gap-2 fg-secondary" role="status">
-      <span class="spinner-border" role="status"><span class="visually-hidden">Memuat…</span></span>
-      <span>Menyimpan penilaian…</span>
-    </div>
-  </div>
-  <div hidden data-state-demo="saved">
-    <div class="toast-container position-fixed bottom-0 end-0 p-4">
-      <div class="toast theme-success show" role="status" aria-live="polite" style="background-color: #121721; color: #FFFFFF">
-        <div class="toast-body d-flex align-items-center justify-content-between gap-3">
-          <span>Penilaian berhasil disimpan.</span>
-          <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Tutup notifikasi"></button>
+  {{$selectedID := 0}}
+  {{with .Selected}}{{$selectedID = .Answer.ID}}{{end}}
+
+  <div class="split-layout">
+
+    <section class="card grading-queue" aria-label="Antrean esai">
+      <div class="grading-queue-head">
+        {{template "partials/tabs.html" .Queue.Tabs}}
+        <form class="grading-filter" method="get" action="/teacher/grading" role="search" aria-label="Saring antrean esai">
+          {{if eq .Queue.Query.Tab "graded"}}<input type="hidden" name="state" value="graded">{{end}}
+          <div class="grading-search">
+            <label class="visually-hidden" for="grading-q">Cari esai</label>
+            <svg width="18" height="18" aria-hidden="true"><use href="#i-search"></use></svg>
+            <input class="form-control" type="search" id="grading-q" name="q" value="{{.Queue.Query.Get}}" placeholder="Cari siswa, kuis, atau soal…">
+          </div>
+          <button type="submit" class="btn btn-outline theme-primary">Cari</button>
+        </form>
+      </div>
+
+      {{if .Queue.Rows.Empty}}
+        <div class="grading-empty">{{template "partials/empty-state.html" .Queue.Empty}}</div>
+      {{else}}
+        <div class="queue-list">
+          {{range .Queue.Rows.Items}}
+          <a class="queue-row{{if eq .AnswerID $selectedID}} active{{end}}" href="{{.Href}}"{{if eq .AnswerID $selectedID}} aria-current="true"{{end}}>
+            <span class="grading-row-top">
+              <span class="name">{{.StudentName}}</span>
+              <span class="grading-row-wait">{{.WaitingLabel}}</span>
+            </span>
+            <span class="meta d-block">{{.ClassLabel}} · {{.QuizTitle}}</span>
+            <span class="grading-row-q text-truncate-2">{{.QuestionExcerpt}}</span>
+          </a>
+          {{end}}
+        </div>
+      {{end}}
+
+      <div class="grading-queue-foot">{{template "partials/pagination.html" .Queue.Pagination}}</div>
+    </section>
+
+    {{with .Selected}}
+    <article class="card grading-detail" aria-label="Detail esai">
+      <header class="grading-detail-head">
+        <div class="min-w-0">
+          <span class="eyebrow">{{.Answer.QuizTitle}}</span>
+          <h2 class="section-title">{{.Answer.StudentName}}</h2>
+          <p class="section-sub">{{.Answer.ClassLabel}} · Percobaan {{.Attempt.AttemptNo}} dari {{.Attempt.MaxAttempts}}</p>
+        </div>
+        <span class="badge {{if .Answer.Score}}theme-success{{else}}theme-warning{{end}}">{{.Answer.State.Label}}</span>
+      </header>
+
+      <div class="grading-meta">
+        <span>
+          <svg width="16" height="16" aria-hidden="true"><use href="#i-clock"></use></svg>
+          Dikirim {{.Answer.SubmittedAt.DateTime}}
+        </span>
+        <span>
+          <svg width="16" height="16" aria-hidden="true"><use href="#i-history"></use></svg>
+          {{.Answer.WaitingLabel}}
+        </span>
+      </div>
+
+      <div class="grading-block">
+        <span class="grading-label">Pertanyaan</span>
+        {{with .Answer.QuestionImage}}<img class="question-image" src="{{.URL}}" alt="{{.Alt}}">{{end}}
+        <p class="grading-question">{{.Answer.QuestionBody}}</p>
+      </div>
+
+      <div class="grading-block">
+        <span class="grading-label">Jawaban peserta</span>
+        <div class="essay-text">{{.Answer.Text}}</div>
+      </div>
+
+      <div class="grading-context">
+        <div class="row-between">
+          <h3 class="section-title">Jawaban lain di percobaan ini</h3>
+          <span class="section-sub">{{len .Context}} soal</span>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-clean">
+            <caption class="visually-hidden">Jawaban lain pada percobaan ini</caption>
+            <thead>
+              <tr>
+                <th scope="col">No.</th>
+                <th scope="col">Soal</th>
+                <th scope="col">Jawaban</th>
+                <th scope="col">Kunci</th>
+                <th scope="col">Nilai</th>
+                <th scope="col">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {{range .Context}}
+              <tr>
+                <td class="num">{{.Position}}</td>
+                <td>
+                  <span class="cell-title d-block">{{.Body}}</span>
+                  <span class="cell-sub">{{.Type.Label}}</span>
+                </td>
+                <td><span class="grading-answer-text d-block">{{.StudentAnswer}}</span></td>
+                <td><span class="cell-sub">{{.Key}}</span></td>
+                <td>{{with .Score}}{{template "partials/score.html" .}}{{else}}<span class="cell-sub">—</span>{{end}}</td>
+                <td>
+                  {{if eq .Verdict "Benar"}}<span class="badge theme-success">{{.Verdict}}</span>
+                  {{else if eq .Verdict "Salah"}}<span class="badge theme-danger">{{.Verdict}}</span>
+                  {{else if eq .Verdict "Tidak dijawab"}}<span class="badge bg-2 fg-secondary">{{.Verdict}}</span>
+                  {{else if eq .Verdict "Menunggu nilai"}}<span class="badge theme-warning">{{.Verdict}}</span>
+                  {{else}}<span class="badge theme-primary">{{.Verdict}}</span>{{end}}
+                </td>
+              </tr>
+              {{end}}
+            </tbody>
+          </table>
         </div>
       </div>
-    </div>
-  </div>
-  <div hidden data-state-demo="locked">
-    {{template "partials/banner-locked" .}}
-  </div>
 
-  {{/* Queue rows: student, quiz, question excerpt, waiting badge (word). */}}
-  <div class="card p-4 d-flex flex-column gap-3">
-    <h2 class="h2 mb-0">Antrean esai (18)</h2>
-    <ul class="list-group">
-      <li class="list-group-item d-flex flex-wrap align-items-center justify-content-between gap-3 p-3">
-        <span class="d-flex align-items-center gap-3">
-          <span class="badge" style="background-color: #EEF4FA; color: #293681">AL</span>
-          <span>
-            <span class="d-block fw-semibold">Ayu Lestari · XII IPA 2</span>
-            <span class="d-block fg-secondary" style="font-size: 13px">Biologi Sel — Kuis 4 · “Jelaskan fungsi membran plasma dalam transport zat.”</span>
-          </span>
+      <form class="grading-form" method="post" action="{{.Action}}" data-validate>
+        <input type="hidden" name="csrf_token" value="{{$.CSRF}}">
+        <div class="grading-form-grid">
+          <div class="grading-score-field">
+            <label class="form-label" for="grading-score">Nilai esai</label>
+            <div class="grading-score-row">
+              <input class="form-control grading-score-input" type="number" id="grading-score" name="score" min="0" max="100" step="0.1" inputmode="decimal" value="{{with .Score}}{{.Int}}{{end}}" placeholder="{{with .Suggested}}{{.Int}}{{end}}" required aria-describedby="grading-score-help">
+              {{with .Suggested}}<span class="grading-suggest">Saran <span class="score-pill">{{.Int}}</span></span>{{end}}
+            </div>
+            <p class="field-help" id="grading-score-help">Skala 0–100, satu angka desimal (misalnya 75,5).</p>
+          </div>
+          <div>
+            <label class="form-label" for="grading-feedback">Umpan balik <span class="fg-secondary">(opsional)</span></label>
+            <textarea class="form-control" id="grading-feedback" name="feedback" rows="4" placeholder="Tulis catatan untuk peserta…">{{.Feedback}}</textarea>
+          </div>
+        </div>
+        <p class="grading-note">Nilai percobaan dihitung otomatis dari rata-rata skor soal.</p>
+        <div class="grading-actions">
+          {{if .NextHref}}<a class="btn btn-outline theme-primary" href="{{.NextHref}}">Lewati</a>{{end}}
+          <button type="submit" class="btn btn-solid theme-primary">
+            <svg width="18" height="18" aria-hidden="true"><use href="#i-check"></use></svg>
+            Simpan nilai
+          </button>
+        </div>
+      </form>
+    </article>
+    {{else}}
+    <article class="card grading-detail">
+      <div class="grading-placeholder">
+        <span class="empty-icon">
+          <svg width="26" height="26" aria-hidden="true"><use href="#i-grade"></use></svg>
         </span>
-        <span class="badge theme-warning">Menunggu penilaian</span>
-      </li>
-      <li class="list-group-item d-flex flex-wrap align-items-center justify-content-between gap-3 p-3">
-        <span class="d-flex align-items-center gap-3">
-          <span class="badge" style="background-color: #EEF4FA; color: #293681">BP</span>
-          <span>
-            <span class="d-block fw-semibold">Bayu Prakoso · XII IPA 2</span>
-            <span class="d-block fg-secondary" style="font-size: 13px">Biologi Sel — Kuis 4 · “Diskusikan peran enzim dalam reaksi biokimia.”</span>
-          </span>
-        </span>
-        <span class="badge theme-warning">Menunggu penilaian</span>
-      </li>
-      <li class="list-group-item d-flex flex-wrap align-items-center justify-content-between gap-3 p-3">
-        <span class="d-flex align-items-center gap-3">
-          <span class="badge" style="background-color: #EEF4FA; color: #293681">CH</span>
-          <span>
-            <span class="d-block fw-semibold">Cindy Halim · XI IPA 1</span>
-            <span class="d-block fg-secondary" style="font-size: 13px">Sejarah Indonesia — Kuis 1 · “Jelaskan dampak pergerakan nasional.”</span>
-          </span>
-        </span>
-        <span class="badge theme-warning">Menunggu penilaian</span>
-      </li>
-    </ul>
-  </div>
-
-  {{/* Open grading panel for Ayu Lestari. */}}
-  <div class="card p-4 d-flex flex-column gap-3">
-    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
-      <h2 class="h2 mb-0">Ayu Lestari · XII IPA 2</h2>
-      <span class="badge theme-warning">Menunggu penilaian</span>
-    </div>
-    <p class="mb-0 fg-secondary" style="font-size: 13px">Biologi Sel — Kuis 4 · soal nomor 2 · 20 poin</p>
-
-    <div class="p-3" style="background-color: #F4F6F8; border-radius: 18px">
-      <span class="d-block fg-secondary mb-1" style="font-size: 13px">Jawaban peserta</span>
-      <p class="mb-0">Membran plasma mengatur keluar masuknya zat ke dalam sel. Melalui difusi dan osmosis, sel menyerap nutrisi dan membuang sisa metabolisme, sehingga lingkungan di dalam sel tetap seimbang.</p>
-    </div>
-
-    <div class="d-flex flex-wrap gap-3">
-      <div style="max-width: 200px">
-        <label class="form-label" for="gr-score">Skor rubrik (0–100)</label>
-        <input class="form-control" type="number" id="gr-score" name="score" min="0" max="100" value="84" style="font-variant-numeric: tabular-nums">
+        <h2>Pilih esai untuk dinilai</h2>
+        <p>Pilih salah satu esai di antrean untuk melihat jawaban dan memberi nilai.</p>
       </div>
-      <div class="flex-grow-1" style="min-width: 240px">
-        <label class="form-label" for="gr-feedback">Umpan balik</label>
-        <textarea class="form-control" id="gr-feedback" name="feedback" rows="3" placeholder="Tulis umpan balik untuk peserta.">Jawaban sudah tepat — tambahkan contoh transport aktif.</textarea>
-      </div>
-    </div>
+    </article>
+    {{end}}
 
-    <div class="d-flex flex-wrap justify-content-end gap-2">
-      <button type="button" class="btn btn-outline theme-primary">Nanti</button>
-      <button type="button" class="btn btn-solid theme-primary">Simpan penilaian</button>
-    </div>
   </div>
-
 </div>
+{{end}}
 {{end}}

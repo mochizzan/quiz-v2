@@ -11,6 +11,7 @@ type Config struct {
 	DBDSN             string // DB_DSN, default "quiz:quiz@tcp(db:3306)/quiz?parseTime=true"
 	CookieSecure      bool   // COOKIE_SECURE, default false (spec §12)
 	SessionSigningKey string // SESSION_SIGNING_KEY, default "" (empty until auth task)
+	Demo              bool   // APP_DEMO=1 enables ?state= previews and the demo strip
 }
 
 // Load reads configuration from environment variables, falling back to
@@ -21,6 +22,7 @@ func Load() Config {
 		DBDSN:             envOr("DB_DSN", "quiz:quiz@tcp(db:3306)/quiz?parseTime=true"),
 		CookieSecure:      strings.EqualFold(os.Getenv("COOKIE_SECURE"), "true"),
 		SessionSigningKey: os.Getenv("SESSION_SIGNING_KEY"),
+		Demo:              strings.EqualFold(os.Getenv("APP_DEMO"), "1") || strings.EqualFold(os.Getenv("APP_DEMO"), "true"),
 	}
 }
 

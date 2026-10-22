@@ -2,15 +2,20 @@
 <html lang="id" data-bs-theme="light">
 <head>
 {{template "partials/head.html" .}}</head>
-{{/* App frame (DESIGN §4), student flavour: identical canvas frame to the
-     teacher layout with the student navbar and NO teacher drawer. */}}
-<body style="background-color: #838EA0">
+{{/* App frame (DESIGN §4/§7), student flavour: full-bleed canvas (never a
+     giant rounded card on a grey viewport), 1440px content ceiling and the
+     shared responsive outer margin from .app-shell. The topbar is the same
+     floating sticky pill as the teacher shell, with a drawer under lg. */}}
+<body class="bg-4 min-vh-100">
 {{template "partials/icons.html" .}}
-<div class="container px-7 py-7">
-  <div style="background-color: #EDF0F4; border-radius: 32px">
-    {{template "partials/navbar-student.html" .}}
+{{template "partials/demo-strip.html" .}}
+<div class="app-shell">
+  {{template "partials/navbar-student.html" .}}
+  {{template "partials/drawer-student.html" .}}
+  <main>
+    {{template "partials/flash.html" .}}
     {{template "content" .}}
-  </div>
+  </main>
 </div>
 {{template "partials/foot.html" .}}
 </body>

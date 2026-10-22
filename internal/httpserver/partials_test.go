@@ -9,19 +9,23 @@ import (
 	"unicode"
 )
 
-// Plan Task 5 — icon sprite + 15 shared chrome partials. These tests pin the
-// sub-contracts the plan's Interfaces section fixes for every partial. TestMain
-// (server_test.go) chdirs to the repository root, so the relative paths below
-// resolve to the real templates directory.
+// This file pins the shared chrome partials: the pieces every layout composes
+// (head, foot, navbars, drawers, flash, demo strip, empty state, score pills,
+// quiz cards, tabs, pagination). TestMain (server_test.go) chdirs to the
+// repository root, so the relative paths below resolve to templates/.
 
-// pinnedPartials: the exact partial filename list of plan Task 5.
+// pinnedPartials is the exact shipped partial set. Adding a partial is a
+// deliberate change: update this list with the file.
 var pinnedPartials = []string{
-	"icons", "head", "foot", "navbar-teacher", "navbar-student",
-	"drawer-teacher", "breadcrumb", "empty-state", "banners", "toasts",
-	"no-js-banner", "progress-bar", "stepper", "dialogs", "skeleton",
+	"auth-style", "banners", "breadcrumb", "demo-strip", "dialogs",
+	"drawer-student", "drawer-teacher", "empty-state", "flash", "foot",
+	"head", "icons", "navbar-student", "navbar-style", "navbar-teacher",
+	"no-js-banner", "pagination", "progress-bar", "quiz-card", "score",
+	"skeleton", "stepper", "tabs", "toasts", "ui-style",
 }
 
-// iconCatalog: the exact symbol id list pinned in plan Task 5 (47 icons).
+// iconCatalog is the exact 51-symbol sprite catalog. Page code must never
+// invent an id: TestIconRefsResolve (conformance_test.go) checks every use.
 var iconCatalog = []string{
 	"i-dashboard", "i-quiz", "i-bank", "i-users", "i-grade", "i-settings",
 	"i-bell", "i-search", "i-menu", "i-plus", "i-bolt", "i-trend",
@@ -31,11 +35,11 @@ var iconCatalog = []string{
 	"i-grid", "i-warn", "i-refresh", "i-calendar", "i-layers", "i-cap",
 	"i-signout", "i-radio", "i-image", "i-upload", "i-trash", "i-eye",
 	"i-eye-off", "i-lock", "i-info", "i-close", "i-person", "i-history",
-	"i-flag", "i-dots",
+	"i-flag", "i-dots", "i-copy", "i-grip", "i-play", "i-filter",
 }
 
-// paletteHex: the 24 DESIGN §2.1 hexes, lowercase — the ONLY hexes permitted
-// in authored markup or inline styles.
+// paletteHex is the 24-colour DESIGN §2.1 palette, lowercase — the ONLY hexes
+// permitted in authored markup or internal CSS.
 var paletteHex = map[string]bool{
 	"#293681": true, "#1e2864": true, "#ffffff": true, "#4274d9": true,
 	"#e24a21": true, "#fdf0ed": true, "#5589c3": true, "#eef4fa": true,
@@ -45,8 +49,9 @@ var paletteHex = map[string]bool{
 	"#237a57": true, "#966000": true, "#b42318": true, "#6b7b85": true,
 }
 
-// v5ClassBans: the class tokens the v5→v6 map renames (plan Global Constraints
-// + Task 15's TestNoBootstrapV5Names list, the entries meaningful for partials).
+// v5ClassBans: Bootstrap 5 spellings that must never leak into Bootstrap 6
+// markup. The closed theme-token rule below is separate: theme-neutral and
+// theme-dark do not exist either.
 var v5ClassBans = map[string]bool{
 	"btn-primary": true, "btn-outline-primary": true, "text-primary": true,
 	"text-muted": true, "text-white": true, "text-bg-primary": true,
@@ -63,12 +68,22 @@ var v5ClassBans = map[string]bool{
 	"bg-body-secondary": true, "bg-body-tertiary": true,
 	"accordion-button": true, "accordion-collapse": true,
 	"link-underline": true, "ratio": true, "spinner-border-sm": true,
+	// Closed Twisty theme set: only primary/secondary/success/warning/
+	// danger/info exist. These two are the common hallucinations.
+	"theme-neutral": true, "theme-dark": true,
 }
 
 var v5ClassPrefixRe = regexp.MustCompile(`^(col-(sm|md|lg|xl)-|row-cols-(sm|md|lg|xl)-|d-(sm|md|lg|xl)-(block|flex|inline))`)
 
+// allowedThemes is the closed semantic theme set used by badges, alerts and
+// score pills.
+var allowedThemes = map[string]bool{
+	"primary": true, "secondary": true, "success": true,
+	"warning": true, "danger": true, "info": true,
+}
+
 // bannedSubstrings: raw markup/fingerprint bans (CDNs, icon fonts, v5 data-API
-// names, focus suppression, emoji codepoints are checked separately).
+// names, focus suppression). Emoji codepoints are checked separately.
 var bannedSubstrings = []string{
 	`data-bs-toggle="modal"`, `data-bs-toggle="offcanvas"`,
 	`data-bs-toggle="dropdown"`, "window.bootstrap", "cdn.",
@@ -77,8 +92,9 @@ var bannedSubstrings = []string{
 	`<i class="fa`, `class="fas `, `class="far `,
 }
 
-// inlineStyleProps: the spec §15.11 closed list of properties an authored
-// style="" attribute may set.
+// inlineStyleProps: the closed list of properties an authored style=""
+// attribute may set. Colour roles belong in CSS/tokens, not inline styles,
+// except the two contrast properties used by the toast demo.
 var inlineStyleProps = map[string]bool{
 	"padding-bottom": true, "width": true, "position": true, "z-index": true,
 	"cursor": true, "overflow": true, "print-color-adjust": true,
@@ -92,6 +108,7 @@ var (
 	t5HexRe     = regexp.MustCompile(`#[0-9A-Fa-f]{6}`)
 	styleRe     = regexp.MustCompile(`style="([^"]*)"`)
 	classAttrRe = regexp.MustCompile(`class="([^"]*)"`)
+	themeTokRe  = regexp.MustCompile(`^theme-([a-z]+)$`)
 )
 
 func readPartial(t *testing.T, name string) string {
@@ -104,16 +121,15 @@ func readPartial(t *testing.T, name string) string {
 	return string(data)
 }
 
-// TestEveryPartialDefinesItsName: every pinned partial file exists and its body
-// is wrapped in {{define "partials/<file>.html"}} … {{end}}; no partial may
-// define "content" (that name is reserved for pages).
+// TestEveryPartialDefinesItsName: every pinned partial file exists and its
+// body is wrapped in {{define "partials/<file>.html"}} … {{end}}; no partial
+// may define "content" (that name is reserved for pages). banners.html ships
+// three named variants instead of a file-named define.
 func TestEveryPartialDefinesItsName(t *testing.T) {
 	for _, name := range pinnedPartials {
 		t.Run(name, func(t *testing.T) {
 			body := readPartial(t, name)
 			if name == "banners" {
-				// Plan-pinned exception: banners.html ships the three variant
-				// defines, never a file-named define.
 				for _, variant := range []string{"banner-error", "banner-stale", "banner-locked"} {
 					want := `{{define "partials/` + variant + `"}}`
 					if !strings.Contains(body, want) {
@@ -134,8 +150,9 @@ func TestEveryPartialDefinesItsName(t *testing.T) {
 }
 
 // TestEveryPartialKeepsGlobalConstraints: over every pinned partial — no v5
-// class names, no CDN/icon-font/v5-data-API fingerprints, no emoji codepoints,
-// only palette hexes, and inline styles restricted to the §15.11 closed list.
+// class names, no invented theme token, no CDN/icon-font/v5-data-API
+// fingerprints, no emoji codepoints, only palette hexes, and inline styles
+// restricted to the closed property list.
 func TestEveryPartialKeepsGlobalConstraints(t *testing.T) {
 	for _, name := range pinnedPartials {
 		t.Run(name, func(t *testing.T) {
@@ -150,7 +167,10 @@ func TestEveryPartialKeepsGlobalConstraints(t *testing.T) {
 			for _, m := range classAttrRe.FindAllStringSubmatch(body, -1) {
 				for _, tok := range strings.Fields(m[1]) {
 					if v5ClassBans[tok] || v5ClassPrefixRe.MatchString(tok) {
-						t.Errorf("v5 class token %q in %s.html class attribute", tok, name)
+						t.Errorf("banned class token %q in %s.html", tok, name)
+					}
+					if theme := themeTokRe.FindStringSubmatch(tok); theme != nil && !allowedThemes[theme[1]] {
+						t.Errorf("theme token %q in %s.html is outside the closed theme set", tok, name)
 					}
 				}
 			}
@@ -168,7 +188,7 @@ func TestEveryPartialKeepsGlobalConstraints(t *testing.T) {
 					}
 					prop := strings.TrimSpace(kv[0])
 					if !inlineStyleProps[prop] {
-						t.Errorf("inline property %q in %s.html is outside the §15.11 closed list", prop, name)
+						t.Errorf("inline property %q in %s.html is outside the closed list", prop, name)
 					}
 				}
 			}
@@ -189,36 +209,59 @@ func TestEveryPartialKeepsGlobalConstraints(t *testing.T) {
 	}
 }
 
-// TestEveryPartialSubContracts: the fixed sub-contracts per partial from the
-// plan's Interfaces section (head/foot wiring live in TestFootScriptOrder and
-// are re-anchored here only where the assertion is order-independent).
+// TestEveryPartialSubContracts pins the fixed sub-contracts for each shared
+// piece. The page agents compose these, so a silent copy/shape change here
+// would break many screens at once.
 func TestEveryPartialSubContracts(t *testing.T) {
 	t.Run("head", func(t *testing.T) {
 		body := readPartial(t, "head")
 		for _, want := range []string{
 			`<meta charset="utf-8">`,
 			`<meta name="viewport"`,
-			`<title>{{template "partials/title" .}}</title>`,
+			`<title>{{if .Title}}{{.Title}} — Twisty Quiz{{else}}{{template "partials/title" .}}{{end}}</title>`,
 			`{{define "partials/title"}}Twisty Quiz{{end}}`,
+			`{{template "partials/navbar-style.html" .}}`,
+			`{{template "partials/ui-style.html" .}}`,
+			`{{template "partials/page-style" .}}`,
 		} {
 			if !strings.Contains(body, want) {
 				t.Errorf("head.html missing %q", want)
 			}
 		}
-		bootstrapIdx := strings.Index(body, `href="/static/bootstrap/bootstrap.min.css"`)
+		bootstrapIdx := strings.Index(body, `href="/static/vendor/bootstrap/bootstrap.min.css"`)
 		tokensIdx := strings.Index(body, `href="/static/css/tokens.css"`)
 		if bootstrapIdx < 0 || tokensIdx < 0 {
 			t.Fatalf("head.html must link both stylesheets (bootstrap=%d tokens=%d)", bootstrapIdx, tokensIdx)
 		}
 		if bootstrapIdx > tokensIdx {
-			t.Error("head.html must emit bootstrap.min.css BEFORE tokens.css (spec §15.1)")
+			t.Error("head.html must emit bootstrap.min.css BEFORE tokens.css (DESIGN §8)")
 		}
 		if n := strings.Count(body, "<style"); n != 1 {
 			t.Errorf("head.html must emit exactly ONE <style> element, found %d", n)
 		}
-		for _, want := range []string{"@font-face", "PlusJakartaSans-latin.woff2", "font-weight: 400 700", "OFL"} {
+		for _, want := range []string{"@font-face", "gotham-rounded-book.woff2", "font-family: 'Gotham Rounded'", "COPYRIGHT"} {
 			if !strings.Contains(body, want) {
 				t.Errorf("head.html <style> must contain %q", want)
+			}
+		}
+	})
+
+	t.Run("ui-style", func(t *testing.T) {
+		body := readPartial(t, "ui-style")
+		for _, want := range []string{
+			".page-stack", ".page-head", ".metric-tile", ".quiz-card",
+			".pill-tabs", ".table-clean", ".score-pill", ".empty-panel",
+			".demo-strip", ".form-card", ".attempt-shell", ".option-row",
+			".result-row", ".split-layout", ".queue-row", ".monitor-grid",
+			".question-row", ".row-between", "@media (prefers-reduced-motion: reduce)",
+		} {
+			if !strings.Contains(body, want) {
+				t.Errorf("ui-style.html missing %q", want)
+			}
+		}
+		for _, bad := range []string{"outline: none", "outline:none", "!important"} {
+			if strings.Contains(body, bad) {
+				t.Errorf("ui-style.html must not contain %q", bad)
 			}
 		}
 	})
@@ -237,17 +280,103 @@ func TestEveryPartialSubContracts(t *testing.T) {
 		}
 	})
 
+	t.Run("flash", func(t *testing.T) {
+		body := readPartial(t, "flash")
+		for _, want := range []string{
+			`{{with .Flash}}`, `class="alert theme-{{.Kind}} flash"`,
+			`role="status"`, `aria-live="polite"`,
+			`{{if .Title}}`, `{{if .Body}}`,
+		} {
+			if !strings.Contains(body, want) {
+				t.Errorf("flash.html missing %q", want)
+			}
+		}
+	})
+
+	t.Run("demo-strip", func(t *testing.T) {
+		body := readPartial(t, "demo-strip")
+		for _, want := range []string{
+			`{{if .Demo}}`, `class="demo-strip"`, `role="status"`,
+			"Mode demo", "tidak ada penyimpanan", `href="/teacher"`, `href="/student"`,
+		} {
+			if !strings.Contains(body, want) {
+				t.Errorf("demo-strip.html missing %q", want)
+			}
+		}
+	})
+
+	t.Run("empty-state", func(t *testing.T) {
+		body := readPartial(t, "empty-state")
+		for _, want := range []string{
+			`{{with .}}`, `class="empty-panel"`, `class="empty-icon"`,
+			`<h2>{{.Title}}</h2>`, `{{if .Body}}`, `{{with .Action}}`,
+			`#i-`, `btn-solid theme-primary`, `btn-outline theme-primary`, `href="{{.Href}}"`,
+		} {
+			if !strings.Contains(body, want) {
+				t.Errorf("empty-state.html missing %q", want)
+			}
+		}
+	})
+
+	t.Run("score", func(t *testing.T) {
+		body := readPartial(t, "score")
+		for _, want := range []string{
+			`{{with .}}`, `class="score-pill theme-{{.Tone}}"`, `{{.}}`,
+		} {
+			if !strings.Contains(body, want) {
+				t.Errorf("score.html missing %q", want)
+			}
+		}
+	})
+
+	t.Run("quiz-card", func(t *testing.T) {
+		body := readPartial(t, "quiz-card")
+		for _, want := range []string{
+			`{{with .}}`, `class="quiz-card"`, `class="quiz-title"`,
+			`.State.BadgeClass`, `.State.Label`, `.QuestionCount`, `.Schedule`,
+			`.AudienceText`, `{{if .Code}}`, `.CodeText`,
+			`.Participation.BadgeClass`, `.StatusLabel`, `.AttemptText`,
+			`{{with .Primary}}`, `{{with .Secondary}}`,
+		} {
+			if !strings.Contains(body, want) {
+				t.Errorf("quiz-card.html missing %q", want)
+			}
+		}
+	})
+
+	t.Run("tabs", func(t *testing.T) {
+		body := readPartial(t, "tabs")
+		for _, want := range []string{
+			`{{if .}}`, `{{range .}}`, `class="pill-tabs"`,
+			`class="pill-tab{{if .Active}} active{{end}}"`,
+			`aria-current="page"`, `{{if .Count}}`,
+		} {
+			if !strings.Contains(body, want) {
+				t.Errorf("tabs.html missing %q", want)
+			}
+		}
+	})
+
+	t.Run("pagination", func(t *testing.T) {
+		body := readPartial(t, "pagination")
+		for _, want := range []string{
+			`{{if .Show}}`, `aria-label="Navigasi halaman"`,
+			`class="page-item`, `aria-current="page"`,
+			`{{if .HasPrev}}`, `{{if .HasNext}}`, `.From`, `.To`, `.Total`,
+		} {
+			if !strings.Contains(body, want) {
+				t.Errorf("pagination.html missing %q", want)
+			}
+		}
+	})
+
 	t.Run("toasts", func(t *testing.T) {
 		body := readPartial(t, "toasts")
 		for _, want := range []string{
-			`toast-container`,
-			`class="toast theme-success show"`,
-			`background-color: #121721`,
-			`color: #FFFFFF`,
-			`role="status"`,
-			`aria-live="polite"`,
-			`data-bs-dismiss="toast"`,
-			`aria-label="Tutup notifikasi"`,
+			`toast-container`, `class="toast theme-success show"`,
+			`background-color: #121721`, `color: #FFFFFF`,
+			`role="status"`, `aria-live="polite"`,
+			`data-bs-dismiss="toast"`, `aria-label="Tutup notifikasi"`,
 		} {
 			if !strings.Contains(body, want) {
 				t.Errorf("toasts.html missing %q", want)
@@ -265,30 +394,37 @@ func TestEveryPartialSubContracts(t *testing.T) {
 	t.Run("navbar-teacher", func(t *testing.T) {
 		body := readPartial(t, "navbar-teacher")
 		for _, want := range []string{
-			"TWISTY QUIZ", `href="/teacher"`, `href="/teacher/quizzes"`,
-			`href="/teacher/questions"`, `href="/teacher/students"`,
+			`class="app-nav"`, `class="app-brand-mark"`, "TWISTY",
+			`class="app-brand-title-sub">QUIZ</span>`, `app-badge-role">Guru</span>`,
+			`href="/teacher"`, `href="/teacher/quizzes"`, `href="/teacher/students"`,
 			`href="/teacher/grading"`, `href="/teacher/teachers"`,
 			`aria-current="page"`, `data-bs-toggle="drawer"`,
 			`data-bs-target="#nav-drawer"`, `aria-label="Buka menu"`,
-			`aria-label="Notifikasi"`, `for="teacher-nav-search"`, ">Cari<",
-			`class="form-control"`, `visually-hidden`,
-			"Ratna Wijaya", ">RW<",
+			`{{with .User}}`, `.FullName`, `.Role.Label`,
+			`action="/logout"`, `name="csrf_token"`, `value="{{.CSRF}}"`,
+			`aria-label="Keluar"`,
 		} {
 			if !strings.Contains(body, want) {
 				t.Errorf("navbar-teacher.html missing %q", want)
 			}
 		}
-		hamburger := `class="btn d-inline-flex xl:d-none"`
-		if !strings.Contains(body, hamburger) {
-			t.Errorf("navbar-teacher.html hamburger must carry %q (verified v6 responsive hide)", hamburger)
+		if !strings.Contains(body, `d-none lg:d-flex`) {
+			t.Error("teacher desktop nav must hide below lg with d-none lg:d-flex")
+		}
+		if !strings.Contains(body, `lg:d-none`) {
+			t.Error("teacher hamburger must hide at lg with lg:d-none")
 		}
 	})
 
 	t.Run("navbar-student", func(t *testing.T) {
 		body := readPartial(t, "navbar-student")
 		for _, want := range []string{
-			"TWISTY QUIZ", `href="/student"`, `href="/student/history"`,
-			`href="/profile"`, `aria-current="page"`, "Ayu Lestari", ">AL<",
+			`class="app-nav"`, `class="app-brand-mark"`, "TWISTY",
+			`app-badge-role">Siswa</span>`,
+			`href="/student"`, `href="/student/history"`, `href="/profile"`,
+			`href="/join"`, `aria-current="page"`, `{{with .User}}`,
+			`.FullName`, `.ClassLabel`, `action="/logout"`,
+			`data-bs-target="#nav-drawer-student"`,
 		} {
 			if !strings.Contains(body, want) {
 				t.Errorf("navbar-student.html missing %q", want)
@@ -299,15 +435,30 @@ func TestEveryPartialSubContracts(t *testing.T) {
 	t.Run("drawer-teacher", func(t *testing.T) {
 		body := readPartial(t, "drawer-teacher")
 		for _, want := range []string{
-			`<dialog class="drawer drawer-end" id="nav-drawer">`,
+			`<dialog class="drawer drawer-end" id="nav-drawer" aria-label="Menu navigasi">`,
 			`drawer-header`, `drawer-body`, `data-bs-dismiss="drawer"`,
-			`aria-label="Tutup"`,
-			`href="/teacher"`, `href="/teacher/quizzes"`,
-			`href="/teacher/questions"`, `href="/teacher/students"`,
-			`href="/teacher/grading"`, `href="/teacher/teachers"`,
+			`aria-label="Tutup"`, `href="/teacher"`, `href="/teacher/quizzes"`,
+			`href="/teacher/students"`, `href="/teacher/grading"`,
+			`href="/teacher/teachers"`, `href="/teacher/anonymous"`,
+			`href="/teacher/majors"`, `action="/logout"`, `value="{{.CSRF}}"`,
 		} {
 			if !strings.Contains(body, want) {
 				t.Errorf("drawer-teacher.html missing %q", want)
+			}
+		}
+	})
+
+	t.Run("drawer-student", func(t *testing.T) {
+		body := readPartial(t, "drawer-student")
+		for _, want := range []string{
+			`<dialog class="drawer drawer-end" id="nav-drawer-student" aria-label="Menu navigasi">`,
+			`drawer-header`, `drawer-body`, `data-bs-dismiss="drawer"`,
+			`aria-label="Tutup"`, `href="/student"`, `href="/student/history"`,
+			`href="/profile"`, `href="/join"`, `action="/logout"`,
+			`value="{{.CSRF}}"`,
+		} {
+			if !strings.Contains(body, want) {
+				t.Errorf("drawer-student.html missing %q", want)
 			}
 		}
 	})
@@ -324,18 +475,6 @@ func TestEveryPartialSubContracts(t *testing.T) {
 		}
 		if !strings.Contains(body, `<li class="breadcrumb-divider" aria-hidden="true"></li>`) {
 			t.Error("breadcrumb.html must ship EMPTY .breadcrumb-divider separators (v6 :empty mask shape)")
-		}
-	})
-
-	t.Run("empty-state", func(t *testing.T) {
-		body := readPartial(t, "empty-state")
-		for _, want := range []string{
-			`class="card"`, `alert theme-info`, `<h2 class="h2">`,
-			"Belum ada data.", `btn btn-solid theme-primary`, "Buat kuis baru",
-		} {
-			if !strings.Contains(body, want) {
-				t.Errorf("empty-state.html missing %q", want)
-			}
 		}
 	})
 
@@ -357,11 +496,16 @@ func TestEveryPartialSubContracts(t *testing.T) {
 	t.Run("stepper", func(t *testing.T) {
 		body := readPartial(t, "stepper")
 		for _, want := range []string{
-			`<ol`, "Data kuis", "Soal", "Pengaturan", "Terbitkan",
-			`badge theme-primary`, `aria-current="step"`,
+			`<ol`, "Data kuis", "Soal", `badge theme-primary`,
+			`aria-current="step"`, `{{if eq . 1}}`, `{{if eq . 2}}`,
 		} {
 			if !strings.Contains(body, want) {
 				t.Errorf("stepper.html missing %q", want)
+			}
+		}
+		for _, gone := range []string{"Pengaturan", "Terbitkan"} {
+			if strings.Contains(body, gone) {
+				t.Errorf("stepper.html must be two steps; found %q", gone)
 			}
 		}
 	})
@@ -397,7 +541,7 @@ func TestEveryPartialSubContracts(t *testing.T) {
 
 // TestIconSpriteHasCatalog: icons.html is the inline SVG sprite — every pinned
 // id exists as a 24x24 stroke symbol, the root carries stroke="currentColor"
-// and class="d-none" (never an inline display:none), and no partial ships
+// and class="d-none" (never inline display:none), and no partial ships
 // icon-font markup.
 func TestIconSpriteHasCatalog(t *testing.T) {
 	icons := readPartial(t, "icons")
@@ -407,7 +551,7 @@ func TestIconSpriteHasCatalog(t *testing.T) {
 		t.Errorf("sprite root must start %q (NOT inline display:none)", rootPrefix)
 	}
 	if strings.Contains(icons, `style="display:none"`) || strings.Contains(icons, `style="display: none"`) {
-		t.Error("sprite root must not use inline display:none (outside the §15.11 closed list)")
+		t.Error("sprite root must not use inline display:none")
 	}
 	if !strings.Contains(icons, `stroke="currentColor"`) {
 		t.Error("sprite root must carry stroke=\"currentColor\"")
@@ -438,8 +582,8 @@ func TestIconSpriteHasCatalog(t *testing.T) {
 			t.Errorf("icons.html ships symbol %q outside the pinned catalog", id)
 		}
 	}
-	if len(iconCatalog) != 47 {
-		t.Errorf("pinned catalog must hold 47 ids, got %d", len(iconCatalog))
+	if len(iconCatalog) != 51 {
+		t.Errorf("pinned catalog must hold 51 ids, got %d", len(iconCatalog))
 	}
 
 	// Every symbol: 24x24 viewBox and non-empty stroke geometry before </symbol>.
@@ -473,22 +617,22 @@ func TestIconSpriteHasCatalog(t *testing.T) {
 		}
 		for _, banned := range []string{`<i class="fa`, "fa-solid", "fa-regular", "bi bi-", `<svg class="fa`} {
 			if strings.Contains(string(data), banned) {
-				t.Errorf("icon-font markup %q in %s (sprite-only rule, spec §15.9)", banned, e.Name())
+				t.Errorf("icon-font markup %q in %s (sprite-only rule)", banned, e.Name())
 			}
 		}
 	}
 }
 
-// TestFootScriptOrder: foot.html emits, in order (AC-217) — the <noscript>
-// no-js banner wrapper, the Bootstrap ESM bundle, jQuery (deferred, classic,
-// never a module), then app.js as a module — and never closes the document.
+// TestFootScriptOrder: foot.html emits, in order — the <noscript> no-js banner
+// wrapper, the Bootstrap ESM bundle, jQuery (deferred, classic, never a
+// module), then app.js as a module — and never closes the document.
 func TestFootScriptOrder(t *testing.T) {
 	foot := readPartial(t, "foot")
 
 	noscriptIdx := strings.Index(foot, "<noscript>")
 	bannerIdx := strings.Index(foot, `{{template "partials/no-js-banner.html" .}}`)
-	bundleIdx := strings.Index(foot, `<script type="module" src="/static/bootstrap/bootstrap.bundle.min.js">`)
-	jqueryIdx := strings.Index(foot, `<script src="/static/jquery/jquery-4.0.0.min.js"`)
+	bundleIdx := strings.Index(foot, `<script type="module" src="/static/vendor/bootstrap/bootstrap.bundle.min.js">`)
+	jqueryIdx := strings.Index(foot, `<script src="/static/vendor/jquery/jquery-4.0.0.min.js"`)
 	appIdx := strings.Index(foot, `<script type="module" src="/static/js/app.js">`)
 
 	if noscriptIdx < 0 || bannerIdx < 0 {

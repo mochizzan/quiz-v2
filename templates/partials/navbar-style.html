@@ -1,0 +1,372 @@
+{{define "partials/navbar-style.html"}}
+/* App frame + top navigation bar — structure follows
+   docs/template/DASHBOARD.html (floating sticky pill, gradient brand mark,
+   pill links with a coral active underline, 220px search, profile pill) and
+   DESIGN §7. Delivered through head.html so every layout still renders
+   exactly ONE <style> element. Colours stay inside the 24-hex palette;
+   elevation uses the DESIGN §5 tokens; motion is gated on
+   prefers-reduced-motion. */
+
+/* ---- Application shell ------------------------------------------------- */
+.app-shell {
+  max-width: 1440px;
+  margin-inline: auto;
+  padding: 16px 24px;
+}
+@media (max-width: 767.98px) {
+  .app-shell { padding: 12px 16px; }
+}
+@media (min-width: 1440px) {
+  .app-shell { padding: 24px 32px; }
+}
+
+/* ---- Floating sticky nav pill ------------------------------------------ */
+.app-nav {
+  position: sticky;
+  top: 16px;
+  z-index: var(--bs-z-sticky);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: nowrap;
+  margin-bottom: 24px;
+  padding: 10px 20px;
+  border: 1px solid #E2E6EB;
+  border-radius: 9999px;
+  background-color: #FFFFFF;
+  box-shadow: var(--bs-box-shadow-lg);
+}
+@media (max-width: 1023.98px) {
+  .app-nav {
+    top: 10px;
+    margin-bottom: 18px;
+    padding: 8px 14px;
+    border-radius: 20px;
+  }
+}
+@media (max-width: 480px) {
+  .app-nav { padding: 8px 12px; }
+}
+
+/* ---- Brand ------------------------------------------------------------- */
+.app-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+  color: #121721;
+  text-decoration: none;
+}
+.app-brand-mark {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  color: #FFFFFF;
+  background-image: linear-gradient(135deg, #293681 0%, #4274D9 100%);
+  box-shadow: var(--bs-box-shadow-xs);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+}
+.app-brand-mark::after {
+  content: "";
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 8px;
+  height: 8px;
+  border: 2px solid #FFFFFF;
+  border-radius: 50%;
+  background-color: #E24A21;
+}
+.app-brand-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #121721;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+.app-brand-title-sub {
+  color: #687182;
+  font-weight: 400;
+}
+.app-badge-role {
+  padding: 2px 8px;
+  border-radius: 9999px;
+  background-color: #FDF0ED;
+  color: #121721;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+/* The six link pills need the space the badge occupies until the profile
+   meta appears at 1440px. */
+@media (max-width: 1279.98px) {
+  .app-badge-role { display: none; }
+}
+
+/* ---- Desktop links ----------------------------------------------------- */
+.app-nav-links {
+  flex-wrap: nowrap;
+  gap: 4px;
+}
+.app-nav .nav-link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 9999px;
+  color: #687182;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.app-nav .nav-link:hover {
+  color: #121721;
+  background-color: #F4F6F8;
+}
+.app-nav .nav-link.active {
+  color: #121721;
+  background-color: #E2E7EC;
+  font-weight: 700;
+}
+.app-nav .nav-link.active::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 4px;
+  width: 14px;
+  height: 2.5px;
+  border-radius: 9999px;
+  background-color: #E24A21;
+  transform: translateX(-50%);
+}
+
+/* ---- Actions: search, bell, profile, menu ------------------------------ */
+.app-nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.app-nav-search {
+  position: relative;
+  width: 220px;
+  flex-shrink: 0;
+}
+.app-nav-search .form-control {
+  height: 38px;
+  min-height: 38px;
+  padding: 0 38px 0 16px;
+  font-size: 13px;
+  color: #121721;
+  background-color: #F4F6F8;
+  border-color: transparent;
+}
+.app-nav-search .form-control::placeholder {
+  color: #687182;
+}
+.app-nav-search .form-control:focus {
+  background-color: #FFFFFF;
+  border-color: #4274D9;
+}
+.app-nav-search-icon {
+  position: absolute;
+  top: 50%;
+  right: 14px;
+  transform: translateY(-50%);
+  color: #687182;
+  pointer-events: none;
+}
+
+/* The display value comes from the d-* utility in markup, never from this
+   rule: every display utility in Bootstrap 6 is un-important and this
+   stylesheet loads after the framework, so a display here would out-rank the
+   responsive `lg:d-none` that hides the menu button on desktop. */
+.app-icon-btn {
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  min-height: 38px;
+  padding: 0;
+  flex-shrink: 0;
+  border: 1px solid #E2E6EB;
+  background-color: #F4F6F8;
+  color: #687182;
+}
+.app-icon-btn:hover {
+  background-color: #FFFFFF;
+  color: #121721;
+  box-shadow: var(--bs-box-shadow-xs);
+}
+.app-notification-dot {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 8px;
+  height: 8px;
+  border: 2px solid #FFFFFF;
+  border-radius: 50%;
+  background-color: #E24A21;
+}
+
+.app-profile {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  padding: 3px 12px 3px 4px;
+  border: 1px solid #E2E6EB;
+  border-radius: 9999px;
+  background-color: #F4F6F8;
+  line-height: 1;
+}
+/* Name + role need the width freed by the 1440px shell step; below that the
+   pill collapses to the avatar so the six link pills keep their single row. */
+.app-profile-meta { display: none; }
+@media (min-width: 1440px) {
+  .app-profile-meta { display: block; }
+}
+.app-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  color: #FFFFFF;
+  background-image: linear-gradient(135deg, #4274D9 0%, #5589C3 100%);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+}
+.app-profile-name {
+  display: block;
+  color: #121721;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+.app-profile-sub {
+  display: block;
+  color: #687182;
+  font-size: 11px;
+}
+.app-profile-chevron {
+  color: #94A3B8;
+}
+
+/* ---- Mobile drawer ----------------------------------------------------- */
+/* Scoped to the right-hand app drawer: the attempt screen reuses the
+   #nav-drawer id for its bottom question navigator. */
+#nav-drawer.drawer-end,
+#nav-drawer-student.drawer-end {
+  width: 320px;
+  max-width: 86vw;
+  max-height: 100%;
+  inset-block: 0;
+  inset-inline-end: 0;
+  border: 0;
+  border-radius: 24px 0 0 24px;
+  box-shadow: var(--bs-box-shadow-lg);
+}
+#nav-drawer.drawer-end .drawer-header,
+#nav-drawer-student.drawer-end .drawer-header {
+  padding: 20px 22px 16px;
+  border-bottom: 1px solid #ECEFF2;
+}
+#nav-drawer.drawer-end .drawer-body,
+#nav-drawer-student.drawer-end .drawer-body {
+  padding: 20px 22px;
+}
+#nav-drawer.drawer-end .nav-link,
+#nav-drawer-student.drawer-end .nav-link {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+  padding: 10px 16px;
+  border-left: 3px solid transparent;
+  border-radius: 12px;
+  color: #687182;
+  font-size: 14px;
+  font-weight: 600;
+}
+#nav-drawer.drawer-end .nav-link:hover,
+#nav-drawer-student.drawer-end .nav-link:hover {
+  color: #121721;
+  background-color: #F4F6F8;
+}
+#nav-drawer.drawer-end .nav-link.active,
+#nav-drawer-student.drawer-end .nav-link.active {
+  color: #121721;
+  background-color: #E2E7EC;
+  border-left-color: #E24A21;
+  font-weight: 700;
+}
+.app-brand-mark-sm {
+  width: 32px;
+  height: 32px;
+  font-size: 15px;
+}
+
+/* ---- Compact phone sizing ---------------------------------------------- */
+@media (max-width: 575.98px) {
+  .app-brand { gap: 10px; }
+  .app-brand-mark {
+    width: 34px;
+    height: 34px;
+    font-size: 16px;
+  }
+  .app-brand-title { font-size: 15px; }
+  .app-nav-actions { gap: 8px; }
+  .app-icon-btn {
+    width: 35px;
+    height: 35px;
+    min-height: 35px;
+  }
+  .app-avatar {
+    width: 28px;
+    height: 28px;
+    font-size: 11px;
+  }
+  .app-profile {
+    gap: 0;
+    padding: 3px;
+  }
+  .app-profile-chevron { display: none; }
+}
+
+/* 320px phones: the mark + wordmark + bell + avatar + menu button only fit
+   with the tighter gaps and a smaller wordmark. */
+@media (max-width: 399.98px) {
+  .app-nav { padding: 8px 10px; }
+  .app-brand { gap: 8px; }
+  .app-brand-title {
+    font-size: 14px;
+    letter-spacing: 0;
+  }
+  .app-nav-actions { gap: 6px; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .app-nav .nav-link,
+  .app-icon-btn,
+  .app-profile {
+    transition: color 0.15s, background-color 0.15s, border-color 0.15s,
+      box-shadow 0.15s;
+  }
+}
+{{end}}

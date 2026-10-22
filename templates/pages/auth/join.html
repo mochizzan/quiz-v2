@@ -1,38 +1,43 @@
-{{define "partials/title"}}Gabung dengan kode kuis — Twisty Quiz{{end}}
 {{define "partials/page-style"}}{{template "partials/auth-style.html" .}}{{end}}
 {{define "content"}}
-<div class="d-flex flex-column gap-4">
-  <div>
-    <span class="badge theme-primary mb-2">Kuis tamu</span>
-    <h1 class="h1 mb-1">Gabung dengan kode kuis</h1>
-    <p class="mb-0 fg-secondary">Masukkan kode dari guru Anda untuk masuk sebagai peserta.</p>
-  </div>
-
-  {{/* Auth family SAVING state demo (spec §15.8): the submit is disabled and
-       carries a spinner with its visually-hidden status text. */}}
-  <div hidden data-state-demo="saving">
-    <div class="alert theme-info mb-0" role="status">
-      <span class="d-inline-flex align-items-center gap-2">
-        <span class="spinner-border" role="status"><span class="visually-hidden">Memuat…</span></span>
-        <span>Memeriksa kode kuis…</span>
-      </span>
-    </div>
-  </div>
-
-  <form class="d-flex flex-column gap-3" action="/join" method="post">
-    <div>
-      <label class="form-label" for="join-code">Kode kuis</label>
-      <input class="form-control text-uppercase" type="text" id="join-code" name="code" aria-label="Kode kuis" placeholder="QUIZ-7F2K" maxlength="8" autocomplete="off" spellcheck="false" style="font-variant-numeric: tabular-nums" required>
-      <div class="form-text">Minta kode kepada guru Anda.</div>
-    </div>
-    <button type="submit" class="btn btn-solid theme-primary w-100" style="min-height: 44px">Gabung</button>
-  </form>
-
-  <p class="mb-0 fg-secondary" style="font-size: 13px">Anda bergabung sebagai peserta tamu — identitas Anda hanya dipakai selama kuis ini berlangsung.</p>
-
-  <a class="d-flex align-items-center justify-content-between gap-2 text-decoration-none" href="/identify">
-    <span>Sudah punya identitas tersimpan?</span>
-    <svg width="20" height="20" aria-hidden="true"><use href="#i-chev-right"></use></svg>
-  </a>
+{{/* Public code entry. The only failure this screen carries is an unknown
+     code; a wrong-audience or not-open quiz is explained on the invitation
+     landing instead. */}}
+<div class="auth-heading">
+  <span class="auth-kicker">Tanpa akun</span>
+  <h1 class="h1 auth-title">Gabung dengan kode kuis</h1>
+  <p class="auth-subtitle">Masukkan kode dari guru Anda. Anda akan mengisi identitas sebelum kuis dimulai.</p>
 </div>
+
+{{with .Data.Error}}
+<div class="alert theme-danger" id="join-code-error" role="alert">
+  <strong class="d-block mb-1">Kode belum bisa dipakai</strong>
+  <span>{{.Label}}</span>
+</div>
+{{end}}
+
+<form class="login-form" action="/join" method="post" data-validate>
+  <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+
+  <div class="field-group">
+    <label class="form-label" for="join-code">Kode kuis</label>
+    <input class="form-control num" type="text" id="join-code" name="code" value="{{.Data.Code}}" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="off" spellcheck="false" placeholder="Contoh: 482915" aria-describedby="join-code-help{{if .Data.Error}} join-code-error{{end}}"{{if .Data.Error}} aria-invalid="true"{{end}} required>
+    <div class="field-help" id="join-code-help">Enam angka, sama seperti yang tampil di layar guru.</div>
+  </div>
+
+  <button type="submit" class="btn btn-solid theme-primary w-100 login-submit">
+    Gabung ke kuis
+    <svg width="16" height="16" aria-hidden="true"><use href="#i-arrow-right"></use></svg>
+  </button>
+</form>
+
+<div class="auth-divider">
+  <hr class="divider-line">
+  <span>atau</span>
+  <hr class="divider-line">
+</div>
+
+<a class="btn btn-outline theme-primary auth-submit w-100" href="/login">Masuk dengan akun sekolah</a>
+
+<p class="field-help mt-3 mb-0">Kode hanya berlaku untuk satu kuis. Minta kode baru kepada guru bila sudah kedaluwarsa.</p>
 {{end}}

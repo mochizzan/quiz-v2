@@ -1,49 +1,65 @@
-{{define "partials/title"}}Identitas peserta — Twisty Quiz{{end}}
 {{define "partials/page-style"}}{{template "partials/auth-style.html" .}}{{end}}
 {{define "content"}}
-<div class="d-flex flex-column gap-4">
-  <div>
-    <h1 class="h1 mb-1">Identitas peserta</h1>
-    <p class="mb-0 fg-secondary">Lengkapi data berikut sebelum kuis dimulai.</p>
-  </div>
-
-  {{/* Auth family LOCKED/EXPIRED state demo (spec §15.8): a warning banner
-       plus disabled inputs. */}}
-  <div hidden data-state-demo="locked">
-    <div class="alert theme-warning mb-0" role="alert">
-      <strong class="d-block">Kuis ini sudah berakhir.</strong>
-      Jawaban tidak dapat dikumpulkan lagi. Hubungi guru Anda untuk informasi lebih lanjut.
-    </div>
-  </div>
-
-  <form class="d-flex flex-column gap-3" action="/identify" method="post">
-    <div>
-      <label class="form-label" for="id-name">Nama lengkap</label>
-      <input class="form-control" type="text" id="id-name" name="name" autocomplete="name" placeholder="Nama Anda" required>
-    </div>
-    <div>
-      <label class="form-label" for="id-class">Kelas</label>
-      <select class="form-control" id="id-class" name="class" required>
-        <option value="" selected>Pilih kelas</option>
-        <option>XI IPA 1</option>
-        <option>XI IPA 2</option>
-        <option>XII IPA 2</option>
-        <option>X IPS 3</option>
-      </select>
-    </div>
-    <div>
-      <label class="form-label" for="id-major">Jurusan</label>
-      <select class="form-control" id="id-major" name="major" required>
-        <option value="" selected>Pilih jurusan</option>
-        <option>IPA</option>
-        <option>IPS</option>
-        <option>Bahasa</option>
-        <option>Kejuruan</option>
-      </select>
-    </div>
-    <button type="submit" class="btn btn-solid theme-primary w-100" style="min-height: 44px">Mulai kuis</button>
-  </form>
-
-  <p class="mb-0 fg-secondary" style="font-size: 13px">Nama Anda hanya ditampilkan kepada guru yang mengawasi kuis ini.</p>
+{{/* Anonymous participant identity. The quiz is fixed by the fixture, so the
+     card names it and the form only asks for name, grade, and major. */}}
+<div class="auth-heading">
+  <span class="auth-kicker">Identitas peserta</span>
+  <h1 class="h1 auth-title">Lengkapi identitas Anda</h1>
+  <p class="auth-subtitle">Nama dan kelas dipakai guru untuk mencocokkan jawaban dengan daftar siswa.</p>
 </div>
+
+<div class="alert theme-info" role="note">
+  <span class="field-help d-block">Kuis yang Anda ikuti</span>
+  <strong class="d-block">{{.Data.Quiz.Title}}</strong>
+</div>
+
+{{with .Data.Error}}
+<div class="alert theme-danger" role="alert">
+  <strong class="d-block mb-1">Identitas belum bisa dipakai</strong>
+  <span>{{.Label}}</span>
+</div>
+{{end}}
+
+<form class="login-form" action="/join/identify" method="post" data-validate>
+  <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+
+  <div class="field-group">
+    <label class="form-label" for="identify-name">Nama lengkap</label>
+    <input class="form-control" type="text" id="identify-name" name="full_name" value="{{.Data.FullName}}" autocomplete="name" placeholder="Nama sesuai daftar kelas" aria-describedby="identify-name-help identify-name-error" required>
+    <div class="field-help" id="identify-name-help">Tulis nama lengkap agar guru mudah mengenali jawaban Anda.</div>
+    {{with .Errors.Get "full_name"}}<div class="field-error" id="identify-name-error" role="alert">{{.}}</div>{{end}}
+  </div>
+
+  <div class="field-group">
+    <div class="row g-3">
+      <div class="col-12 md:col-6">
+        <label class="form-label" for="identify-grade">Kelas</label>
+        <select class="form-control" id="identify-grade" name="grade_level" aria-describedby="identify-grade-help identify-grade-error" required>
+          <option value=""{{if eq .Data.GradeLevel 0}} selected{{end}} disabled>Pilih kelas</option>
+          <option value="10"{{if eq .Data.GradeLevel 10}} selected{{end}}>Kelas X</option>
+          <option value="11"{{if eq .Data.GradeLevel 11}} selected{{end}}>Kelas XI</option>
+          <option value="12"{{if eq .Data.GradeLevel 12}} selected{{end}}>Kelas XII</option>
+        </select>
+        <div class="field-help" id="identify-grade-help">Kelas Anda saat kuis berlangsung.</div>
+        {{with .Errors.Get "grade_level"}}<div class="field-error" id="identify-grade-error" role="alert">{{.}}</div>{{end}}
+      </div>
+      <div class="col-12 md:col-6">
+        <label class="form-label" for="identify-major">Jurusan</label>
+        <select class="form-control" id="identify-major" name="major_id" aria-describedby="identify-major-help identify-major-error" required>
+          <option value=""{{if eq .Data.MajorID 0}} selected{{end}} disabled>Pilih jurusan</option>
+          {{range .Data.Majors}}<option value="{{.ID}}"{{if eq $.Data.MajorID .ID}} selected{{end}}>{{.Name}}</option>{{end}}
+        </select>
+        <div class="field-help" id="identify-major-help">Jurusan yang terdaftar di sekolah.</div>
+        {{with .Errors.Get "major_id"}}<div class="field-error" id="identify-major-error" role="alert">{{.}}</div>{{end}}
+      </div>
+    </div>
+  </div>
+
+  <button type="submit" class="btn btn-solid theme-primary w-100 login-submit">
+    Mulai kuis
+    <svg width="16" height="16" aria-hidden="true"><use href="#i-arrow-right"></use></svg>
+  </button>
+</form>
+
+<p class="field-help mt-3 mb-0">Identitas ini hanya berlaku untuk kuis ini.</p>
 {{end}}

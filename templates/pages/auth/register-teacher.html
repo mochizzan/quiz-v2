@@ -1,0 +1,91 @@
+{{define "partials/page-style"}}{{template "partials/auth-style.html" .}}{{end}}
+{{define "content"}}
+{{/* Teacher registration. The approval rule is the point of the screen, so it
+     sits above the form as a note, not as fine print. One form, one action. */}}
+<div class="auth-heading">
+  <span class="auth-kicker">Akun guru</span>
+  <h1 class="h1 auth-title">Daftar sebagai guru</h1>
+  <p class="auth-subtitle">Kelola kuis, undang kelas, dan nilai jawaban siswa dari satu tempat.</p>
+</div>
+
+<div class="alert theme-info" role="note">
+  <strong class="d-block mb-1">Perlu persetujuan guru aktif</strong>
+  <span>Setelah formulir dikirim, akun Anda ditinjau oleh guru aktif di sekolah. Anda dapat masuk setelah akun disetujui.</span>
+</div>
+
+<form class="login-form" action="/register/teacher" method="post" data-validate>
+  <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+
+  <div class="field-group">
+    <label class="form-label" for="teacher-name">Nama lengkap</label>
+    <input class="form-control" type="text" id="teacher-name" name="full_name" value="{{.Data.FullName}}" autocomplete="name" placeholder="Nama sesuai data sekolah" aria-describedby="teacher-name-help teacher-name-error" required>
+    <div class="field-help" id="teacher-name-help">Nama ini tampil pada kuis dan laporan nilai.</div>
+    {{with .Errors.Get "full_name"}}<div class="field-error" id="teacher-name-error" role="alert">{{.}}</div>{{end}}
+  </div>
+
+  <div class="field-group">
+    <label class="form-label" for="teacher-email">Email sekolah</label>
+    <input class="form-control" type="email" id="teacher-email" name="email" value="{{.Data.Email}}" inputmode="email" autocomplete="email" placeholder="nama@sekolah.sch.id" aria-describedby="teacher-email-help teacher-email-error" required>
+    <div class="field-help" id="teacher-email-help">Kabar persetujuan dikirim ke alamat ini.</div>
+    {{with .Errors.Get "email"}}<div class="field-error" id="teacher-email-error" role="alert">{{.}}</div>{{end}}
+  </div>
+
+  <div class="field-group">
+    <label class="form-label" for="teacher-password">Kata sandi</label>
+    <div class="position-relative">
+      <input class="form-control pe-5" type="password" id="teacher-password" name="password" autocomplete="new-password" minlength="{{.Data.MinPassword}}" placeholder="Buat kata sandi" aria-describedby="teacher-password-help teacher-password-error" required>
+      <button type="button" class="btn btn-text position-absolute top-50 end-0 translate-middle-y me-1" data-toggle-password="teacher-password" aria-label="Tampilkan kata sandi" aria-pressed="false" aria-controls="teacher-password">
+        <svg width="20" height="20" aria-hidden="true"><use href="#i-eye"></use></svg>
+      </button>
+    </div>
+    <div class="field-help" id="teacher-password-help">Minimal {{.Data.MinPassword}} karakter.</div>
+    {{with .Errors.Get "password"}}<div class="field-error" id="teacher-password-error" role="alert">{{.}}</div>{{end}}
+  </div>
+
+  <div class="field-group">
+    <label class="form-label" for="teacher-password-confirm">Konfirmasi kata sandi</label>
+    <div class="position-relative">
+      <input class="form-control pe-5" type="password" id="teacher-password-confirm" name="password_confirm" autocomplete="new-password" minlength="{{.Data.MinPassword}}" placeholder="Ulangi kata sandi" aria-describedby="teacher-password-confirm-help teacher-password-confirm-error" required>
+      <button type="button" class="btn btn-text position-absolute top-50 end-0 translate-middle-y me-1" data-toggle-password="teacher-password-confirm" aria-label="Tampilkan kata sandi" aria-pressed="false" aria-controls="teacher-password-confirm">
+        <svg width="20" height="20" aria-hidden="true"><use href="#i-eye"></use></svg>
+      </button>
+    </div>
+    <div class="field-help" id="teacher-password-confirm-help">Tulis ulang kata sandi yang sama.</div>
+    {{with .Errors.Get "password_confirm"}}<div class="field-error" id="teacher-password-confirm-error" role="alert">{{.}}</div>{{end}}
+  </div>
+
+  <button type="submit" class="btn btn-solid theme-primary w-100 login-submit">
+    Kirim pendaftaran
+    <svg width="16" height="16" aria-hidden="true"><use href="#i-arrow-right"></use></svg>
+  </button>
+</form>
+
+<div class="auth-divider">
+  <hr class="divider-line">
+  <span>Sudah punya akun?</span>
+  <hr class="divider-line">
+</div>
+
+<div class="register-grid">
+  <a class="register-card" href="/login">
+    <span class="register-icon">
+      <svg width="16" height="16" aria-hidden="true"><use href="#i-lock"></use></svg>
+    </span>
+    <span class="register-copy">
+      <strong>Masuk</strong>
+      <span>Guru dan siswa</span>
+    </span>
+    <svg class="register-arrow" width="16" height="16" aria-hidden="true"><use href="#i-chev-right"></use></svg>
+  </a>
+  <a class="register-card" href="/register/student">
+    <span class="register-icon">
+      <svg width="16" height="16" aria-hidden="true"><use href="#i-person"></use></svg>
+    </span>
+    <span class="register-copy">
+      <strong>Akun siswa</strong>
+      <span>Langsung aktif</span>
+    </span>
+    <svg class="register-arrow" width="16" height="16" aria-hidden="true"><use href="#i-chev-right"></use></svg>
+  </a>
+</div>
+{{end}}

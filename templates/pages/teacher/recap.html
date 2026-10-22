@@ -1,102 +1,167 @@
-{{define "partials/title"}}Rekap percobaan — Twisty Quiz{{end}}
+{{define "partials/page-style"}}
+/* Attempt recap: a printable teacher record. The screen view uses the same
+   cards as the rest of the app; the print view drops the chrome and lets the
+   table breathe across the page. */
+.recap-page { display: flex; flex-direction: column; gap: 24px; }
+.recap-back { display: inline-flex; align-items: center; gap: 6px; text-decoration: none; }
+.recap-card { padding: 24px; }
+.recap-header { display: grid; grid-template-columns: 1fr; gap: 20px; }
+.recap-meta { display: flex; flex-wrap: wrap; gap: 6px 16px; color: #687182; font-size: 12px; }
+.recap-meta > span { display: inline-flex; align-items: center; gap: 6px; }
+.recap-score { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.recap-score-note { max-width: 28ch; color: #687182; font-size: 12px; line-height: 1.5; }
+.recap-rows { display: flex; flex-direction: column; gap: 12px; }
+.recap-table { min-width: 760px; }
+.recap-table td { vertical-align: top; word-break: break-word; }
+.recap-question { color: #121721; font-weight: 600; line-height: 1.5; }
+.recap-answer { white-space: pre-wrap; line-height: 1.55; }
+.recap-feedback {
+  display: block;
+  margin-top: 6px;
+  color: #687182;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.recap-key { color: #237A57; font-weight: 600; }
+
+@media (min-width: 768px) {
+  .recap-header { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+  .recap-score { align-items: flex-end; text-align: right; }
+}
+@media print {
+  @page { margin: 16mm; }
+  body { background: #FFFFFF !important; }
+  .app-shell { max-width: none; padding: 0; }
+  .app-nav, .drawer, .demo-strip, .flash, .recap-back { display: none !important; }
+  .recap-page { gap: 16px; }
+  .recap-card {
+    border: 1px solid #E2E6EB;
+    box-shadow: none;
+  }
+  .recap-header { break-inside: avoid; }
+  .recap-table { min-width: 0; }
+  .recap-table thead { display: table-header-group; }
+  .recap-table tr { break-inside: avoid; }
+}
+{{end}}
 {{define "content"}}
-<div class="d-flex flex-column gap-4">
+{{with .Data}}
+<div class="page-stack recap-page">
 
-  <h1 class="h1 mb-0">Rekap percobaan — Ayu Lestari</h1>
-
-  {{/* RECAP family state demos. */}}
-  <div hidden data-state-demo="error">
-    {{template "partials/banner-error" .}}
-  </div>
-  <div hidden data-state-demo="locked">
-    {{template "partials/banner-locked" .}}
-  </div>
-
-  {{/* Header card: quiz metadata + big tabular score + word badge. */}}
-  <div class="card p-4 d-flex flex-wrap align-items-center justify-content-between gap-4">
-    <div class="d-flex flex-column gap-1">
-      <span class="fw-semibold">Biologi Sel — Kuis 4</span>
-      <span class="fg-secondary" style="font-size: 13px">XII IPA 2 · mulai 09.15 WIB · durasi 45 menit</span>
-      <span class="d-flex align-items-center gap-2 mt-1">
-        <span class="badge theme-success">Selesai</span>
-        <span class="badge" style="background-color: #FDF0ED; color: #B42318">Fokus hilang: 2 kali</span>
-      </span>
+  <div class="page-head">
+    <div>
+      <span class="eyebrow">Rekap percobaan</span>
+      <h1 class="h1 mb-0">{{.Attempt.StudentName}}</h1>
+      <p class="page-sub">{{.Attempt.ClassLabel}} · {{.Attempt.QuizTitle}}</p>
     </div>
-    <div class="d-flex flex-column align-items-center">
-      <span class="fw-bold" style="font-size: 32px; line-height: 38px; font-variant-numeric: tabular-nums">84</span>
-      <span class="fg-secondary" style="font-size: 13px">skor akhir</span>
+    <a class="link-quiet recap-back" href="{{.BackHref}}">
+      <svg width="18" height="18" aria-hidden="true"><use href="#i-arrow-left"></use></svg>
+      Kembali
+    </a>
+  </div>
+
+  <section class="card recap-card recap-header" aria-label="Identitas percobaan">
+    <div class="stack-3">
+      <div>
+        <span class="eyebrow">Peserta</span>
+        <h2 class="section-title">{{.Attempt.StudentName}}</h2>
+        <p class="section-sub">{{.Attempt.ClassLabel}} · {{.Attempt.QuizTitle}}</p>
+      </div>
+      <div class="recap-meta">
+        <span>
+          <svg width="16" height="16" aria-hidden="true"><use href="#i-history"></use></svg>
+          Percobaan {{.Attempt.AttemptNo}} dari {{.Attempt.MaxAttempts}}
+        </span>
+        {{with .Attempt.StartedAt}}
+        <span>
+          <svg width="16" height="16" aria-hidden="true"><use href="#i-clock"></use></svg>
+          Mulai {{.DateTime}}
+        </span>
+        {{end}}
+        {{with .Attempt.SubmittedAt}}
+        <span>
+          <svg width="16" height="16" aria-hidden="true"><use href="#i-send"></use></svg>
+          Dikirim {{.DateTime}}
+        </span>
+        {{else}}
+        <span>
+          <svg width="16" height="16" aria-hidden="true"><use href="#i-send"></use></svg>
+          Belum dikirim
+        </span>
+        {{end}}
+        <span class="{{if gt .Attempt.FocusLoss 0}}focus-flag{{end}}">
+          <svg width="16" height="16" aria-hidden="true"><use href="#i-flag"></use></svg>
+          Fokus hilang {{.Attempt.FocusLoss}} kali
+        </span>
+      </div>
     </div>
-  </div>
 
-  {{/* Per-question recap rows — each verdict is a WORD badge. */}}
-  <div class="card p-4 d-flex flex-column gap-3">
-    <h2 class="h2 mb-0">Rincian per soal</h2>
-    <ul class="list-group">
-      <li class="list-group-item d-flex flex-wrap align-items-center justify-content-between gap-3 p-3">
-        <span class="d-flex align-items-start gap-3">
-          <span class="badge" style="background-color: #F4F6F8; color: #121721; font-variant-numeric: tabular-nums">1</span>
-          <span>
-            <span class="d-block">Organel apa yang berperan dalam respirasi sel?</span>
-            <span class="d-block fg-secondary" style="font-size: 13px">Jawaban: Mitokondria · Kunci: Mitokondria · 10 poin</span>
-          </span>
-        </span>
-        <span class="d-flex align-items-center gap-2">
-          <span class="badge theme-success">Benar</span>
-        </span>
-      </li>
-      <li class="list-group-item d-flex flex-wrap align-items-center justify-content-between gap-3 p-3">
-        <span class="d-flex align-items-start gap-3">
-          <span class="badge" style="background-color: #F4F6F8; color: #121721; font-variant-numeric: tabular-nums">2</span>
-          <span>
-            <span class="d-block">Jelaskan fungsi membran plasma dalam transport zat.</span>
-            <span class="d-block fg-secondary" style="font-size: 13px">Esai dinilai manual · 20 poin</span>
-          </span>
-        </span>
-        <span class="d-flex align-items-center gap-2">
-          <span class="badge theme-warning">Menunggu</span>
-        </span>
-      </li>
-      <li class="list-group-item d-flex flex-wrap align-items-center justify-content-between gap-3 p-3">
-        <span class="d-flex align-items-start gap-3">
-          <span class="badge" style="background-color: #F4F6F8; color: #121721; font-variant-numeric: tabular-nums">3</span>
-          <span>
-            <span class="d-block">Kapan pembelahan meiosis terjadi?</span>
-            <span class="d-block fg-secondary" style="font-size: 13px">Jawaban: Pembentukan sel gamet · Kunci: Pembentukan sel gamet · 10 poin</span>
-          </span>
-        </span>
-        <span class="d-flex align-items-center gap-2">
-          <span class="badge theme-success">Benar</span>
-        </span>
-      </li>
-      <li class="list-group-item d-flex flex-wrap align-items-center justify-content-between gap-3 p-3">
-        <span class="d-flex align-items-start gap-3">
-          <span class="badge" style="background-color: #F4F6F8; color: #121721; font-variant-numeric: tabular-nums">4</span>
-          <span>
-            <span class="d-block">Apa perbedaan mitosis dan meiosis?</span>
-            <span class="d-block fg-secondary" style="font-size: 13px">Jawaban: Mitosis mempertahankan jumlah kromosom · Kunci sama · 10 poin</span>
-          </span>
-        </span>
-        <span class="d-flex align-items-center gap-2">
-          <span class="badge theme-success">Benar</span>
-        </span>
-      </li>
-      <li class="list-group-item d-flex flex-wrap align-items-center justify-content-between gap-3 p-3">
-        <span class="d-flex align-items-start gap-3">
-          <span class="badge" style="background-color: #F4F6F8; color: #121721; font-variant-numeric: tabular-nums">5</span>
-          <span>
-            <span class="d-block">Diskusikan peran enzim dalam reaksi biokimia.</span>
-            <span class="d-block fg-secondary" style="font-size: 13px">Esai dinilai manual · 20 poin</span>
-          </span>
-        </span>
-        <span class="d-flex align-items-center gap-2">
-          <span class="badge theme-warning">Menunggu</span>
-        </span>
-      </li>
-    </ul>
-  </div>
+    <div class="recap-score">
+      {{if .Waiting}}
+        <span class="badge theme-warning">Menunggu nilai</span>
+        <span class="recap-score-note">Skor muncul setelah semua esai dinilai.</span>
+      {{else}}
+        {{with .Score}}
+        <span class="score-hero">{{.Int}}<small>/100</small></span>
+        <span class="badge theme-{{.Tone}}">{{.String}}</span>
+        {{else}}
+        <span class="score-hero">—</span>
+        <span class="recap-score-note">Belum ada skor.</span>
+        {{end}}
+      {{end}}
+    </div>
+  </section>
 
-  <div class="d-flex flex-wrap justify-content-end gap-2">
-    <a class="btn btn-solid theme-primary" href="/teacher/grading">Kembali ke penilaian</a>
-  </div>
+  <section class="card recap-card recap-rows" aria-labelledby="recap-rows-title">
+    <div class="row-between">
+      <div>
+        <h2 class="section-title" id="recap-rows-title">Rincian jawaban</h2>
+        <p class="section-sub">{{len .Answers}} soal · kunci jawaban ditampilkan untuk guru</p>
+      </div>
+      <span class="badge {{if .Waiting}}theme-warning{{else}}theme-success{{end}}">{{if .Waiting}}Menunggu nilai{{else}}Selesai dinilai{{end}}</span>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table table-clean recap-table">
+        <caption class="visually-hidden">Rincian jawaban {{.Attempt.StudentName}} pada {{.Attempt.QuizTitle}}</caption>
+        <thead>
+          <tr>
+            <th scope="col">No.</th>
+            <th scope="col">Soal</th>
+            <th scope="col">Jawaban</th>
+            <th scope="col">Kunci</th>
+            <th scope="col">Nilai</th>
+            <th scope="col">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{range .Answers}}
+          <tr>
+            <td class="num">{{.Position}}</td>
+            <td>
+              <span class="recap-question d-block">{{.Body}}</span>
+              <span class="cell-sub">{{.Type.Label}}</span>
+            </td>
+            <td>
+              <span class="recap-answer d-block">{{.StudentAnswer}}</span>
+              {{if .Feedback}}<span class="recap-feedback">Umpan balik: {{.Feedback}}</span>{{end}}
+            </td>
+            <td><span class="recap-key">{{.Key}}</span></td>
+            <td>{{with .Score}}{{template "partials/score.html" .}}{{else}}<span class="cell-sub">—</span>{{end}}</td>
+            <td>
+              {{if eq .Verdict "Benar"}}<span class="badge theme-success">{{.Verdict}}</span>
+              {{else if eq .Verdict "Salah"}}<span class="badge theme-danger">{{.Verdict}}</span>
+              {{else if eq .Verdict "Tidak dijawab"}}<span class="badge bg-2 fg-secondary">{{.Verdict}}</span>
+              {{else if eq .Verdict "Menunggu nilai"}}<span class="badge theme-warning">{{.Verdict}}</span>
+              {{else}}<span class="badge theme-primary">{{.Verdict}}</span>{{end}}
+            </td>
+          </tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
 </div>
+{{end}}
 {{end}}

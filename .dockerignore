@@ -1,7 +1,13 @@
 .git
 .gitignore
+.github
 docs
 assets
 *.md
 .env
 bin/
+
+# agent/tooling state
+.codegraph
+.omp
+.superpowers

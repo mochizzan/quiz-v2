@@ -1,47 +1,139 @@
-{{define "partials/title"}}Hasil kuis — Twisty Quiz{{end}}
 {{define "content"}}
-<div class="d-flex flex-column align-items-center text-center gap-3">
+<div class="container py-4">
+  <div class="attempt-shell">
 
-  <span class="d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 56px; height: 56px; background-color: #EEF4FA; color: #237A57">
-    <svg width="28" height="28" aria-hidden="true"><use href="#i-check"></use></svg>
-  </span>
+    <header class="attempt-top">
+      <div class="row-between">
+        <div class="min-w-0">
+          <span class="eyebrow">Hasil percobaan {{.Data.Header.AttemptNo}} dari {{.Data.Header.MaxAttempts}}</span>
+          <h1 class="h2 mb-0">{{.Data.Header.QuizTitle}}</h1>
+          <span class="cell-sub">{{.Data.Header.StudentName}}{{if .Data.Header.ClassLabel}} · {{.Data.Header.ClassLabel}}{{end}}</span>
+        </div>
+        <a class="link-quiet" href="{{.Data.QuizHref}}">Kembali ke kuis</a>
+      </div>
+    </header>
 
-  <h1 class="h1 mb-0">Jawaban berhasil dikumpulkan!</h1>
-  <p class="mb-0 fg-secondary">Terima kasih, Ayu. Jawaban Anda untuk Kuis Pengetahuan Umum — Sesi 1 sudah tersimpan.</p>
+    <section class="card p-4" aria-labelledby="result-summary-title">
+      <div class="row-between">
+        <div>
+          <h2 class="section-title" id="result-summary-title">Ringkasan</h2>
+          <p class="section-sub">Tampilan hasil: {{.Data.ModeLabel}}</p>
+        </div>
+        {{if .Data.Waiting}}
+        <span class="badge theme-warning">Menunggu penilaian</span>
+        {{else if .Data.Graded}}
+        <span class="badge theme-success">Sudah dinilai</span>
+        {{end}}
+      </div>
 
-  {{/* ATTEMPT family state demos on the result screen. */}}
-  <div hidden data-state-demo="error">
-    {{template "partials/banner-error" .}}
-  </div>
-  <div hidden data-state-demo="locked">
-    {{template "partials/banner-locked" .}}
-  </div>
+      <div class="row g-4 mt-1 align-items-start">
+        <div class="col-12 md:col-4">
+          {{if .Data.Waiting}}
+          <span class="metric-label">Skor</span>
+          <span class="d-block fw-semibold mt-1">Menunggu penilaian</span>
+          <span class="metric-foot">Esai Anda belum selesai dinilai guru.</span>
+          {{else if .Data.ShowScore}}
+          <span class="metric-label">Skor akhir</span>
+          <span class="score-hero">{{with .Data.Score}}{{.Int}}<small>/100</small>{{else}}—{{end}}</span>
+          <span class="metric-foot">Dihitung otomatis dari seluruh jawaban.</span>
+          {{else}}
+          <span class="metric-label">Skor akhir</span>
+          <span class="score-hero">—</span>
+          <span class="metric-foot">Skor tidak ditampilkan. Guru menyembunyikan skor untuk kuis ini.</span>
+          {{end}}
+        </div>
+        <div class="col-12 md:col-4">
+          <span class="metric-label">Dikumpulkan</span>
+          <span class="d-block fw-semibold num mt-1">{{with .Data.SubmittedAt}}{{.DateTime}} WIB{{else}}Belum dikumpulkan{{end}}</span>
+          <span class="metric-foot num">{{.Data.AttemptsUsed}} dari {{.Data.MaxAttempts}} percobaan</span>
+        </div>
+        <div class="col-12 md:col-4">
+          <span class="metric-label">Soal</span>
+          <span class="d-block fw-semibold num mt-1">{{len .Data.Rows}} soal</span>
+          <span class="metric-foot">
+            {{if .Data.Unanswered}}{{len .Data.Unanswered}} tidak dijawab{{else}}Semua dijawab{{end}}
+          </span>
+        </div>
+      </div>
 
-  {{/* 3 summary tiles — tabular numbers. */}}
-  <div class="row g-4 row-cols-1 md:row-cols-3 w-100 mt-1">
-    <div class="col">
-      <div class="card p-3 h-100">
-        <span class="fg-secondary" style="font-size: 13px">Total soal</span>
-        <span class="fw-bold" style="font-size: 32px; line-height: 38px; font-variant-numeric: tabular-nums">5</span>
+      {{if gt .Data.FocusLoss 0}}
+      <p class="focus-flag mt-3 mb-0">
+        <svg width="16" height="16" aria-hidden="true"><use href="#i-warn"></use></svg>
+        Tercatat {{.Data.FocusLoss}} kali meninggalkan layar kuis.
+      </p>
+      {{end}}
+    </section>
+
+    <section class="card p-4" aria-labelledby="answers-title">
+      <div class="row-between mb-2">
+        <div>
+          <h2 class="section-title" id="answers-title">{{if .Data.Mode.ShowsQuestions}}Telaah jawaban{{else}}Kunci jawaban{{end}}</h2>
+          <p class="section-sub">Tampilan mengikuti pengaturan guru untuk kuis ini.</p>
+        </div>
+        <span class="badge bg-2 fg-secondary">{{.Data.ModeLabel}}</span>
+      </div>
+
+      {{range .Data.Rows}}
+      <article class="result-row">
+        <div class="result-head">
+          <div class="d-flex flex-wrap align-items-center gap-2">
+            <span class="review-index" aria-hidden="true">{{.Position}}</span>
+            <span class="badge bg-2 fg-secondary">{{.Type.Label}}</span>
+            {{if $.Data.Mode.ShowsVerdict}}
+            <span class="badge theme-{{.VerdictTone}}">{{.VerdictLabel}}</span>
+            {{end}}
+          </div>
+          {{if and $.Data.ShowScore $.Data.Mode.ShowsVerdict}}
+          {{with .Score}}{{template "partials/score.html" .}}{{end}}
+          {{end}}
+        </div>
+
+        {{if $.Data.Mode.ShowsQuestions}}
+        <p class="fw-semibold mb-2 mt-2">{{.Body}}</p>
+        {{with .Image}}
+        <img class="question-image" src="{{.URL}}" alt="{{.Alt}}" loading="lazy">
+        {{end}}
+
+        <div class="answer-box mt-2 {{if $.Data.Mode.ShowsVerdict}}{{if eq .Verdict "correct"}}is-correct{{else if eq .Verdict "incorrect"}}is-wrong{{else if eq .Verdict "ungraded"}}is-waiting{{end}}{{end}}">
+          <span class="cell-sub d-block">Jawaban Anda</span>
+          <span class="d-block">{{.StudentAnswer}}</span>
+        </div>
+        {{end}}
+
+        {{if $.Data.Mode.ShowsKey}}
+        <p class="key-line mt-2 mb-0">{{if .Essay}}Esai dinilai oleh guru.{{else}}Kunci jawaban: {{.Key}}{{end}}</p>
+        {{end}}
+
+        {{if and $.Data.Mode.ShowsQuestions $.Data.Mode.ShowsVerdict}}
+        {{if .Feedback}}
+        <div class="answer-box mt-2">
+          <span class="cell-sub d-block">Umpan balik guru</span>
+          {{.Feedback}}
+        </div>
+        {{end}}
+        {{end}}
+      </article>
+      {{end}}
+    </section>
+
+    <div class="attempt-footer">
+      <div class="group">
+        <a class="btn btn-outline theme-primary" href="{{.Data.HistoryHref}}">
+          <svg width="18" height="18" aria-hidden="true"><use href="#i-history"></use></svg>
+          Riwayat kuis
+        </a>
+        {{if .Data.Mode.ShowsQuestions}}
+        <a class="btn btn-text" href="{{.Data.ReviewHref}}">Tinjau jawaban</a>
+        {{end}}
+      </div>
+      <div class="group">
+        {{if .Data.CanRetry}}
+        <a class="btn btn-outline theme-primary" href="{{.Data.RetryHref}}">Coba lagi</a>
+        {{end}}
+        <a class="btn btn-solid theme-primary" href="{{.Data.QuizHref}}">Kembali ke kuis</a>
       </div>
     </div>
-    <div class="col">
-      <div class="card p-3 h-100">
-        <span class="fg-secondary" style="font-size: 13px">Terjawab</span>
-        <span class="fw-bold" style="font-size: 32px; line-height: 38px; font-variant-numeric: tabular-nums">4</span>
-      </div>
-    </div>
-    <div class="col">
-      <div class="card p-3 h-100">
-        <span class="fg-secondary" style="font-size: 13px">Kosong</span>
-        <span class="fw-bold" style="font-size: 32px; line-height: 38px; font-variant-numeric: tabular-nums">1</span>
-      </div>
-    </div>
+
   </div>
-
-  <p class="mb-0 fg-secondary" style="font-size: 13px; font-variant-numeric: tabular-nums">Dikumpulkan Rabu, 21 Oktober 2026, 09.42 WIB.</p>
-  <p class="mb-0 fg-secondary" style="font-size: 13px">Skor dihitung setelah guru menyelesaikan penilaian.</p>
-
-  <a class="btn btn-solid theme-primary mt-2" href="/student">Kembali ke dasbor</a>
 </div>
 {{end}}

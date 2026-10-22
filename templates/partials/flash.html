@@ -1,0 +1,1 @@
+{{define "partials/flash.html"}}{{with .Flash}}<div class="alert theme-{{.Kind}} flash" role="status" aria-live="polite">{{if .Title}}<strong class="d-block">{{.Title}}</strong>{{end}}{{if .Body}}{{.Body}}{{end}}</div>{{end}}{{end}}

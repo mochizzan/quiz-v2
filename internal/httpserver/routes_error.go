@@ -1,13 +1,34 @@
 package httpserver
 
-// This file is the "error" route group. Every route group lives in its own
-// routes_<group>.go file and registers itself from init(), so parallel page
-// tasks never share a Go file and never touch server.go.
+import (
+	"quiz-v2/internal/viewmodel"
+)
 
-// init registers the error routes: GET /error/500 renders the styled server
-// error page (pages/error/500.html through layouts/error.html). The 404 page
-// needs no route here — server.go's catch-all renders
-// pages/error/404.html directly for every unclaimed path.
 func init() {
-	registerPage(PageRoute{Method: "GET", Path: "/error/500", Template: "pages/error/500.html"})
+	registerPage(PageRoute{
+		Method:   "GET",
+		Path:     "/error/404",
+		Template: "pages/error/404.html",
+		Build: func(req PageRequest) viewmodel.PageData {
+			return page(req, "Halaman tidak ditemukan", "", nil, viewmodel.ErrorPage{
+				Code:     404,
+				Title:    "Halaman tidak ditemukan",
+				Message:  "Alamat yang Anda tuju tidak tersedia atau sudah dipindahkan.",
+				HomeHref: "/login",
+			})
+		},
+	})
+	registerPage(PageRoute{
+		Method:   "GET",
+		Path:     "/error/500",
+		Template: "pages/error/500.html",
+		Build: func(req PageRequest) viewmodel.PageData {
+			return page(req, "Terjadi kesalahan", "", nil, viewmodel.ErrorPage{
+				Code:     500,
+				Title:    "Terjadi kesalahan",
+				Message:  "Permintaan Anda belum dapat diproses. Coba muat ulang beberapa saat lagi.",
+				HomeHref: "/login",
+			})
+		},
+	})
 }

@@ -14,7 +14,7 @@ import (
 // from /static with the go-web-ssr caching convention (MaxAge 86400).
 func TestStaticBootstrapCSSServed(t *testing.T) {
 	app := httpserver.New(config.Config{Addr: ":8080"})
-	resp, err := app.Test(httptest.NewRequest("GET", "/static/bootstrap/bootstrap.min.css", nil))
+	resp, err := app.Test(httptest.NewRequest("GET", "/static/vendor/bootstrap/bootstrap.min.css", nil))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -36,7 +36,7 @@ func TestStaticBootstrapCSSServed(t *testing.T) {
 // TestStaticJQueryServed: the vendored jQuery 4 build is served from /static.
 func TestStaticJQueryServed(t *testing.T) {
 	app := httpserver.New(config.Config{Addr: ":8080"})
-	resp, err := app.Test(httptest.NewRequest("GET", "/static/jquery/jquery-4.0.0.min.js", nil))
+	resp, err := app.Test(httptest.NewRequest("GET", "/static/vendor/jquery/jquery-4.0.0.min.js", nil))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -49,16 +49,35 @@ func TestStaticJQueryServed(t *testing.T) {
 	}
 }
 
-// TestStaticFontServed: the vendored Plus Jakarta Sans variable woff2 is
-// served from /static (the file's binary signature is checked at vendoring,
-// not here — see plan Task 1 step 2).
-func TestStaticFontServed(t *testing.T) {
+// TestStaticFontFacesServed: every Gotham Rounded face declared in
+// head.html's @font-face block is vendored and served from /static. Checking
+// the wOF2 magic catches a truncating or non-woff2 conversion.
+func TestStaticFontFacesServed(t *testing.T) {
 	app := httpserver.New(config.Config{Addr: ":8080"})
-	resp, err := app.Test(httptest.NewRequest("GET", "/static/fonts/plus-jakarta-sans/PlusJakartaSans-latin.woff2", nil))
-	if err != nil {
-		t.Fatal(err)
+	faces := []string{
+		"gotham-rounded-light", "gotham-rounded-light-italic",
+		"gotham-rounded-book", "gotham-rounded-book-italic",
+		"gotham-rounded-medium", "gotham-rounded-medium-italic",
+		"gotham-rounded-bold", "gotham-rounded-bold-italic",
 	}
-	if resp.StatusCode != 200 {
-		t.Fatalf("status = %d, want 200", resp.StatusCode)
+	for _, face := range faces {
+		t.Run(face, func(t *testing.T) {
+			url := "/static/fonts/gotham-rounded/" + face + ".woff2"
+			resp, err := app.Test(httptest.NewRequest("GET", url, nil))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if resp.StatusCode != 200 {
+				t.Fatalf("status = %d, want 200", resp.StatusCode)
+			}
+			body, _ := io.ReadAll(resp.Body)
+			if len(body) < 4 || string(body[:4]) != "wOF2" {
+				sig := ""
+				if len(body) >= 4 {
+					sig = string(body[:4])
+				}
+				t.Errorf("%s is not a woff2 file (signature %q)", url, sig)
+			}
+		})
 	}
 }
