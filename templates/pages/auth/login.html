@@ -1,74 +1,102 @@
 {{define "partials/title"}}Masuk — Twisty Quiz{{end}}
+{{define "partials/page-style"}}{{template "partials/auth-style.html" .}}{{end}}
 {{define "content"}}
-<div class="d-flex flex-column gap-4">
-  {{/* Role toggle: which kind of account is signing in (demo state — Guru). */}}
-  <div class="btn-group w-100" role="group" aria-label="Pilih peran">
-    <button type="button" class="btn btn-solid theme-primary flex-fill" aria-pressed="true">Guru</button>
-    <button type="button" class="btn btn-outline theme-primary flex-fill" aria-pressed="false">Siswa</button>
+{{/* Auth family ERROR state demo (spec §15.8): a summary alert that is the
+     first focusable element in the form, plus field-level invalid-feedback.
+     hidden keeps the static demo clean; the backend will unhide one. */}}
+<div hidden data-state-demo="error">
+  <div class="alert theme-danger mb-3" role="alert" tabindex="-1">
+    <strong class="d-block">Email atau kata sandi salah.</strong>
+    Periksa kembali data Anda, lalu coba lagi.
   </div>
+</div>
 
-  <div>
-    <h1 class="h1 mb-1">Selamat datang kembali</h1>
-    <p class="mb-0 fg-secondary">Masuk ke akun Anda untuk melanjutkan.</p>
+<div class="auth-heading">
+  <span class="auth-kicker">Masuk ke akun</span>
+  <h1 class="h1 auth-title">Selamat datang kembali</h1>
+  <p class="auth-subtitle">Masuk untuk mengelola kuis atau mengerjakan tugas hari ini.</p>
+</div>
+
+{{/* Role toggle: which kind of account is signing in (demo state — Guru).
+     Segmented track via partials/auth-style; markup keeps the pinned
+     btn-group + aria-pressed pattern. */}}
+<div class="btn-group role-switch w-100" role="group" aria-label="Pilih peran">
+  <button type="button" class="btn btn-solid theme-primary flex-fill" aria-pressed="true">
+    <svg width="15" height="15" aria-hidden="true"><use href="#i-cap"></use></svg>
+    Guru
+  </button>
+  <button type="button" class="btn btn-outline theme-primary flex-fill" aria-pressed="false">
+    <svg width="15" height="15" aria-hidden="true"><use href="#i-person"></use></svg>
+    Siswa
+  </button>
+</div>
+
+<form class="login-form" action="/login" method="post">
+  <div class="field-group">
+    <label class="form-label" for="login-email">Email</label>
+    <input class="form-control" type="email" id="login-email" name="email" autocomplete="email" placeholder="nama@sekolah.sch.id" required>
+    {{/* Field-level error primitive, present but revealed only inside the
+         state-demo container above in a real flow; shipped inline as markup
+         reference for the error state. */}}
+    <div hidden data-state-demo="error-field" class="invalid-feedback">
+      Masukkan alamat email yang valid.
+    </div>
   </div>
-
-  {{/* Auth family ERROR state demo (spec §15.8): a summary alert that is the
-       first focusable element in the form, plus field-level invalid-feedback.
-       hidden keeps the static demo clean; the backend will unhide one. */}}
-  <div hidden data-state-demo="error">
-    <div class="alert theme-danger mb-3" role="alert" tabindex="-1">
-      <strong class="d-block">Email atau kata sandi salah.</strong>
-      Periksa kembali data Anda, lalu coba lagi.
+  <div class="field-group">
+    <label class="form-label" for="login-password">Kata sandi</label>
+    <div class="position-relative">
+      <input class="form-control pe-5" type="password" id="login-password" name="password" autocomplete="current-password" placeholder="••••••••" required>
+      <button type="button" class="btn btn-text position-absolute top-50 end-0 translate-middle-y me-1" aria-label="Tampilkan kata sandi">
+        <svg width="20" height="20" aria-hidden="true"><use href="#i-eye"></use></svg>
+      </button>
     </div>
   </div>
 
-  <form class="d-flex flex-column gap-3" action="/login" method="post">
-    <div>
-      <label class="form-label" for="login-email">Email</label>
-      <input class="form-control" type="email" id="login-email" name="email" autocomplete="email" placeholder="nama@sekolah.sch.id" required>
-      {{/* Field-level error primitive, present but revealed only inside the
-           state-demo container above in a real flow; shipped inline as markup
-           reference for the error state. */}}
-      <div hidden data-state-demo="error-field" class="invalid-feedback">
-        Masukkan alamat email yang valid.
-      </div>
-    </div>
-    <div>
-      <label class="form-label" for="login-password">Kata sandi</label>
-      <input class="form-control" type="password" id="login-password" name="password" autocomplete="current-password" placeholder="••••••••" required>
-    </div>
-
-    <div class="d-flex align-items-center justify-content-between gap-3">
-      <label class="check">
-        <input type="checkbox" name="remember" value="1">
-        <span>Ingat saya</span>
-      </label>
-      <a href="/login" class="fg-secondary">Lupa kata sandi?</a>
-    </div>
-
-    <button type="submit" class="btn btn-solid theme-primary w-100" style="min-height: 44px">Masuk</button>
-  </form>
-
-  <div class="d-flex align-items-center gap-3" aria-hidden="true">
-    <hr class="flex-grow-1 mb-0">
-    <span class="fg-secondary" style="font-size: 13px">atau</span>
-    <hr class="flex-grow-1 mb-0">
+  <div class="form-options">
+    <label class="check">
+      <input type="checkbox" name="remember" value="1">
+      <span>Ingat saya</span>
+    </label>
+    <a href="/login" class="fg-secondary">Lupa kata sandi?</a>
   </div>
 
-  <div class="d-flex flex-column gap-2">
-    <a class="d-flex align-items-center justify-content-between gap-2 text-decoration-none" href="/register">
-      <span>Daftar sebagai Guru</span>
-      <svg width="20" height="20" aria-hidden="true"><use href="#i-chev-right"></use></svg>
-    </a>
-    <a class="d-flex align-items-center justify-content-between gap-2 text-decoration-none" href="/register">
-      <span>Daftar sebagai Siswa</span>
-      <svg width="20" height="20" aria-hidden="true"><use href="#i-chev-right"></use></svg>
-    </a>
-  </div>
+  <button type="submit" class="btn btn-solid theme-primary w-100 login-submit">
+    Masuk
+    <svg width="16" height="16" aria-hidden="true"><use href="#i-arrow-right"></use></svg>
+  </button>
+</form>
 
-  <div class="alert theme-info mb-0 d-flex align-items-center justify-content-between gap-3">
-    <span>Punya kode kuis dari guru?</span>
-    <a class="btn btn-outline theme-primary" href="/join">Gabung dengan kode kuis</a>
-  </div>
+<div class="auth-divider">
+  <hr class="divider-line">
+  <span>Baru di Twisty Quiz?</span>
+  <hr class="divider-line">
+</div>
+
+<div class="register-grid">
+  <a class="register-card" href="/register">
+    <span class="register-icon">
+      <svg width="16" height="16" aria-hidden="true"><use href="#i-cap"></use></svg>
+    </span>
+    <span class="register-copy">
+      <strong>Daftar sebagai Guru</strong>
+      <span>Buat akun pengajar</span>
+    </span>
+    <svg class="register-arrow" width="16" height="16" aria-hidden="true"><use href="#i-chev-right"></use></svg>
+  </a>
+  <a class="register-card" href="/register">
+    <span class="register-icon">
+      <svg width="16" height="16" aria-hidden="true"><use href="#i-person"></use></svg>
+    </span>
+    <span class="register-copy">
+      <strong>Daftar sebagai Siswa</strong>
+      <span>Buat akun siswa</span>
+    </span>
+    <svg class="register-arrow" width="16" height="16" aria-hidden="true"><use href="#i-chev-right"></use></svg>
+  </a>
+</div>
+
+<div class="alert theme-info mb-0 d-flex align-items-center justify-content-between gap-3 join-promo">
+  <span>Punya kode kuis dari guru?</span>
+  <a class="btn btn-outline theme-primary" href="/join">Gabung dengan kode kuis</a>
 </div>
 {{end}}

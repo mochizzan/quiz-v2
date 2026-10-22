@@ -23,7 +23,6 @@ var (
 	// paletteHexes (tokens_test.go) is the closed 24-colour palette, stored
 	// lower-cased; reHex captures mixed-case so compare strings.ToLower.
 	reStyleElem = regexp.MustCompile(`(?s)<style[^>]*>(.*?)</style>`)
-	reCSSToken  = regexp.MustCompile(`[.#@a-zA-Z][^{;]*\{`)
 	reHex       = regexp.MustCompile(`#[0-9A-Fa-f]{6}\b`)
 	reIconRef   = regexp.MustCompile(`href="#(i-[^"]+)"`)
 	reClassAttr = regexp.MustCompile(`class="([^"]*)"`)
@@ -89,7 +88,7 @@ func walkTemplates(t *testing.T) map[string]string {
 
 // TestEveryRegisteredPageRenders (plan Task 15 Step 1): every registered GET
 // page answers 200 with the shared chrome, a per-page title, and exactly one
-// <style> element carrying only the @font-face block.
+// style element (@font-face plus any page-scoped internal CSS slot).
 func TestEveryRegisteredPageRenders(t *testing.T) {
 	app := httpserver.New(config.Config{Addr: ":8080"})
 	pages := httpserver.RegisteredPages()
@@ -171,8 +170,12 @@ func TestEveryRegisteredPageRenders(t *testing.T) {
 				t.Errorf("legacy title %q on %s", m[1], p.Path)
 			}
 
-			// Exactly ONE <style> element, containing @font-face and no CSS
-			// selector lines (only @font-face{…} blocks + comments).
+			// Exactly ONE <style> element: head.html's @font-face block plus
+			// the page-scoped internal-CSS slot (partials/page-style — user
+			// directive 2026-10-22: pages override component styles from a
+			// single <style> in <head>, never via style="" attributes).
+			// Guards that stay: @font-face present, and no external CSS
+			// fetch (@import / http(s) url()) — fonts stay vendored.
 			styles := reStyleElem.FindAllStringSubmatch(html, -1)
 			if len(styles) != 1 {
 				t.Errorf("want exactly 1 <style> element, got %d", len(styles))
@@ -182,8 +185,10 @@ func TestEveryRegisteredPageRenders(t *testing.T) {
 			if !strings.Contains(css, "@font-face") {
 				t.Errorf("<style> missing @font-face")
 			}
-			if reCSSToken.MatchString(strings.ReplaceAll(css, "@font-face", "")) {
-				t.Errorf("<style> must carry only the @font-face block, found a CSS selector")
+			for _, bad := range []string{"@import", "url(http://", "url(https://", "url(//"} {
+				if strings.Contains(css, bad) {
+					t.Errorf("<style> must not fetch external CSS, found %q", bad)
+				}
 			}
 		})
 	}

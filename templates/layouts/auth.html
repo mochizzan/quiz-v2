@@ -4,29 +4,86 @@
 {{template "partials/head.html" .}}</head>
 <body>
 {{template "partials/icons.html" .}}
-{{/* Split screen (DESIGN §4): atmospheric brand panel beside the centred auth
-     card. Below md the row becomes a single column and the brand panel
-     collapses to a compact header row (decorative chips + tagline hidden).
-     DEVIATION (documented in the plan): the prototype's brand gradient would
-     need inline background-image, which is OUTSIDE the spec §15.11 inline
-     closed list — the panel paints SOLID #293681 via the legal
-     background-color property instead. */}}
-<div class="row g-0 min-vh-100">
-  <div class="col-12 md:col-5 d-flex flex-column justify-content-between gap-4 p-4 md:p-5" style="background-color: #293681; color: #FFFFFF">
-    <span class="d-inline-flex align-items-center gap-2 fw-bold">
-      <svg width="28" height="28" aria-hidden="true"><use href="#i-star"></use></svg>
-      <span style="font-size: 16px; line-height: 22px">TWISTY QUIZ</span>
-    </span>
-    <div class="d-flex flex-column align-items-start gap-2 d-none md:d-flex">
-      <span class="badge" style="background-color: #1E2864; color: #FFFFFF">3 kuis aktif</span>
-      <span class="badge" style="background-color: #1E2864; color: #FFFFFF">142 peserta</span>
-      <span class="badge" style="background-color: #1E2864; color: #FFFFFF">1.480 soal bank</span>
-    </div>
-    <p class="d-none md:d-block mb-0" style="color: #EEF4FA; font-size: 14px; line-height: 20px">Ujian sekolah yang tenang, cepat, dan mudah diikuti.</p>
-  </div>
-  <div class="col-12 md:col-7 d-flex align-items-center justify-content-center p-4 md:p-5">
-    <div class="card" style="width: min(100%, 30rem)">
-      {{template "content" .}}
+{{/* Two-panel auth shell — structure follows docs/template/LOGIN.html
+     (framed canvas > .login-layout grid: brand panel left, auth column
+     right; one column below lg with the panel collapsing to a compact
+     header row). The brand gradient is rebuilt from palette stops and the
+     card padding lives in partials/auth-style.html — see the DEVIATION note
+     there. No topbar: it belongs to the dashboard template. */}}
+<div class="auth-page">
+  <div class="auth-shell">
+    <div class="login-layout">
+      <section class="brand-panel" aria-label="Tentang Twisty Quiz">
+        <span class="brand-mark">
+          <svg width="26" height="26" aria-hidden="true"><use href="#i-star"></use></svg>
+          <span>TWISTY QUIZ</span>
+        </span>
+        <div class="hero-content">
+          <span class="hero-badge">
+            <svg width="14" height="14" aria-hidden="true"><use href="#i-sparkle"></use></svg>
+            Kuis sekolah tanpa ribet
+          </span>
+          <p class="hero-title">Ujian yang <span class="hero-accent">tenang</span>, cepat, dan mudah diikuti.</p>
+          <p class="hero-subtitle">Satu ruang tenang untuk kuis harian, cek pemahaman, dan progres kelas.</p>
+        </div>
+        {{/* Decorative quiz mock with the canonical demo data (aria-hidden:
+             it repeats the proof row's meaning visually). */}}
+        <div class="hero-visual" aria-hidden="true">
+          <div class="question-mock">
+            <div class="mock-head">
+              <span class="mock-pill">Biologi Sel — Kuis 4</span>
+              <span class="mock-count">4 / 10</span>
+            </div>
+            <p class="mock-question">Organel apa yang berfungsi sebagai tempat respirasi sel untuk menghasilkan energi?</p>
+            <div class="mock-options">
+              <div class="mock-option"><span class="option-letter">A</span><span>Nukleus</span></div>
+              <div class="mock-option is-correct"><span class="option-letter">B</span><span>Mitokondria</span>
+                <svg class="mock-check" width="15" height="15" aria-hidden="true"><use href="#i-check"></use></svg>
+              </div>
+              <div class="mock-option"><span class="option-letter">C</span><span>Ribosom</span></div>
+            </div>
+            <div class="mock-foot">
+              <span class="mock-progress"><span class="mock-progress-bar"></span></span>
+              <span class="mock-next">Lanjut
+                <svg width="13" height="13" aria-hidden="true"><use href="#i-arrow-right"></use></svg>
+              </span>
+            </div>
+          </div>
+          <div class="float-card score-float">
+            <span class="score-ring"><span>78</span></span>
+            <span class="float-copy">
+              <strong>Rata-rata kelas</strong>
+              <small>Ujian terakhir</small>
+            </span>
+          </div>
+          <div class="float-card live-float">
+            <span class="live-dot"></span>
+            3 kuis aktif
+          </div>
+        </div>
+        <div class="hero-proof">
+          <div class="avatar-stack" aria-hidden="true">
+            <span class="avatar av-1">AL</span>
+            <span class="avatar av-2">BP</span>
+            <span class="avatar av-3">CH</span>
+            <span class="avatar av-4">DA</span>
+            <span class="avatar av-5">EN</span>
+          </div>
+          <div class="proof-copy">
+            <strong>1.240+ siswa aktif</strong>
+            <span>belajar dengan Twisty Quiz.</span>
+          </div>
+          <span class="proof-star">
+            <svg width="13" height="13" aria-hidden="true"><use href="#i-clock"></use></svg>
+            12 mnt rata-rata selesai
+          </span>
+        </div>
+      </section>
+      <div class="auth-column">
+        <div class="auth-card">
+          {{template "content" .}}
+        </div>
+      </div>
     </div>
   </div>
 </div>

@@ -14,6 +14,12 @@
   font-style: normal;
   font-display: swap;
 }
+{{/* Page-scoped internal CSS slot (user directive 2026-10-22): a page may
+     override component styles from here — ONE style element in <head>,
+     never style="" attributes. The default is empty; a page parsed last
+     redefines this template (e.g. auth pages include partials/auth-style). */}}
+{{template "partials/page-style" .}}
 </style>
 {{end}}
 {{define "partials/title"}}Twisty Quiz{{end}}
+{{define "partials/page-style"}}{{end}}
