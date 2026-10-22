@@ -14,6 +14,11 @@
   font-style: normal;
   font-display: swap;
 }
+/* Sprite icon stroke contract: presentation attributes on the sprite root
+   never reach <use> clones (they inherit from the use site), so without
+   this every icon renders as a solid black fill. Outline icons, currentColor,
+   1.8-unit round strokes — same contract the sprite root declares. */
+use { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 {{/* Page-scoped internal CSS slot (user directive 2026-10-22): a page may
      override component styles from here — ONE style element in <head>,
      never style="" attributes. The default is empty; a page parsed last

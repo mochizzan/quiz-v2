@@ -21,11 +21,11 @@
      Segmented track via partials/auth-style; markup keeps the pinned
      btn-group + aria-pressed pattern. */}}
 <div class="btn-group role-switch w-100" role="group" aria-label="Pilih peran">
-  <button type="button" class="btn btn-solid theme-primary flex-fill" aria-pressed="true">
+  <button type="button" class="btn btn-solid theme-primary flex-fill" data-role="guru" aria-pressed="true">
     <svg width="15" height="15" aria-hidden="true"><use href="#i-cap"></use></svg>
     Guru
   </button>
-  <button type="button" class="btn btn-outline theme-primary flex-fill" aria-pressed="false">
+  <button type="button" class="btn btn-outline theme-primary flex-fill" data-role="siswa" aria-pressed="false">
     <svg width="15" height="15" aria-hidden="true"><use href="#i-person"></use></svg>
     Siswa
   </button>
@@ -46,7 +46,7 @@
     <label class="form-label" for="login-password">Kata sandi</label>
     <div class="position-relative">
       <input class="form-control pe-5" type="password" id="login-password" name="password" autocomplete="current-password" placeholder="••••••••" required>
-      <button type="button" class="btn btn-text position-absolute top-50 end-0 translate-middle-y me-1" aria-label="Tampilkan kata sandi">
+      <button type="button" class="btn btn-text position-absolute top-50 end-0 translate-middle-y me-1" data-password-toggle="login-password" aria-label="Tampilkan kata sandi">
         <svg width="20" height="20" aria-hidden="true"><use href="#i-eye"></use></svg>
       </button>
     </div>
@@ -77,7 +77,7 @@
 </div>
 
 <div class="register-grid">
-  <a class="register-card" href="/register">
+  <a class="register-card" href="/register?role=guru">
     <span class="register-icon">
       <svg width="16" height="16" aria-hidden="true"><use href="#i-cap"></use></svg>
     </span>
@@ -87,7 +87,7 @@
     </span>
     <svg class="register-arrow" width="16" height="16" aria-hidden="true"><use href="#i-chev-right"></use></svg>
   </a>
-  <a class="register-card" href="/register">
+  <a class="register-card" href="/register?role=siswa">
     <span class="register-icon">
       <svg width="16" height="16" aria-hidden="true"><use href="#i-person"></use></svg>
     </span>
