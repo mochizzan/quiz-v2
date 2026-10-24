@@ -521,7 +521,7 @@ anonymous identity.
 - `INDEX ix_answers_attempt (attempt_id)`, `INDEX ix_answers_queue (graded_at, question_id)`
 
 > The `UNIQUE` is what makes autosave an idempotent upsert rather than a duplicate-row
-> generator: the client re-posts the same slot every 450 ms.
+> generator: every quiet autosave re-posts the same slot.
 >
 > `graded_by_account_id` and `graded_at` exist because "graded today" is a screen, and a
 > screen with no source column is a lie.

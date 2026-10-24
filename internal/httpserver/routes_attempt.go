@@ -216,6 +216,9 @@ func attemptAnswerAct(x *Ctx) (viewmodel.PageData, Redirect, error) {
 	}
 	res, err := svc.SaveAnswer(x.Context(), in)
 	if err == nil {
+		if res.NoContent {
+			return viewmodel.PageData{}, Redirect{NoContent: true}, nil
+		}
 		return viewmodel.PageData{}, x.Redirect(res.Path, res.Flash), nil
 	}
 	if r, ok := attemptRedirect(x, err); ok {

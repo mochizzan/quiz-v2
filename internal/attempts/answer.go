@@ -47,10 +47,12 @@ type AnswerInput struct {
 }
 
 // AnswerResult is a completed save: the 303 target plus the flash key ("" for
-// prev/next/review/autosave, "saved" for save, per ATT-125).
+// prev/next/review/autosave, "saved" for save, per ATT-125). An autosave sets
+// NoContent instead: the write is done and the client is not navigating.
 type AnswerResult struct {
-	Path  string
-	Flash string
+	Path      string
+	Flash     string
+	NoContent bool
 }
 
 // navKey is the closed nav vocabulary plus the legacy autosave (ATT-122).
@@ -472,8 +474,8 @@ func answerRedirect(ctx context.Context, tx *sql.Tx, lock attemptLockRow, questi
 	case navReview:
 		return AnswerResult{Path: review}, nil
 	case navAutosave:
-		// Silent save-and-stay: legacy clients only (ATT-125).
-		return AnswerResult{Path: qSuffix(base, pos)}, nil
+		// Quiet commit: the answer is stored, nothing is rendered (ATT-125).
+		return AnswerResult{NoContent: true}, nil
 	default: // save
 		return AnswerResult{Path: qSuffix(base, pos), Flash: "saved"}, nil
 	}

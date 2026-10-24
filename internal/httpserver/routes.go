@@ -113,13 +113,13 @@ func (s *server) serveRoute(c fiber.Ctx, route PageRoute) error {
 		if err != nil {
 			return s.finish(x, route, data, err)
 		}
-		return s.redirectFlash(c, r.Path, r.Flash)
+		return s.respondRedirect(c, r)
 	case route.Method == fiber.MethodPost && route.Act != nil:
 		r, err := route.Act(x)
 		if err != nil {
 			return s.finish(x, route, viewmodel.PageData{}, err)
 		}
-		return s.redirectFlash(c, r.Path, r.Flash)
+		return s.respondRedirect(c, r)
 	default:
 		return s.respondError(c, apperr.NotFoundf())
 	}

@@ -88,8 +88,9 @@
 
         <div class="attempt-footer mt-4">
           {{/* Exit lives with the "go elsewhere, don't commit" cluster (prev).
-               Answers save themselves; Simpan is the no-JS fallback and app.js
-               hides it as soon as autosave is armed. */}}
+               Answers save themselves on change via app.js; prev/next also
+               commit whatever is currently on the form, so a browser without
+               JavaScript still records an answer before leaving the question. */}}
           {{if .Data.PrevHref}}
           <div class="group">
             <button type="submit" class="btn btn-outline theme-primary" name="nav" value="prev">
@@ -106,7 +107,6 @@
           {{end}}
 
           <div class="group">
-            <button type="submit" class="btn btn-outline theme-primary btn-save" name="nav" value="save">Simpan</button>
             <button type="submit" class="btn btn-solid theme-primary" name="nav" value="next">
               {{if .Data.IsLast}}Tinjau jawaban{{else}}Selanjutnya{{end}}
               <svg width="18" height="18" aria-hidden="true"><use href="#i-arrow-right"></use></svg>

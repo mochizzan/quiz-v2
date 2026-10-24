@@ -156,7 +156,7 @@ positions, option letters (A, B, C…), and `QuestionNav` all derive from the
 same function on every read. The seed never changes. This applies the schema
 spec §6.9 note "seed, not snapshot".
 
-### R-09 — Answer rows, no autosave
+### R-09 — Answer rows and event-driven autosave
 
 At attempt start, insert one `attempt_answers` row per live question of the
 quiz, in the derived question order. The row is the slot; it starts with no
@@ -168,9 +168,13 @@ new set). Essay questions write `answer_text` only. A blank answer is no
 selections and `NULL` text. The endpoint is idempotent for retries and
 double-submits.
 
-There is no autosave in v1. The form POST on navigation is the save. The schema
-note about re-posting every 450 ms is stale; the before-unload warning is the
-contract's chosen behavior. Flagged.
+The client autosaves on events, never on a clock: an objective answer posts as
+soon as its selection changes, and an essay posts after a short pause in
+typing. Those quiet saves use `nav=autosave` and are answered `204 No Content`
+so the question page is not reloaded; the write is the same transaction as any
+other save. There is no polling timer, no save-status indicator, and no Save
+button. The ordinary form POST on prev/next/review remains the save for a
+browser without JavaScript, and the before-unload warning stays.
 
 ### R-10 — Close and delete
 

@@ -40,9 +40,14 @@ const (
 // Redirect is what a POST handler returns on success: a relative target and an
 // optional closed flash key. The HTTP layer turns it into a 303 and sets the
 // one-shot flash cookie (OPS-201, OPS-210).
+//
+// NoContent marks an autosave commit: the write succeeded but the client is not
+// navigating, so the transport answers 204 with an empty body instead. Path and
+// Flash are ignored when it is set.
 type Redirect struct {
-	Path  string
-	Flash string
+	Path      string
+	Flash     string
+	NoContent bool
 }
 
 // Ctx is the request-scoped value a handler receives. It carries the resolved

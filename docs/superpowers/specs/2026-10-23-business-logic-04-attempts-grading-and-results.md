@@ -51,7 +51,7 @@ ATT-016. **Boundary — read models ATT does not own.** `GET /student` and `GET 
 
 ATT-017. **Boundary — visual system.** Layout, colour, and components are `docs/DESIGN.md` (rank 4). This document names the data and copy, never the CSS.
 
-ATT-018. **What this domain explicitly refuses to do.** No autosave (a legacy `autosave` nav key is a silent manual save, not a timer), no timers, no pause/resume clock, no countdown, no manual final-score override, no re-grade route, no question weighting, no "counted attempt" flag, no pass mark, no class average, no replay buffer for SSE, no per-question time, no current-question column, no score snapshot on the attempt.
+ATT-018. **What this domain explicitly refuses to do.** No timer-based autosave (the client posts a quiet `nav=autosave` on change or after typing pauses, ATT-125), no polling clock, no save-status indicator, no pause/resume clock, no countdown, no manual final-score override, no re-grade route, no question weighting, no "counted attempt" flag, no pass mark, no class average, no replay buffer for SSE, no per-question time, no current-question column, no score snapshot on the attempt.
 
 ATT-019. **One derivation rule.** A value that appears on two screens is computed by one function named here: `DerivedQuestionOrder` (ATT-112), `AnsweredCount` (ATT-241), `BestScore` (ATT-243), `EffectiveMaxAttempts` (ATT-102), `FinalScore` (ATT-143), `DisplayPercent` (ATT-242), `ClassLabel`/`Initials` (viewmodel formatters, frontend §6). No handler, template, fixture, or query may re-implement one of these.
 
@@ -279,7 +279,7 @@ ATT-121. **`POST /attempt/:id/answer`.**
 | Effects | the slot's saved answer becomes the posted answer; no score is computed; `attempt.updated_at` is stamped only if the answer changed |
 | Postconditions | the answer survives reload and is the one used at submit; no other slot is touched |
 | Errors | 404, 403, 303 conflict (`answer_locked`), 422 validation (ATT-126) |
-| Redirect | 303 per `nav` (ATT-125) |
+| Redirect | 204 `No Content` for `nav=autosave`; otherwise 303 per `nav` (ATT-125) |
 | Provenance | `attempt_answers.updated_at` and `quiz_attempts.updated_at`; no actor column exists |
 | Idempotency | content-equal repeats are no-ops with the same redirect (ATT-127) |
 
@@ -296,7 +296,7 @@ ATT-122. **Validation.** Parse `question_id` as an unsigned integer; missing or 
 | essay, text present | stored verbatim; byte length ≤ 65,535 | "Jawaban terlalu panjang." |
 | wrong field for the type | invalid | "Jawaban tidak sesuai jenis soal." |
 
-The form field for an essay is `essay_text`; storage is `answer_text`. `nav` accepts `prev`, `save`, `next`, `review`, and the legacy `autosave`; a missing or unknown value is treated as `save` (save and stay), never as a state error.
+The form field for an essay is `essay_text`; storage is `answer_text`. `nav` accepts `prev`, `save`, `next`, `review`, and `autosave`; a missing or unknown value is treated as `save` (save and stay), never as a state error. `autosave` is the quiet client save: it stores the answer exactly like `save` but answers `204` instead of redirecting (ATT-125).
 
 ATT-123. **Answer transaction.** (1) Lock the attempt row for update; re-check ownership, `submitted_at IS NULL`, and live registration. If submitted, roll back to the conflict path. (2) Lock the slot by `(attempt_id, question_id, deleted_at = sentinel)`; a missing slot is 500 data integrity, because ATT-105 guarantees it. (3) Compare the posted content with the current content. If equal, commit with no writes and return the redirect — this is the idempotent path. (4) Soft-delete every live selection of the slot with one timestamp. (5) For an objective answer, insert one selection per accepted option id in `DerivedOptionOrder`, with the sentinel `deleted_at`; set `answer_text = NULL`. For an essay, set `answer_text` to the text or `NULL`; no selections are inserted. (6) Set `quiz_attempts.updated_at = now` and `attempt_answers.updated_at` via the write. (7) Commit.
 
@@ -308,11 +308,11 @@ ATT-125. **Navigation and redirect.** Let `p` be the display position of the sav
 |---|---|
 | `prev` | `/attempt/{id}?q={max(1, p-1)}` |
 | `save` | `/attempt/{id}?q={p}&flash=saved` |
-| `autosave` | `/attempt/{id}?q={p}` (silent; legacy clients only) |
+| `autosave` | `204 No Content`, no body, no navigation (quiet client save) |
 | `next` | `p < n` ? `/attempt/{id}?q={p+1}` : `/attempt/{id}/review` |
 | `review` | `/attempt/{id}/review` |
 
-All are 303. `flash=saved` renders the contract key `saved` ("Perubahan tersimpan."). No redirect carries a question id.
+Every `nav` except `autosave` is 303. `flash=saved` renders the contract key `saved` ("Perubahan tersimpan."). No redirect carries a question id.
 
 ATT-126. **Answer errors.** A submitted attempt → rollback, 303 to `/attempt/{id}/result` with error flash `answer_locked`: "Jawaban tidak dapat diubah setelah dikirim." A foreign or missing attempt → 404 page. A validation failure → 422, the same question template, the posted values preserved in the form, the stored values used for every other field, and `FieldErrors` from ATT-122. A store failure → 500 page with no partial write. A stale form pointing at a removed option is 422, never a silent drop.
 
@@ -882,7 +882,7 @@ ATT-290. **Cross-cutting tests.** AT-36 pins determinism, AT-37 pins copy, AT-38
 
 ATT-291. **Numbering and schema deltas.** The spawn brief called this section §11; contract §7 mandates open questions as §12 and traceability as §11, and this document follows the contract. No schema delta is required: ATT needs no column, table, index, or constraint beyond migrations 0003–0005. `graded_by_account_id = NULL` already means "system-graded", so no auto-graded flag is needed, and no `status`, `started_at`, `last_seen`, `option_order`, `position` on answers, `counted`, `focus_loss_count`, or `points` is assumed (R-25, INV-25).
 
-ATT-293. **D1 — client autosave.** `static/js/app.js` still contains a 450 ms autosave block, which R-09 forbids. Recommendation: delete it; keep the form POST and the before-unload warning; narrow the conformance rule to allow `EventSource` only on the stream path and `navigator.sendBeacon` only on the beacon path. Impact: client only; no server rule.
+ATT-293. **D1 — client autosave (resolved).** The product owner directed event-driven autosave instead of a Save button: an objective answer posts as soon as its selection changes, an essay posts after a pause in typing, and `nav=autosave` is answered `204 No Content` so the question page is not reloaded (ATT-125). There is no timer and no save-status indicator. The POST targets a hidden iframe because `static/js/app.js` may not use fetch/XHR/beacons; a browser without JavaScript still saves through the ordinary prev/next/review POST. R-09 and ATT-018 follow this rule; the old 450 ms polling block is gone. Impact: client and answer transport only; no server rule or schema change.
 
 ATT-294. **D2 — results tabs.** The fixture exposes `in_progress|completed` and includes in-progress rows. Recommendation: implement `waiting|graded`, exclude in-progress from rows, keep the two header metrics (ATT-171–ATT-178). Impact: results page and fixture; monitor remains the live view.
 

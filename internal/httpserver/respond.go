@@ -127,6 +127,15 @@ func (s *server) redirectFlash(c fiber.Ctx, target, flash string) error {
 	return s.redirect(c, target)
 }
 
+// respondRedirect turns a handler's success result into its response: 204 for
+// an autosave that must not move the page, otherwise flash plus 303.
+func (s *server) respondRedirect(c fiber.Ctx, r Redirect) error {
+	if r.NoContent {
+		return c.SendStatus(fiber.StatusNoContent)
+	}
+	return s.redirectFlash(c, r.Path, r.Flash)
+}
+
 // itoa is strconv.Itoa without the import in every caller.
 func itoa(n int) string {
 	if n <= 0 {

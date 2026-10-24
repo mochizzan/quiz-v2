@@ -199,15 +199,27 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // ---- Attempt answers save themselves -------------------------------------
-  // Commits ride the page's own POST through a hidden "quiet" submitter —
-  // fetch/XHR/beacons are banned in this file — and the server answers with
-  // the same question and no flash, so the reload reads as nothing happening.
-  // Scroll position and keyboard focus survive that reload. The visible Simpan
-  // button is the no-JS fallback and steps aside once autosave is armed.
+  // Every answer commits through the page's own POST: objective answers on
+  // change, essays once typing pauses. There is no Save button and no timer.
+  // The POST targets a hidden iframe and the server answers 204, so the
+  // question, its scroll offset, and the caret never move. fetch/XHR/beacons
+  // are banned in this file; this is a plain form submission.
   document
     .querySelectorAll("form[data-attempt-form]")
     .forEach((form) => {
-      form.classList.add("is-autosave");
+      const sink = document.createElement("iframe");
+      sink.name = "attempt-sink";
+      sink.hidden = true;
+      sink.tabIndex = -1;
+      sink.setAttribute("aria-hidden", "true");
+      document.body.appendChild(sink);
+
+      const quiet = document.createElement("button");
+      quiet.type = "submit";
+      quiet.name = "nav";
+      quiet.value = "autosave";
+      quiet.hidden = true;
+      form.appendChild(quiet);
 
       const status = document.createElement("div");
       status.className = "visually-hidden";
@@ -215,43 +227,75 @@ document.addEventListener("DOMContentLoaded", () => {
       status.setAttribute("aria-live", "polite");
       form.appendChild(status);
 
-      const quiet = document.createElement("button");
-      quiet.type = "submit";
-      quiet.name = "nav";
-      quiet.value = "autosave";
-      quiet.hidden = true;
-      quiet.setAttribute("data-quiet", "");
-      form.appendChild(quiet);
-
-      const remember = () => {
-        const active = document.activeElement;
-        const mark =
-          active && form.contains(active) && active.matches("input, textarea")
-            ? active.id
-              ? "id:" + active.id
-              : "value:" + active.value
-            : null;
-        try {
-          window.sessionStorage.setItem(
-            "attempt-retake",
-            JSON.stringify({ scroll: Math.round(window.scrollY), mark })
-          );
-        } catch {
-          // Storage may be unavailable; the reload just loses its position.
-        }
-      };
-
       let timer = 0;
-      const save = () => {
-        if (quiet.disabled) return;
-        remember();
+      let inFlight = false;
+      let queued = false;
+
+      // A 204 leaves the current document in place, so the iframe may never
+      // fire a load event. Release on a short window instead; while a commit
+      // is in flight the next one waits, because two overlapping posts could
+      // otherwise land out of order and the older answer would win.
+      const commit = () => {
+        if (inFlight) {
+          queued = true;
+          return;
+        }
+        inFlight = true;
+        form.target = sink.name;
         quiet.click();
+        form.target = "";
+        window.setTimeout(() => {
+          inFlight = false;
+          if (queued) {
+            queued = false;
+            commit();
+          }
+        }, 400);
       };
+
+      const stop = () => {
+        window.clearTimeout(timer);
+        timer = 0;
+      };
+
+      const schedule = (delay) => {
+        stop();
+        timer = window.setTimeout(() => {
+          timer = 0;
+          commit();
+        }, delay);
+      };
+
+      form.querySelectorAll("input[type=radio], input[type=checkbox]").forEach((input) => {
+        input.addEventListener("change", () => {
+          stop();
+          commit();
+        });
+      });
+
+      // Essays commit after a pause in typing; leaving the field commits the
+      // pending change at once instead of dropping it.
+      const essay = form.querySelector(".essay-input");
+      if (essay) {
+        essay.addEventListener("input", () => schedule(1200));
+        essay.addEventListener("blur", () => {
+          if (!timer) return;
+          stop();
+          commit();
+        });
+      }
 
       form.addEventListener("submit", (event) => {
         const submitter = event.submitter;
         if (!submitter || submitter.disabled) return;
-        window.clearTimeout(timer);
+
+        // Automatic commits keep their submitter usable and stay silent.
+        if (submitter === quiet) return;
+
+        stop();
+        // The explicit post carries the whole answer, so a queued quiet one
+        // would only repeat it.
+        queued = false;
 
         // Disabling the submitter (below) drops its name/value from the
         // submission, so mirror the routing pair into a hidden input first.
@@ -264,9 +308,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         submitter.disabled = true;
 
-        // Automatic commits stay silent; explicit ones show the DESIGN §8
-        // spinner and announce themselves.
-        if (submitter.hasAttribute("data-quiet")) return;
+        // Explicit navigation shows the DESIGN §8 spinner and announces it.
         status.textContent = "Menyimpan…";
         form.setAttribute("aria-busy", "true");
         const spinner = document.createElement("span");
@@ -274,41 +316,6 @@ document.addEventListener("DOMContentLoaded", () => {
         spinner.setAttribute("aria-hidden", "true");
         submitter.prepend(spinner);
       });
-
-      form.querySelectorAll("input[type=radio], input[type=checkbox]").forEach((input) => {
-        input.addEventListener("change", () => {
-          window.clearTimeout(timer);
-          timer = window.setTimeout(save, 450);
-        });
-      });
-
-      const essay = form.querySelector(".essay-input");
-      if (essay) {
-        essay.addEventListener("input", () => {
-          window.clearTimeout(timer);
-          timer = window.setTimeout(save, 1400);
-        });
-      }
-
-      // Put the reader back where they were after a quiet reload.
-      let retake = null;
-      try {
-        retake = JSON.parse(window.sessionStorage.getItem("attempt-retake") || "null");
-        window.sessionStorage.removeItem("attempt-retake");
-      } catch {
-        retake = null;
-      }
-      if (retake) {
-        window.scrollTo(0, retake.scroll || 0);
-        if (retake.mark) {
-          const target = retake.mark.startsWith("id:")
-            ? form.querySelector(`[id="${retake.mark.slice(3)}"]`)
-            : form.querySelector(
-                `input[type=radio][value="${retake.mark.slice(6)}"], input[type=checkbox][value="${retake.mark.slice(6)}"]`
-              );
-          if (target) target.focus({ preventScroll: true });
-        }
-      }
     });
 
   // ---- Leave guard while an attempt is open -------------------------------
