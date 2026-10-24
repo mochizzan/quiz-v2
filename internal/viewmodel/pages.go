@@ -8,9 +8,7 @@ package viewmodel
 // LoginPage is the single sign-in screen. There is deliberately no role field:
 // the backend resolves the account role from the credentials.
 type LoginPage struct {
-	Email            string
-	DemoTeacherEmail string
-	DemoStudentEmail string
+	Email string
 }
 
 // RegisterPage is shared by the teacher and student forms; Role selects the

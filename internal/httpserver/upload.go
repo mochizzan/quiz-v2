@@ -40,8 +40,8 @@ func (s *server) serveUpload(c fiber.Ctx) error {
 		return c.SendStatus(fiber.StatusNotFound)
 	}
 
-	// A demo build has no pool and therefore no live row to resolve. That is
-	// the orphan case, not an error page (AUT-054).
+	// A server built without a pool has no live row to resolve. That is the
+	// orphan case, not an error page (AUT-054).
 	if s.db == nil {
 		return c.SendStatus(fiber.StatusNotFound)
 	}

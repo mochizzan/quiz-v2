@@ -250,6 +250,29 @@ func TestBootstrapTeacherIdempotent(t *testing.T) {
 	}
 }
 
+// TestBootstrapTeacherRefusesNonTeacherEmail covers the post-condition the
+// deployment depends on: success means a live teacher exists for the address.
+// An address already used by a student must fail loudly, not report "nothing
+// created" and leave the deployment with no way in.
+func TestBootstrapTeacherRefusesNonTeacherEmail(t *testing.T) {
+	db := testDB(t)
+	dropTeacher(t, db)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	hash := teacherHash(t)
+
+	if _, err := db.ExecContext(ctx,
+		"INSERT INTO accounts (full_name, email, password_hash, role, status) VALUES (?, ?, ?, 'student', 'active')",
+		"Siswa Contoh", "guru@sekolah.sch.id", hash); err != nil {
+		t.Fatalf("seed student: %v", err)
+	}
+	t.Cleanup(func() { dropTeacher(t, db) })
+
+	if _, err := BootstrapTeacher(ctx, db, "Guru Pertama Sekolah", "guru@sekolah.sch.id", hash); err == nil {
+		t.Fatal("bootstrap reported success for an address owned by a student")
+	}
+}
+
 // TestApplyRefusesWhenAnotherRunnerHoldsTheLock covers §9.3 step 3. GET_LOCK
 // answers with a value, so an applier that only checked the statement's error
 // would sail past a held lock and interleave DDL with the runner that owns it.

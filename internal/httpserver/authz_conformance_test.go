@@ -11,9 +11,8 @@ import (
 )
 
 // authz_conformance_test.go pins the authorization matrix itself: the table
-// covers the audited surface, and production actually enforces it. The rest of
-// the conformance suite runs in demo mode, where there are no accounts to
-// enforce against, so these two facts would otherwise be untested.
+// covers the audited surface, and every request is enforced against it even
+// when no account exists.
 
 // TestAuthorizationClassTableCoversAuditedSurface proves the matrix has one row
 // per audited pair: the 72 pinned routes plus GET /healthz and
@@ -38,9 +37,22 @@ func TestAuthorizationClassTableCoversAuditedSurface(t *testing.T) {
 	}
 }
 
-// TestProtectedRoutesRedirectInProduction proves the matrix is enforced when
-// the app is not in fixture-preview mode: an anonymous request to any route
-// that needs an identity lands on /login, while a public route does not.
+// samplePath substitutes an inert id for every path parameter. The
+// authorization matrix runs before any handler, so the concrete id is
+// irrelevant here; a value that parses as a number keeps the router happy.
+func samplePath(path string) string {
+	parts := strings.Split(path, "/")
+	for i, p := range parts {
+		if strings.HasPrefix(p, ":") {
+			parts[i] = "1"
+		}
+	}
+	return strings.Join(parts, "/")
+}
+
+// TestProtectedRoutesRedirectInProduction proves the matrix is enforced: an
+// anonymous request to any route that needs an identity lands on /login, while
+// a public route does not.
 func TestProtectedRoutesRedirectInProduction(t *testing.T) {
 	app := httpserver.New(config.Config{Addr: ":8080", SessionSigningKey: testSigningKey})
 

@@ -6,7 +6,6 @@ import (
 
 	"quiz-v2/internal/apperr"
 	"quiz-v2/internal/attempts"
-	"quiz-v2/internal/httpserver/fixtures"
 	"quiz-v2/internal/viewmodel"
 )
 
@@ -151,9 +150,6 @@ func init() {
 		Nav:      "penilaian",
 		Auth:     ClassOwnerTeacher,
 		Load:     gradingQueueLoad,
-		Build: func(req PageRequest) PageData {
-			return page(req, "Penilaian esai", "penilaian", fixtures.TeacherUser(), fixtures.GradingPage(0, req.Query))
-		},
 	})
 	registerPage(PageRoute{
 		Method:   "GET",
@@ -162,9 +158,6 @@ func init() {
 		Nav:      "penilaian",
 		Auth:     ClassOwnerTeacher,
 		Load:     gradingDetailLoad,
-		Build: func(req PageRequest) PageData {
-			return page(req, "Penilaian esai", "penilaian", fixtures.TeacherUser(), fixtures.GradingPage(req.IntParam("answerID"), req.Query))
-		},
 	})
 	registerPage(PageRoute{
 		Method:   "POST",
@@ -173,7 +166,6 @@ func init() {
 		Nav:      "penilaian",
 		Auth:     ClassOwnerTeacher,
 		ActForm:  gradingAct,
-		Action:   action("/teacher/grading", "graded"),
 	})
 	registerPage(PageRoute{
 		Method:   "GET",
@@ -182,9 +174,5 @@ func init() {
 		Nav:      "penilaian",
 		Auth:     ClassOwnerTeacher,
 		Load:     recapLoad,
-		Build: func(req PageRequest) PageData {
-			recap := fixtures.RecapPage(req.IntParam("attemptID"))
-			return page(req, "Rekap percobaan — "+recap.Attempt.StudentName, "penilaian", fixtures.TeacherUser(), recap)
-		},
 	})
 }

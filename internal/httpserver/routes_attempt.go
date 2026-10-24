@@ -9,7 +9,6 @@ import (
 
 	"quiz-v2/internal/apperr"
 	"quiz-v2/internal/attempts"
-	"quiz-v2/internal/httpserver/fixtures"
 	"quiz-v2/internal/participation"
 	"quiz-v2/internal/viewmodel"
 )
@@ -19,84 +18,15 @@ import (
 // layouts/base.html (the pages/attempt/ path convention) — no teacher or
 // student chrome, the attempt surfaces carry their own top bar.
 //
-// Load/ActForm/Act are the production handlers (spec 04); Build/Action remain
-// the APP_DEMO fixture world, which serveRoute prefers when demo is on.
-
-// attemptQueryPosition reads ?q= (1-based). Zero means "no explicit position"
-// so the fixture can resume at the first unanswered question. Invalid input
-// follows the same path; non-positive values clamp to question 1.
-func attemptQueryPosition(r PageRequest) int {
-	raw, ok := r.Query["q"]
-	if !ok || raw == "" {
-		return 0
-	}
-	n, err := strconv.Atoi(raw)
-	if err != nil {
-		return 0
-	}
-	if n < 1 {
-		return 1
-	}
-	return n
-}
-
-// attemptAnswerAction is the UI-only save-and-advance action. The form posts
-// the current question id and a closed nav key; the redirect target is derived
-// from ?q= on the action URL. "next" on the last question opens the review.
-func attemptAnswerAction(r PageRequest) string {
-	id := r.IntParam("id")
-	position, _ := strconv.Atoi(r.Query["q"])
-	if position < 1 {
-		position, _ = strconv.Atoi(r.Form.Get("position"))
-	}
-	if position < 1 {
-		position = 1
-	}
-
-	data := fixtures.AttemptQuestionData(id, position)
-	total := data.Total
-	if total < 1 {
-		total = 1
-	}
-	if position > total {
-		position = total
-	}
-
-	base := "/attempt/" + r.Param("id")
-	nav := r.Form.Get("nav")
-	if nav == "" {
-		nav = r.Form.Get("action")
-	}
-	switch nav {
-	case "prev":
-		if position <= 2 {
-			return base
-		}
-		return base + "?q=" + strconv.Itoa(position-1)
-	case "save":
-		return base + "?q=" + strconv.Itoa(position) + "&flash=saved"
-	case "autosave":
-		// Automatic commit from the question page: stay on the question and
-		// stay silent — the live answered count in the header is the feedback.
-		return base + "?q=" + strconv.Itoa(position)
-	case "review":
-		return base + "/review"
-	default: // next
-		if position >= total {
-			return base + "/review"
-		}
-		return base + "?q=" + strconv.Itoa(position+1)
-	}
-}
+// Load/ActForm/Act are the only handlers: the attempt surfaces read and write
+// the database through the attempts package.
 
 // attemptBeacon is POST /attempt/:id/beacon (ATT-156..ATT-160). It is the only
 // POST without a CSRF token; the pipeline already enforced same-origin. The
 // response contract is empty bodies: 204 success, 400 malformed, 403 origin
 // (pipeline), 404 foreign, 429 with Retry-After, 500 store failure.
 func attemptBeacon(x *Ctx) error {
-	// Demo mode has no live attempt to protect. The conformance suite still
-	// exercises this route, and the fixture world answers its 204.
-	if x.Demo || x.DB == nil {
+	if x.DB == nil {
 		x.c.Status(fiber.StatusNoContent)
 		return nil
 	}
@@ -323,21 +253,12 @@ func init() {
 		Path:     "/attempt/:id",
 		Template: "pages/attempt/question.html",
 		Load:     attemptQuestionLoad,
-		Build: func(req PageRequest) viewmodel.PageData {
-			data := fixtures.AttemptQuestionData(req.IntParam("id"), attemptQueryPosition(req))
-			title := "Mengerjakan kuis"
-			if data.Header.QuizTitle != "" {
-				title = "Mengerjakan kuis · " + data.Header.QuizTitle
-			}
-			return page(req, title, "", nil, data)
-		},
 	})
 
 	registerPage(PageRoute{
 		Method:  "POST",
 		Path:    "/attempt/:id/answer",
 		ActForm: attemptAnswerAct,
-		Action:  attemptAnswerAction,
 	})
 
 	registerPage(PageRoute{
@@ -345,23 +266,12 @@ func init() {
 		Path:     "/attempt/:id/review",
 		Template: "pages/attempt/review.html",
 		Load:     attemptReviewLoad,
-		Build: func(req PageRequest) viewmodel.PageData {
-			data := fixtures.AttemptReviewData(req.IntParam("id"))
-			title := "Tinjau jawaban"
-			if data.Header.QuizTitle != "" {
-				title = "Tinjau jawaban · " + data.Header.QuizTitle
-			}
-			return page(req, title, "", nil, data)
-		},
 	})
 
 	registerPage(PageRoute{
 		Method: "POST",
 		Path:   "/attempt/:id/submit",
 		Act:    attemptSubmitAct,
-		Action: func(req PageRequest) string {
-			return withParam("/attempt/:id/result?flash=submitted", req)
-		},
 	})
 
 	registerPage(PageRoute{
@@ -369,14 +279,6 @@ func init() {
 		Path:     "/attempt/:id/result",
 		Template: "pages/attempt/result.html",
 		Load:     attemptResultLoad,
-		Build: func(req PageRequest) viewmodel.PageData {
-			data := fixtures.AttemptResultData(req.IntParam("id"), req.State())
-			title := "Hasil kuis"
-			if data.Header.QuizTitle != "" {
-				title = "Hasil kuis · " + data.Header.QuizTitle
-			}
-			return page(req, title, "", nil, data)
-		},
 	})
 
 	registerPage(PageRoute{

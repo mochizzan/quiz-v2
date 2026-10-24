@@ -280,13 +280,18 @@ func BootstrapTeacher(ctx context.Context, db *store.DB, fullName, email, passwo
 		return false, fmt.Errorf("migrate: bootstrap teacher: %w", err)
 	}
 
-	var existing int64
+	var existingRole string
 	err = db.QueryRowContext(ctx,
-		"SELECT id FROM accounts WHERE email = ? AND deleted_at = "+liveClause,
-		normEmail).Scan(&existing)
+		"SELECT role FROM accounts WHERE email = ? AND deleted_at = "+liveClause,
+		normEmail).Scan(&existingRole)
 	switch {
-	case err == nil:
+	case err == nil && existingRole == "teacher":
 		return false, nil
+	case err == nil:
+		// The address is taken by someone else. Reporting success here would
+		// leave the deployment with no teacher to sign in as, which is exactly
+		// the state §9.5 exists to prevent.
+		return false, fmt.Errorf("migrate: bootstrap teacher: %s already belongs to a %s account", normEmail, existingRole)
 	case !errors.Is(err, sql.ErrNoRows):
 		return false, fmt.Errorf("migrate: bootstrap teacher: %w", err)
 	}
@@ -297,17 +302,42 @@ func BootstrapTeacher(ctx context.Context, db *store.DB, fullName, email, passwo
 		"INSERT INTO accounts (full_name, email, password_hash, role, status, approved_at, must_change_password) "+
 			"VALUES (?, ?, ?, 'teacher', 'active', CURRENT_TIMESTAMP, 1)",
 		normName, normEmail, passwordHash)
-	if store.IsDuplicate(err) {
-		return false, nil
-	}
-	if err != nil {
+	if err != nil && !store.IsDuplicate(err) {
 		return false, fmt.Errorf("migrate: bootstrap teacher: %w", err)
 	}
-	created, err = resultRowsAffected(result)
-	if err != nil {
-		return false, fmt.Errorf("migrate: bootstrap teacher: %w", err)
+	if err == nil {
+		created, err = resultRowsAffected(result)
+		if err != nil {
+			return false, fmt.Errorf("migrate: bootstrap teacher: %w", err)
+		}
+	}
+	// A duplicate (a racing run won the insert) is only success if the row it
+	// left behind is a live teacher. Checking the outcome, not this run's
+	// insert count, is what makes a restart a success and an unusable
+	// deployment a failure.
+	if err := requireTeacher(ctx, db, normEmail); err != nil {
+		return false, err
 	}
 	return created, nil
+}
+
+// requireTeacher is the post-condition of bootstrap: the deployment may only
+// continue when an active teacher account for email exists.
+func requireTeacher(ctx context.Context, db *store.DB, email string) error {
+	var role, status string
+	err := db.QueryRowContext(ctx,
+		"SELECT role, status FROM accounts WHERE email = ? AND deleted_at = "+liveClause,
+		email).Scan(&role, &status)
+	if errors.Is(err, sql.ErrNoRows) {
+		return fmt.Errorf("migrate: bootstrap teacher: no account for %s after the run", email)
+	}
+	if err != nil {
+		return fmt.Errorf("migrate: bootstrap teacher: verify: %w", err)
+	}
+	if role != "teacher" || status != "active" {
+		return fmt.Errorf("migrate: bootstrap teacher: %s is %s/%s after the run, want teacher/active", email, role, status)
+	}
+	return nil
 }
 
 // checkBcryptHash refuses anything the login path could not verify. A

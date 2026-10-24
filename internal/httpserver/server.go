@@ -31,8 +31,8 @@ type Pinger interface {
 }
 
 // Deps is everything the app needs from the process. A nil DB is allowed: the
-// app then serves fixtures only (APP_DEMO and the template test suite), and
-// any route that needs data answers 500 rather than panicking.
+// template-rendering tests build the app without one, and any route that needs
+// data answers 500 rather than panicking.
 type Deps struct {
 	DB     *store.DB
 	Pinger Pinger
@@ -40,7 +40,7 @@ type Deps struct {
 }
 
 // New builds the app with no database and a healthy stub pinger. It is the
-// convenience constructor for tests and demo previews; main uses NewWithDeps.
+// convenience constructor for tests; main uses NewWithDeps.
 func New(cfg config.Config) *fiber.App {
 	app, err := NewWithDeps(cfg, Deps{})
 	if err != nil {

@@ -43,7 +43,7 @@
 | Deleted account | `accounts.deleted_at != sentinel` | no; treated as absent | nothing |
 | Anonymous participant | PAR cookie, no account | n/a | PAR routes only; never a `CurrentUser` |
 
-**IDN-010.** Role is read from `accounts.role` on every request. It is never taken from the URL, a form field, a cookie claim, or the `?state=` preview (R-02 analog; a client-supplied role is not identity).
+**IDN-010.** Role is read from `accounts.role` on every request. It is never taken from the URL, a form field, or a cookie claim (R-02 analog; a client-supplied role is not identity).
 **IDN-011.** Teacher and student are the only account roles. `anonymous` is not an account and never authenticates (`accounts.role` enum enforces the storage side).
 
 ### 2.2 Authorization classes
@@ -250,7 +250,10 @@ student deleted --> all tokens REVOKED (cascade)
 | signature mismatch or form mismatch | `403 csrf`; clear the cookie so the next GET reissues |
 
 **IDN-049.** Cookie value format: `base64url(32 random bytes) + "." + base64url(HMAC-SHA256(key, "csrf.v1|" + nonce))`. The form's `csrf_token` mirrors the **entire** cookie value. Verification: parse exactly one dot, recompute the MAC, `hmac.Equal` it, then `subtle.ConstantTimeCompare(cookie, form)`. No length shortcut before a constant-time compare of equal-length values.
-**IDN-050.** The CSRF key is `SESSION_SIGNING_KEY`, minimum 32 bytes. An empty or short key is a fatal startup error when `APP_DEMO` is off; tests inject a fixed key. A process-random fallback is forbidden because it silently invalidates every open form on restart and hides a misconfiguration.
+**IDN-050.** The CSRF key is `SESSION_SIGNING_KEY`, minimum 32 bytes. An empty or short key,
+or the published development default, is a fatal startup error; tests inject a fixed key. A
+process-random fallback is forbidden because it silently invalidates every open form on
+restart and hides a misconfiguration.
 **IDN-051.** Double-submit is safe here because the cookie is `HttpOnly` and signed: a cross-site attacker can neither read the token nor mint a valid cookie via a subdomain. The signature check is what upgrades plain double-submit from "any subdomain can set it" to "only this server can set it".
 **IDN-052.** Multi-tab: all tabs share the same cookie and token until login/logout/reset rotates it. A form rendered before rotation fails `403 csrf` after rotation; the copy tells the user to reload. This is intended (R-16), not a bug; tab B's state-changing intent is discarded rather than replayed under a new session.
 
@@ -603,7 +606,7 @@ The tie-break is always `id ASC`, never `id DESC`, so a page boundary is stable 
 On `GET /teacher/students`: verify signature/purpose/teacher id; SHA-256 the embedded token and confirm a live, unused, unexpired row exists for that `student_id` **and** `issued_by_account_id = teacher`; if yes, render `ResetToken{Token, ExpiresAt (WIB)}` and clear the cookie in the same response; if no, suppress the panel and clear the cookie. A tampered, expired, or foreign cookie renders no panel and no error — it is not an oracle. The panel shows the token once; a reload shows nothing.
 
 ### 6.5 Pending page read model
-**IDN-106.** `GET /auth/pending` derives exactly one of `waiting|approved|expired` (IDN-C12) and exposes `FullName` only for `waiting`/`approved`. `LoginHref` is `/login`; the approved state renders the login button; the waiting state renders no action that implies approval is imminent. In `APP_DEMO=1`, `?state=` may preview the three model states; production ignores `?state=` entirely (contract §20), and the demo override never reads a real account.
+**IDN-106.** `GET /auth/pending` derives exactly one of `waiting|approved|expired` (IDN-C12) and exposes `FullName` only for `waiting`/`approved`. `LoginHref` is `/login`; the approved state renders the login button; the waiting state renders no action that implies approval is imminent. The page reads the real account only: there is no preview switch and `?state=` is never read.
 
 ### 6.6 Display and formatting rules for this domain
 **IDN-107.** Timestamps are stored UTC and rendered WIB (`20 Okt 2026`, `09.42 WIB`); the pending/expiry copy uses the same formatter. Counts (attempts, totals) use no decimals and the Indonesian thousands separator. Class label is Roman grade + major; a missing major is `—`. Status labels come from `viewmodel.AccountStatus.Label()`; raw storage values never reach the DOM.
@@ -889,4 +892,4 @@ Each statement is executable as a server-side test with `app.Test` and a test da
 **AC-73.** Student deletion is atomic: an injected failure at any child leaves every row live and returns `500`; a successful delete leaves no live child (INV-18).
 **AC-74.** After a student is deleted, PAR/ATT reads (history, roster, results, recap, monitor, beacon) treat the student as absent; no page renders their name or a zeroed attempt.
 **AC-75.** Auth responses carry `Cache-Control: no-store`; pending and reset pages carry `Referrer-Policy: no-referrer`. **AC-76.** No auth page, flash, URL, or log contains a password, a raw session token, a raw reset token (except the one-time panel/pending URL), or a bcrypt hash.
-**AC-77.** An invalid `SESSION_SIGNING_KEY` (empty/short) prevents startup when `APP_DEMO` is off; tests inject a valid key and CSRF still verifies. **AC-78.** Route metadata coverage: every registered route has an authorization class; a test fails if one is missing, and `POST /attempt/:id/beacon` is the only route marked CSRF-exempt.
+**AC-77.** An invalid `SESSION_SIGNING_KEY` (empty, short, or the published development default) prevents startup; tests inject a valid key and CSRF still verifies. **AC-78.** Route metadata coverage: every registered route has an authorization class; a test fails if one is missing, and `POST /attempt/:id/beacon` is the only route marked CSRF-exempt.

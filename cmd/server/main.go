@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"log/slog"
 	"os"
@@ -26,12 +27,34 @@ type pingerFunc func(context.Context) error
 // Ping calls f.
 func (f pingerFunc) Ping(ctx context.Context) error { return f(ctx) }
 
+// ensureUploads makes the upload root exist and proves it is writable. A
+// directory that exists but rejects writes (a root-owned volume mounted into
+// the non-root user) is the common container failure, and it is invisible
+// until someone tries to upload.
+func ensureUploads(dir string) error {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return fmt.Errorf("create %s: %w", dir, err)
+	}
+	probe, err := os.CreateTemp(dir, ".write-probe-*")
+	if err != nil {
+		return fmt.Errorf("%s is not writable: %w", dir, err)
+	}
+	name := probe.Name()
+	if err := probe.Close(); err != nil {
+		return fmt.Errorf("close probe in %s: %w", dir, err)
+	}
+	if err := os.Remove(name); err != nil {
+		return fmt.Errorf("remove probe %s: %w", name, err)
+	}
+	return nil
+}
+
 func main() {
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stdout, nil)))
 	logger := log.New(os.Stdout, "", log.LstdFlags)
 
 	cfg := config.Load()
-	logger.Printf("config loaded: addr=%s demo=%t", cfg.Addr, cfg.Demo)
+	logger.Printf("config loaded: addr=%s uploads=%s", cfg.Addr, cfg.UploadsDir)
 
 	// Configuration that cannot honour a security rule is fatal, never a
 	// degraded start (IDN-050, OPS-232).
@@ -44,10 +67,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	// The upload root must exist before the first multipart POST. A failure is
-	// a warning here and a 500 at upload time, never a silent success.
-	if err := os.MkdirAll(cfg.UploadsDir, 0o755); err != nil {
-		logger.Printf("warning: cannot create uploads dir %s: %v", cfg.UploadsDir, err)
+	// The upload root must exist and accept a write before serving. Failing
+	// here is fatal on purpose: a broken volume would otherwise surface as a
+	// 500 on a real upload, long after the operator could see it.
+	if err := ensureUploads(cfg.UploadsDir); err != nil {
+		logger.Printf("fatal: uploads: %v", err)
+		os.Exit(1)
 	}
 
 	db, err := store.Open(cfg.DBDSN)

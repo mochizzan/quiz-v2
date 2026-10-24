@@ -1,8 +1,10 @@
 # Frontend Data Contract — Design
 
-> Status: draft for approval. This is a design document, not an implementation
-> plan. It defines what every screen shows and what data the future backend
-> must supply; it does not define SQL, handlers, or migration order.
+> Status: superseded in part. The fixture world this document was written for
+> (`internal/httpserver/fixtures`, `APP_DEMO`, `?state=` previews, the demo
+> strip) has been removed: every screen now reads MariaDB through its domain
+> package. The screen inventory, markup, and chrome rules below remain the
+> reference; ignore the fixture/`APP_DEMO` mechanics in §2 and §19.
 >
 > Date: 2026-10-23
 > Supersedes, where contradicted: `2026-10-20-quiz-system-design.md` §3–§9,

@@ -4,7 +4,6 @@ import (
 	"errors"
 
 	"quiz-v2/internal/apperr"
-	"quiz-v2/internal/httpserver/fixtures"
 	"quiz-v2/internal/identity"
 	"quiz-v2/internal/viewmodel"
 )
@@ -32,9 +31,6 @@ func init() {
 				return viewmodel.PageData{}, identityFailure(err)
 			}
 			return identityPage(x, "Profil", "profil", profile), nil
-		},
-		Build: func(req PageRequest) viewmodel.PageData {
-			return page(req, "Profil", "profil", fixtures.StudentUser(), fixtures.StudentProfile())
 		},
 	})
 
@@ -70,6 +66,5 @@ func init() {
 			}
 			return viewmodel.PageData{}, Redirect{}, identityFailure(err)
 		},
-		Action: func(PageRequest) string { return "/profile?flash=saved" },
 	})
 }

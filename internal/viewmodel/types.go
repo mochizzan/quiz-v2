@@ -15,14 +15,13 @@ type PageData struct {
 
 // Base is the shared chrome contract: the document title, active nav key, the
 // signed-in user (nil on public pages), the one-shot flash message, the CSRF
-// placeholder, field errors for forms, and whether the demo strip is enabled.
+// placeholder, and field errors for forms.
 type Base struct {
 	Title  string
 	Active string
 	User   *CurrentUser
 	Flash  *Flash
 	CSRF   string
-	Demo   bool
 	Errors FieldErrors
 }
 

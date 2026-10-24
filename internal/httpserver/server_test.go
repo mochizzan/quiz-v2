@@ -13,8 +13,8 @@ import (
 )
 
 // testSigningKey is the fixed key every test injects. Production requires a
-// real 32-byte key whenever APP_DEMO is off (IDN-050); tests supply a stable
-// one so CSRF and signed tokens behave exactly as they do in production.
+// real 32-byte key (IDN-050); tests supply a stable one so CSRF and signed
+// tokens behave exactly as they do in production.
 const testSigningKey = "0123456789abcdef0123456789abcdef"
 
 // TestMain runs tests from the repository root so that relative paths such as

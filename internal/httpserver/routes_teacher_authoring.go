@@ -6,7 +6,6 @@ import (
 
 	"quiz-v2/internal/apperr"
 	"quiz-v2/internal/authoring"
-	"quiz-v2/internal/httpserver/fixtures"
 	"quiz-v2/internal/viewmodel"
 )
 
@@ -95,10 +94,6 @@ func init() {
 			}
 			return authoringPage(x, "Tambah soal", "kuis", form), nil
 		},
-		Build: func(req PageRequest) viewmodel.PageData {
-			form := fixtures.NewQuestionFormData(req.IntParam("id"))
-			return page(req, "Tambah soal", "kuis", fixtures.TeacherUser(), form)
-		},
 	})
 
 	registerPage(PageRoute{
@@ -125,7 +120,6 @@ func init() {
 			}
 			return authoringRedirect(teacherQuizPath(quizID), flash), nil
 		},
-		Action: teacherFlashRedirect("/teacher/quizzes/:id", "question-saved"),
 	})
 
 	registerPage(PageRoute{
@@ -149,10 +143,6 @@ func init() {
 				return viewmodel.PageData{}, err
 			}
 			return authoringPage(x, "Edit soal", "kuis", form), nil
-		},
-		Build: func(req PageRequest) viewmodel.PageData {
-			form := fixtures.EditQuestionFormData(req.IntParam("id"), req.IntParam("qid"))
-			return page(req, "Edit soal", "kuis", fixtures.TeacherUser(), form)
 		},
 	})
 
@@ -180,7 +170,6 @@ func init() {
 			}
 			return authoringRedirect(teacherQuizPath(quizID), flash), nil
 		},
-		Action: teacherFlashRedirect("/teacher/quizzes/:id", "question-saved"),
 	})
 
 	registerPage(PageRoute{
@@ -203,7 +192,6 @@ func init() {
 			}
 			return authoringRedirect(teacherQuizPath(quizID), flash), nil
 		},
-		Action: teacherFlashRedirect("/teacher/quizzes/:id", "deleted"),
 	})
 
 	registerPage(PageRoute{
@@ -226,6 +214,5 @@ func init() {
 			}
 			return authoringRedirect(teacherQuizPath(quizID), flash), nil
 		},
-		Action: teacherFlashRedirect("/teacher/quizzes/:id", "reordered"),
 	})
 }

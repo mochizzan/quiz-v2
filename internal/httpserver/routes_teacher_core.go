@@ -5,7 +5,6 @@ import (
 
 	"quiz-v2/internal/apperr"
 	"quiz-v2/internal/authoring"
-	"quiz-v2/internal/httpserver/fixtures"
 	"quiz-v2/internal/viewmodel"
 )
 
@@ -15,9 +14,8 @@ import (
 // routes_teacher_dashboard.go; question editing lives in
 // routes_teacher_authoring.go.
 //
-// Each route keeps its fixture Build/Action for APP_DEMO previews and adds the
-// production Load/Act beside it. Auth restates the class in authz.go so a route
-// file is auditable on its own.
+// Each route carries its production Load/Act handler. Auth restates the class
+// in authz.go so a route file is auditable on its own.
 
 // teacherQuizPath is the canonical builder URL.
 func teacherQuizPath(id int64) string {
@@ -102,14 +100,6 @@ func quizInput(x *Ctx) authoring.QuizInput {
 	}
 }
 
-// teacherFlashRedirect returns the PRG target for a parameterised teacher
-// route, substituting :id / :qid and appending the one-shot flash key.
-func teacherFlashRedirect(path, flash string) func(PageRequest) string {
-	return func(req PageRequest) string {
-		return withParam(path, req) + "?flash=" + flash
-	}
-}
-
 // init registers the eight quiz-authoring routes.
 func init() {
 	registerPage(PageRoute{
@@ -134,15 +124,6 @@ func init() {
 			}
 			return authoringPage(x, "Daftar kuis", "kuis", list), nil
 		},
-		Build: func(req PageRequest) viewmodel.PageData {
-			list := fixtures.TeacherQuizListData(
-				req.Query["state"],
-				req.Query["q"],
-				req.Query["sort"],
-				pageNumber(req),
-			)
-			return page(req, "Daftar kuis", "kuis", fixtures.TeacherUser(), list)
-		},
 	})
 
 	registerPage(PageRoute{
@@ -157,9 +138,6 @@ func init() {
 				return viewmodel.PageData{}, err
 			}
 			return authoringPage(x, "Buat kuis", "kuis", form), nil
-		},
-		Build: func(req PageRequest) viewmodel.PageData {
-			return page(req, "Buat kuis", "kuis", fixtures.TeacherUser(), fixtures.NewQuizFormData())
 		},
 	})
 
@@ -178,7 +156,6 @@ func init() {
 			}
 			return authoringRedirect(teacherQuizPath(id), flash), nil
 		},
-		Action: action("/teacher/quizzes/7", "quiz-created"),
 	})
 
 	registerPage(PageRoute{
@@ -202,14 +179,6 @@ func init() {
 				title = detail.Quiz.Title
 			}
 			return authoringPage(x, title, "kuis", detail), nil
-		},
-		Build: func(req PageRequest) viewmodel.PageData {
-			detail := fixtures.QuizDetailData(req.IntParam("id"))
-			title := "Detail kuis"
-			if detail.Quiz.Title != "" {
-				title = detail.Quiz.Title
-			}
-			return page(req, title, "kuis", fixtures.TeacherUser(), detail)
 		},
 	})
 
@@ -243,7 +212,6 @@ func init() {
 			}
 			return authoringRedirect(target, flash), nil
 		},
-		Action: teacherFlashRedirect("/teacher/quizzes/:id", "saved"),
 	})
 
 	registerPage(PageRoute{
@@ -266,7 +234,6 @@ func init() {
 			}
 			return authoringRedirect(target, flash), nil
 		},
-		Action: teacherFlashRedirect("/teacher/quizzes/:id", "published"),
 	})
 
 	registerPage(PageRoute{
@@ -289,7 +256,6 @@ func init() {
 			}
 			return authoringRedirect(target, flash), nil
 		},
-		Action: teacherFlashRedirect("/teacher/quizzes/:id", "closed"),
 	})
 
 	registerPage(PageRoute{
@@ -311,6 +277,5 @@ func init() {
 			}
 			return authoringRedirect("/teacher/quizzes", flash), nil
 		},
-		Action: action("/teacher/quizzes", "deleted"),
 	})
 }

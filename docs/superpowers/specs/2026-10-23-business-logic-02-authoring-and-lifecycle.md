@@ -18,7 +18,7 @@
 
 **AUT-018 — Product stance.** The draft is the only editable state. Publish is a one-way commitment: after it, the question set, option set, correctness keys, image set, audience, and settings are frozen, because attempts and grades depend on them. Close is terminal and does not reopen. Draft delete is destructive but safe because a draft can never have attempt data. Images are content: a question with a broken image is not publishable, and a replaced image's old bytes are removed after commit.
 
-**AUT-019 — Non-goals and deliberate omissions.** No autosave or collaborative editing; no version history, restore, undelete, duplicate-quiz, import, or bulk edit; no rich text, Markdown rendering, image crop/resize/compression, or multiple images per question; no co-teachers or transfer of ownership; no question bank; no per-field concurrency token. The only write that a GET may perform is none: every AUT GET is read-only, including `GET /uploads/:name`. The demo `?state=` switch is presentation-only and never changes persisted state (AUT-040).
+**AUT-019 — Non-goals and deliberate omissions.** No autosave or collaborative editing; no version history, restore, undelete, duplicate-quiz, import, or bulk edit; no rich text, Markdown rendering, image crop/resize/compression, or multiple images per question; no co-teachers or transfer of ownership; no question bank; no per-field concurrency token. The only write that a GET may perform is none: every AUT GET is read-only, including `GET /uploads/:name`. A query parameter is never read as a presentation switch (AUT-040).
 
 ---
 
@@ -138,7 +138,7 @@ Every command below is a complete rule. A write command names the lock set, the 
 - **Route and actor:** `GET /teacher/quizzes/new`; active teacher.
 - **Authorization:** owner-teacher class; no resource exists yet.
 - **Preconditions:** none.
-- **Input:** none. In demo mode only (`APP_DEMO`), a `?state=` presentation switch may alter the demo strip; production ignores it and never changes the form defaults (AUT-040).
+- **Input:** none. Form defaults come from the quiz row; a query parameter never changes them (AUT-040).
 - **Transaction and locking:** read-only; one snapshot for the live major list.
 - **Effects:** none.
 - **Postconditions:** the form defaults are: empty title and description; no start/end; `visibility='public'`; no target grade/major; action `/teacher/quizzes`; cancel `/teacher/quizzes`; `IsEdit=false`; the major list is live majors ordered by name ascending then id ascending. Public is the inferred default because private reveals the target pair (R-11) and the current fixture uses public.
@@ -223,7 +223,7 @@ Every command below is a complete rule. A write command names the lock set, the 
 - **Route and actor:** `GET /teacher/quizzes/:id/questions/new`; active teacher.
 - **Authorization:** live quiz owned by actor; else 404. The quiz must be `draft`; open/closed → 303 to the builder with `err-not-draft` and no form.
 - **Preconditions:** live question count is below the authoring cap of 200; at the cap → 303 to the builder with `err-question-limit` / `Batas jumlah soal tercapai.`
-- **Input:** none. The demo `?state=` switch is presentation-only (AUT-040).
+- **Input:** none. The screen is read-only.
 - **Transaction and locking:** read-only; one snapshot for the quiz and the live question count. No lock.
 - **Effects:** none.
 - **Postconditions:** a blank editor with type `single`, two blank option rows A and B, and **no preselected correct option**; `image_alt` empty; no image; position `count+1` for display only; action `/teacher/quizzes/:id/questions`; cancel `/teacher/quizzes/:id`; delete link empty. The no-preselection rule is a product-integrity call: a single-choice question must not accidentally ship with option A correct because the teacher never touched the key (OQ-AUT-03).
@@ -259,7 +259,7 @@ Every command below is a complete rule. A write command names the lock set, the 
 - **Route and actor:** `GET /teacher/quizzes/:id/questions/:qid`; active teacher.
 - **Authorization:** live quiz owned by actor; live question with `question.quiz_id = :id`; else 404. Draft required; open/closed → 303 `err-not-draft`.
 - **Preconditions:** none beyond ownership/state.
-- **Input:** none. Demo `?state=` is presentation-only.
+- **Input:** none. The screen is read-only; no query parameter changes it.
 - **Transaction and locking:** read-only; one snapshot for quiz, question, and live options. No lock.
 - **Effects:** none.
 - **Postconditions:** the editor is populated with type, body, image URL/alt/size, and options ordered by position then id. Correctness is mapped to option **indices**, never option ids, so a wholesale replacement cannot leak stale ids. The delete action is only rendered in draft. If the image row is partial or the file is missing, the editor still renders the metadata and shows the image URL; a broken preview is not a 404 for the editor.
@@ -365,7 +365,7 @@ Every command below is a complete rule. A write command names the lock set, the 
 
 **AUT-039 — Idempotency and double submit.** Natural keys and state predicates are the idempotency store; there is no request-id table (OPS-143). Publish/close are idempotent informational; delete's second request is 404; reorder with the same order is a no-op; metadata/settings with identical values is a no-op. Create and question create are **not** idempotent: a double submit can create two drafts or two questions. PRG prevents the normal refresh duplicate; the accepted residual case is recorded in OQ-AUT-08. No command retries automatically after a lock timeout/deadlock except where OPS-102 declares it idempotent; none of the file-write, publish, close, or delete flows retries.
 
-**AUT-040 — Integrity faults, logging, and demo isolation.** A 500 is returned for: a live public quiz with NULL code, a partial image row, a live attempt/answer under a draft, a position set that is not dense, a duplicate live option position, an offset overflow, or a database CHECK failure that validation should have prevented. Log one structured line with the rule/invariant ID and row ids, never titles, prompts, alt text, image bytes, or teacher names (OPS-219). `APP_DEMO` is the only switch that enables `?state=` previews and the demo strip; production ignores `?state=` completely and never lets it alter a form default, a state transition, or a persisted row. The demo fixtures are not a second source of business rules.
+**AUT-040 — Integrity faults and logging.** A 500 is returned for: a live public quiz with NULL code, a partial image row, a live attempt/answer under a draft, a position set that is not dense, a duplicate live option position, an offset overflow, or a database CHECK failure that validation should have prevented. Log one structured line with the rule/invariant ID and row ids, never titles, prompts, alt text, image bytes, or teacher names (OPS-219). The application has no preview switch: `?state=` is never read and a query parameter can never alter a form default, a state transition, or a persisted row.
 
 ---
 

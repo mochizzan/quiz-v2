@@ -165,7 +165,7 @@ func TestReadUploadRejectsSizeDriftAndNonRegular(t *testing.T) {
 
 func TestServeUploadNameGrammar(t *testing.T) {
 	// A malformed name is 404 before any pool or filesystem access. The nil
-	// pool also pins the demo orphan case: no live row can exist, so a valid
+	// pool also pins the orphan case: no live row can exist, so a valid
 	// name is 404 as well, never a 500 page (AUT-054).
 	srv := &server{logger: slog.New(slog.DiscardHandler)}
 	app := fiber.New()
@@ -195,6 +195,6 @@ func TestServeUploadNameGrammar(t *testing.T) {
 	}
 	_ = resp.Body.Close()
 	if resp.StatusCode != http.StatusNotFound {
-		t.Fatalf("demo orphan status = %d, want 404", resp.StatusCode)
+		t.Fatalf("orphan upload status = %d, want 404", resp.StatusCode)
 	}
 }

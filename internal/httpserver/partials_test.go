@@ -10,14 +10,14 @@ import (
 )
 
 // This file pins the shared chrome partials: the pieces every layout composes
-// (head, foot, navbars, drawers, flash, demo strip, empty state, score pills,
+// (head, foot, navbars, drawers, flash, empty state, score pills,
 // quiz cards, tabs, pagination). TestMain (server_test.go) chdirs to the
 // repository root, so the relative paths below resolve to templates/.
 
 // pinnedPartials is the exact shipped partial set. Adding a partial is a
 // deliberate change: update this list with the file.
 var pinnedPartials = []string{
-	"auth-style", "banners", "breadcrumb", "demo-strip", "dialogs",
+	"auth-style", "banners", "breadcrumb", "dialogs",
 	"drawer-student", "drawer-teacher", "empty-state", "flash", "foot",
 	"head", "icons", "navbar-student", "navbar-style", "navbar-teacher",
 	"no-js-banner", "pagination", "progress-bar", "quiz-card", "score",
@@ -251,7 +251,7 @@ func TestEveryPartialSubContracts(t *testing.T) {
 		for _, want := range []string{
 			".page-stack", ".page-head", ".metric-tile", ".quiz-card",
 			".pill-tabs", ".table-clean", ".score-pill", ".empty-panel",
-			".demo-strip", ".form-card", ".attempt-shell", ".option-row",
+			".form-card", ".attempt-shell", ".option-row",
 			".result-row", ".split-layout", ".queue-row", ".monitor-grid",
 			".question-row", ".row-between", "@media (prefers-reduced-motion: reduce)",
 		} {
@@ -289,18 +289,6 @@ func TestEveryPartialSubContracts(t *testing.T) {
 		} {
 			if !strings.Contains(body, want) {
 				t.Errorf("flash.html missing %q", want)
-			}
-		}
-	})
-
-	t.Run("demo-strip", func(t *testing.T) {
-		body := readPartial(t, "demo-strip")
-		for _, want := range []string{
-			`{{if .Demo}}`, `class="demo-strip"`, `role="status"`,
-			"Mode demo", "tidak ada penyimpanan", `href="/teacher"`, `href="/student"`,
-		} {
-			if !strings.Contains(body, want) {
-				t.Errorf("demo-strip.html missing %q", want)
 			}
 		}
 	})

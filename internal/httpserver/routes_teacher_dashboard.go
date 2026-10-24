@@ -11,7 +11,6 @@ import (
 
 	"quiz-v2/internal/apperr"
 	"quiz-v2/internal/attempts"
-	"quiz-v2/internal/httpserver/fixtures"
 	"quiz-v2/internal/viewmodel"
 )
 
@@ -124,15 +123,6 @@ func (l *streamLease) Release() {
 func teacherStream(x *Ctx) error {
 	c := x.c
 
-	// The demo build has no database to observe. One heartbeat still proves the
-	// handshake and framing the conformance suite pins, without inventing an
-	// event name outside ATT-194's vocabulary.
-	if x.Demo {
-		setStreamHeaders(c)
-		_, err := c.WriteString("event: heartbeat\ndata: {\"at\":\"2026-10-23T02:42:41Z\"}\n\n")
-		return err
-	}
-
 	// ATT-191 authorization: not signed in, non-teacher, foreign, or unknown is
 	// an empty 404. An owner with a forced password change is an empty 403; the
 	// global must-change guard lets this route through for exactly this check.
@@ -212,9 +202,6 @@ func init() {
 			}
 			return x.Page("Dasbor guru", "dasbor", board), nil
 		},
-		Build: func(req PageRequest) viewmodel.PageData {
-			return page(req, "Dasbor guru", "dasbor", fixtures.TeacherUser(), fixtures.TeacherDashboardData())
-		},
 	})
 
 	registerPage(PageRoute{
@@ -245,19 +232,6 @@ func init() {
 			}
 			return x.Page(title, "kuis", results), nil
 		},
-		Build: func(req PageRequest) viewmodel.PageData {
-			results := fixtures.QuizResultsData(
-				req.IntParam("id"),
-				req.Query["state"],
-				req.Query["q"],
-				pageNumber(req),
-			)
-			title := "Hasil kuis"
-			if results.Quiz.Title != "" {
-				title = "Hasil · " + results.Quiz.Title
-			}
-			return page(req, title, "kuis", fixtures.TeacherUser(), results)
-		},
 	})
 
 	registerPage(PageRoute{
@@ -283,14 +257,6 @@ func init() {
 				title = "Monitor · " + monitor.Quiz.Title
 			}
 			return x.Page(title, "kuis", monitor), nil
-		},
-		Build: func(req PageRequest) viewmodel.PageData {
-			monitor := fixtures.MonitorData(req.IntParam("id"))
-			title := "Monitor kuis"
-			if monitor.Quiz.Title != "" {
-				title = "Monitor · " + monitor.Quiz.Title
-			}
-			return page(req, title, "kuis", fixtures.TeacherUser(), monitor)
 		},
 	})
 

@@ -24,9 +24,8 @@ import (
 // Service binds the participation domain to one database pool and the raw
 // session signing key. The key is used for the join-ticket HMAC (PAR-015) and
 // the derived anonymous identity token (PAR-019); it never leaves the process.
-// A nil pool is tolerated at construction so the demo build can still register
-// the route table; every method that needs the database answers 500 instead of
-// panicking.
+// A nil pool is tolerated at construction for the handler tests; every method
+// that needs the database answers 500 instead of panicking.
 type Service struct {
 	db *store.DB
 	// key is the SESSION_SIGNING_KEY material for PAR-015/PAR-019.

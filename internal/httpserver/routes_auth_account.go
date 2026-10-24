@@ -4,7 +4,6 @@ import (
 	"errors"
 
 	"quiz-v2/internal/apperr"
-	"quiz-v2/internal/httpserver/fixtures"
 	"quiz-v2/internal/identity"
 	"quiz-v2/internal/viewmodel"
 )
@@ -25,9 +24,6 @@ func init() {
 			// IDN-C10: the form is reachable during the must-change guard and
 			// carries no fields; every input renders blank.
 			return identityPage(x, "Ubah kata sandi", "profil", viewmodel.ChangePasswordPage{}), nil
-		},
-		Build: func(req PageRequest) viewmodel.PageData {
-			return page(req, "Ubah kata sandi", "profil", fixtures.StudentUser(), fixtures.ChangePassword())
 		},
 	})
 	registerPage(PageRoute{
@@ -73,7 +69,6 @@ func init() {
 			}
 			return viewmodel.PageData{}, Redirect{}, identityFailure(err)
 		},
-		Action: action("/profile", "password-changed"),
 	})
 
 	registerPage(PageRoute{
@@ -104,19 +99,6 @@ func init() {
 			model := viewmodel.PendingPage{State: info.State, FullName: info.FullName, LoginHref: "/login"}
 			return identityPage(x, title, "", model), nil
 		},
-		Build: func(req PageRequest) viewmodel.PageData {
-			state := viewmodel.PendingWaiting
-			title := "Menunggu persetujuan"
-			switch req.State() {
-			case "approved":
-				state = viewmodel.PendingApproved
-				title = "Akun disetujui"
-			case "expired":
-				state = viewmodel.PendingExpired
-				title = "Persetujuan kedaluwarsa"
-			}
-			return page(req, title, "", nil, fixtures.Pending(state))
-		},
 	})
 
 	registerPage(PageRoute{
@@ -138,6 +120,5 @@ func init() {
 			x.ClearCookie(identity.CookiePending, identity.PendingCookiePath)
 			return Redirect{Path: "/login", Flash: identity.FlashLoggedOut}, nil
 		},
-		Action: action("/login", "logout"),
 	})
 }

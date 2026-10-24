@@ -13,16 +13,15 @@ import (
 // every visitor to the single sign-in screen. The role home is resolved after
 // credentials, never from the URL.
 //
-// IDN-C01: in production the bare host never renders — it is always 303 to the
-// session's role home (/login without a session, /change-password + must_change
-// for a must-change session, /teacher or /student otherwise). The static
-// Redirect stays for the fixture preview build, where no session can exist.
+// IDN-C01: the bare host never renders — it is always 303 to the session's
+// role home (/login without a session, /change-password + must_change for a
+// must-change session, /teacher or /student otherwise). The must-change flash
+// is the reason this is a handler rather than a static redirect.
 func init() {
 	registerPage(PageRoute{
-		Method:   "GET",
-		Path:     "/",
-		Auth:     ClassPublic,
-		Redirect: "/login",
+		Method: "GET",
+		Path:   "/",
+		Auth:   ClassPublic,
 		Load: func(x *Ctx) (viewmodel.PageData, error) {
 			if x.Session == nil {
 				return viewmodel.PageData{}, x.SeeOther("/login", "")

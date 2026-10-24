@@ -2,19 +2,16 @@ package httpserver_test
 
 import (
 	"io"
-	"net/http"
+	"io/fs"
 	"net/http/httptest"
-	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
-	"strconv"
 	"strings"
 	"testing"
 
 	"quiz-v2/internal/config"
 	"quiz-v2/internal/httpserver"
-	"quiz-v2/internal/httpserver/fixtures"
 )
 
 // conformance_test.go is the whole-frontend gate for the typed-data build. It
@@ -131,45 +128,6 @@ var contractRoutes = []route{
 	r("GET", "/error/500"),
 }
 
-// samplePath substitutes concrete demo ids for path parameters.
-func samplePath(path string) string {
-	if path == "/teacher/anonymous/:id" || path == "/teacher/anonymous/:id/delete" ||
-		path == "/teacher/anonymous/:id/edit" {
-		return strings.ReplaceAll(path, ":id", anonymousRegistrationID())
-	}
-	repl := map[string]string{
-		":token":     "bio4-7f2k",
-		":quizID":    "1",
-		":answerID":  "400604",
-		":attemptID": "1001",
-		":qid":       "101",
-		":id":        "1",
-	}
-	for token, value := range repl {
-		path = strings.ReplaceAll(path, token, value)
-	}
-	switch path {
-	case "/attempt/1":
-		return "/attempt/1009"
-	case "/attempt/1/review":
-		return "/attempt/1009/review"
-	case "/attempt/1/result":
-		return "/attempt/1001/result"
-	case "/attempt/1/answer", "/attempt/1/submit", "/attempt/1/beacon":
-		return strings.Replace(path, "/attempt/1/", "/attempt/1009/", 1)
-	}
-	return path
-}
-
-func anonymousRegistrationID() string {
-	for _, reg := range fixtures.Default().Registrations {
-		if reg.Anonymous {
-			return strconv.FormatInt(reg.ID, 10)
-		}
-	}
-	return "1"
-}
-
 // walkTemplates returns every file under ./templates (slash-normalised).
 func walkTemplates(t *testing.T) map[string]string {
 	t.Helper()
@@ -230,181 +188,6 @@ func TestRouteSurface(t *testing.T) {
 	}
 	if len(seen) != len(want) {
 		t.Errorf("registered surface = %d routes, want %d", len(seen), len(want))
-	}
-}
-
-// TestEveryRegisteredGetPageRenders renders every GET page with demo ids and
-// asserts the shared chrome, a real title, one <style> block, and the
-// production-mode absence of demo affordances.
-func TestEveryRegisteredGetPageRenders(t *testing.T) {
-	app := httpserver.New(config.Config{Addr: ":8080", SessionSigningKey: testSigningKey, Demo: true})
-	for _, p := range httpserver.RegisteredPages() {
-		if p.Method != "GET" {
-			continue
-		}
-		p := p
-		t.Run(p.Path, func(t *testing.T) {
-			path := samplePath(p.Path)
-			resp, err := app.Test(httptest.NewRequest("GET", path, nil))
-			if err != nil {
-				t.Fatal(err)
-			}
-			if p.Redirect != "" || p.Path == "/" {
-				if resp.StatusCode != 303 {
-					t.Fatalf("status = %d, want 303 redirect", resp.StatusCode)
-				}
-				if loc := resp.Header.Get("Location"); loc != p.Redirect && p.Path == "/" {
-					t.Errorf("Location = %q, want %q", loc, p.Redirect)
-				}
-				return
-			}
-			if resp.StatusCode != 200 {
-				t.Fatalf("status = %d, want 200", resp.StatusCode)
-			}
-			if p.Path == "/teacher/quizzes/:id/stream" {
-				if ct := resp.Header.Get("Content-Type"); !strings.Contains(ct, "text/event-stream") {
-					t.Errorf("stream Content-Type = %q, want text/event-stream", ct)
-				}
-			}
-			body, _ := io.ReadAll(resp.Body)
-			html := string(body)
-			if p.Path == "/teacher/quizzes/:id/stream" {
-				return
-			}
-			for _, want := range []string{
-				`<html lang="id"`, `data-bs-theme="light"`,
-				`href="/static/vendor/bootstrap/bootstrap.min.css"`,
-				`href="/static/css/tokens.css"`,
-				`type="module" src="/static/vendor/bootstrap/bootstrap.bundle.min.js"`,
-				`type="module" src="/static/js/app.js"`,
-			} {
-				if !strings.Contains(html, want) {
-					t.Errorf("page missing %q", want)
-				}
-			}
-			if i, j := strings.Index(html, `href="/static/vendor/bootstrap/bootstrap.min.css"`),
-				strings.Index(html, `href="/static/css/tokens.css"`); i < 0 || j < i {
-				t.Errorf("tokens.css link must appear after the bootstrap link")
-			}
-			m := reTitle.FindStringSubmatch(html)
-			if m == nil || strings.TrimSpace(m[1]) == "" {
-				t.Errorf("page has no <title>")
-			} else if strings.TrimSpace(m[1]) == "Quiz" {
-				t.Errorf("legacy title %q on %s", m[1], p.Path)
-			}
-			styles := reStyleElem.FindAllStringSubmatch(html, -1)
-			if len(styles) != 1 {
-				t.Errorf("want exactly 1 <style> element, got %d", len(styles))
-			} else {
-				css := styles[0][1]
-				if !strings.Contains(css, "@font-face") {
-					t.Errorf("<style> missing @font-face")
-				}
-				for _, bad := range []string{"@import", "url(http://", "url(https://", "url(//"} {
-					if strings.Contains(css, bad) {
-						t.Errorf("<style> must not fetch external CSS, found %q", bad)
-					}
-				}
-			}
-			for _, forbidden := range []string{"theme-neutral", "theme-dark"} {
-				if strings.Contains(html, forbidden) {
-					t.Errorf("production page contains %q", forbidden)
-				}
-			}
-		})
-	}
-}
-
-// TestEveryRegisteredPostRedirects exercises every POST route. The CSRF
-// handshake is real: a GET first issues the signed cookie, and the POST carries
-// the same value as its form field. UI-only actions must answer 303 with a
-// relative Location; the beacon answers 204 and is the only exempt POST.
-func TestEveryRegisteredPostRedirects(t *testing.T) {
-	cfg := config.Config{Addr: ":8080", SessionSigningKey: testSigningKey, Demo: true}
-	app := httpserver.New(cfg)
-
-	resp, err := app.Test(httptest.NewRequest("GET", "/login", nil))
-	if err != nil {
-		t.Fatal(err)
-	}
-	var csrf string
-	for _, c := range resp.Cookies() {
-		if c.Name == httpserver.CookieCSRF {
-			csrf = c.Value
-		}
-	}
-	if csrf == "" {
-		t.Fatal("GET /login did not issue a CSRF cookie")
-	}
-
-	for _, p := range httpserver.RegisteredPages() {
-		if p.Method != "POST" {
-			continue
-		}
-		p := p
-		t.Run(p.Path, func(t *testing.T) {
-			form := url.Values{"csrf_token": {csrf}}
-			req := httptest.NewRequest("POST", samplePath(p.Path), strings.NewReader(form.Encode()))
-			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-			req.AddCookie(&http.Cookie{Name: httpserver.CookieCSRF, Value: csrf})
-			if p.Path == "/attempt/:id/beacon" {
-				req.Header.Set("Origin", "http://example.com")
-			}
-			resp, err := app.Test(req)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if p.Path == "/attempt/:id/beacon" {
-				if resp.StatusCode != 204 {
-					t.Fatalf("beacon status = %d, want 204", resp.StatusCode)
-				}
-				return
-			}
-			if resp.StatusCode != 303 {
-				t.Fatalf("status = %d, want 303", resp.StatusCode)
-			}
-			loc := resp.Header.Get("Location")
-			if loc == "" || !strings.HasPrefix(loc, "/") {
-				t.Errorf("Location = %q, want a relative redirect", loc)
-			}
-		})
-	}
-}
-
-// TestDemoModeAddsStrip proves APP_DEMO is the only switch that reveals demo
-// affordances, and that production ignores ?state=.
-func TestDemoModeAddsStrip(t *testing.T) {
-	prod := httpserver.New(config.Config{Addr: ":8080", SessionSigningKey: testSigningKey})
-	resp, err := prod.Test(httptest.NewRequest("GET", "/login", nil))
-	if err != nil {
-		t.Fatal(err)
-	}
-	prodBody, _ := io.ReadAll(resp.Body)
-	if strings.Contains(string(prodBody), `class="demo-strip"`) || strings.Contains(string(prodBody), "Mode demo") {
-		t.Error("production login must not render the demo strip")
-	}
-
-	demo := httpserver.New(config.Config{Addr: ":8080", Demo: true})
-	resp, err = demo.Test(httptest.NewRequest("GET", "/login", nil))
-	if err != nil {
-		t.Fatal(err)
-	}
-	demoBody, _ := io.ReadAll(resp.Body)
-	for _, want := range []string{"demo-strip", "Mode demo", "tidak ada penyimpanan"} {
-		if !strings.Contains(string(demoBody), want) {
-			t.Errorf("demo login missing %q", want)
-		}
-	}
-}
-
-func TestPageRequestStateIsDemoOnly(t *testing.T) {
-	req := httpserver.PageRequest{Query: map[string]string{"state": "empty"}}
-	if got := req.State(); got != "" {
-		t.Errorf("production State() = %q, want empty", got)
-	}
-	req.Demo = true
-	if got := req.State(); got != "empty" {
-		t.Errorf("demo State() = %q, want empty", got)
 	}
 }
 
@@ -484,8 +267,8 @@ func TestIconRefsResolve(t *testing.T) {
 	for path, body := range walkTemplates(t) {
 		for _, m := range reIconRef.FindAllStringSubmatch(body, -1) {
 			if strings.Contains(m[1], "{{") {
-				// Data-driven icon (empty-state); the fixture-source check
-				// below pins every literal value it can receive.
+				// Data-driven icon (empty-state); the literal scan below
+				// pins every value a handler can set.
 				continue
 			}
 			if !defined[m[1]] {
@@ -514,19 +297,28 @@ func TestIconRefsResolve(t *testing.T) {
 	}
 
 	// EmptyState icons are data-driven, so the sprite check above cannot see
-	// them. Every literal Icon value in the fixtures package must resolve.
-	reFixtureIcon := regexp.MustCompile(`Icon:\s+"([a-z-]+)"`)
-	fixtureFiles, _ := filepath.Glob(filepath.FromSlash("internal/httpserver/fixtures/*.go"))
-	for _, file := range fixtureFiles {
-		src, err := os.ReadFile(file)
+	// them. Every literal Icon value a handler produces must resolve.
+	reIconLiteral := regexp.MustCompile(`Icon:\s+"([a-z-]+)"`)
+	err := filepath.WalkDir("internal", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
-			t.Fatal(err)
+			return err
 		}
-		for _, m := range reFixtureIcon.FindAllStringSubmatch(string(src), -1) {
+		if d.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
+			return nil
+		}
+		src, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		for _, m := range reIconLiteral.FindAllStringSubmatch(string(src), -1) {
 			if !defined["i-"+m[1]] {
-				t.Errorf("%s: empty-state icon #i-%s not defined in the sprite", file, m[1])
+				t.Errorf("%s: empty-state icon #i-%s not defined in the sprite", path, m[1])
 			}
 		}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("scan Icon literals: %v", err)
 	}
 }
 

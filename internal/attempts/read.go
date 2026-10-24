@@ -21,7 +21,7 @@ import (
 	"quiz-v2/internal/viewmodel"
 )
 
-// Essay textarea constants shared with the demo fixtures (client-side aids;
+// Essay textarea constants (client-side aids; the storage bound is ATT-122's
 // the storage bound is ATT-122's 65,535 bytes on the write path).
 const (
 	essayMaxChars = 2000

@@ -4,11 +4,9 @@ import (
 	"errors"
 	"net"
 	"net/url"
-	"strings"
 
 	"quiz-v2/internal/apperr"
 	"quiz-v2/internal/authn"
-	"quiz-v2/internal/httpserver/fixtures"
 	"quiz-v2/internal/identity"
 	"quiz-v2/internal/viewmodel"
 )
@@ -21,10 +19,10 @@ import (
 // Join-by-code, the invitation landing and the anonymous identity form belong
 // to the participation domain and live in routes_join.go.
 //
-// Each route keeps its fixture Build/Action for APP_DEMO previews and adds the
-// production Load/Act beside it. Auth restates the class in authz.go so a route
-// file is auditable on its own. Post handlers that reject input use ActForm so
-// the same template re-renders at 422 with the typed values (IDN-083).
+// Each route carries its production Load/Act handler. Auth restates the class
+// in authz.go so a route file is auditable on its own. Post handlers that reject
+// input use ActForm so the same template re-renders at 422 with the typed
+// values (IDN-083).
 //
 // The helpers below are shared with the other identity route groups in this
 // package (auth-account, profile, teacher-management): the domain adapter,
@@ -126,12 +124,8 @@ func init() {
 		Auth:     ClassGuestOnly,
 		Load: func(x *Ctx) (viewmodel.PageData, error) {
 			// IDN-C02: an empty form; the class guard has already sent any
-			// authenticated visitor home. No demo hint is rendered in
-			// production, so the model carries no demo emails.
+			// authenticated visitor home.
 			return x.Page("Masuk", "", viewmodel.LoginPage{}), nil
-		},
-		Build: func(req PageRequest) viewmodel.PageData {
-			return page(req, "Masuk", "", nil, fixtures.Login())
 		},
 	})
 	registerPage(PageRoute{
@@ -189,16 +183,6 @@ func init() {
 			failure.Base.Flash = &viewmodel.Flash{Kind: "danger", Title: apperr.MsgInvalidCredentials}
 			return failure, Redirect{}, apperr.Validationf(nil).WithRule("IDN-083")
 		},
-		Action: func(req PageRequest) string {
-			// The server resolves the role from the account; this demo build
-			// only has to land on the right home. "guru" and the seeded
-			// teacher email both mean the teacher workspace.
-			email := strings.ToLower(strings.TrimSpace(req.Form.Get("email")))
-			if strings.Contains(email, "guru") || strings.Contains(email, "ratna") {
-				return "/teacher?flash=welcome"
-			}
-			return "/student?flash=welcome"
-		},
 	})
 
 	registerPage(PageRoute{
@@ -211,9 +195,6 @@ func init() {
 			// not join a school class.
 			model := viewmodel.RegisterPage{Role: viewmodel.RoleTeacher, MinPassword: identity.MinPasswordLength}
 			return x.Page("Daftar sebagai guru", "", model), nil
-		},
-		Build: func(req PageRequest) viewmodel.PageData {
-			return page(req, "Daftar sebagai guru", "", nil, fixtures.RegisterTeacher())
 		},
 	})
 	registerPage(PageRoute{
@@ -244,7 +225,6 @@ func init() {
 			x.SetCookie(identity.CookiePending, token, identity.PendingCookieMaxAge, identity.PendingCookiePath)
 			return viewmodel.PageData{}, Redirect{Path: "/auth/pending?token=" + url.QueryEscape(token)}, nil
 		},
-		Action: action("/auth/pending", "pending"),
 	})
 
 	registerPage(PageRoute{
@@ -269,9 +249,6 @@ func init() {
 				data.Base.Flash = &viewmodel.Flash{Kind: "info", Title: identity.MsgNoMajors}
 			}
 			return data, nil
-		},
-		Build: func(req PageRequest) viewmodel.PageData {
-			return page(req, "Daftar sebagai siswa", "", nil, fixtures.RegisterStudent())
 		},
 	})
 	registerPage(PageRoute{
@@ -300,7 +277,6 @@ func init() {
 			}
 			return viewmodel.PageData{}, identityRedirect("/student", identity.FlashWelcome), nil
 		},
-		Action: action("/student", "welcome"),
 	})
 
 	registerPage(PageRoute{
@@ -313,9 +289,6 @@ func init() {
 			// or consumed on GET, so a link scanner cannot probe it.
 			model := viewmodel.ResetPasswordPage{Token: x.QueryValue("token")}
 			return x.Page("Atur ulang kata sandi", "", model), nil
-		},
-		Build: func(req PageRequest) viewmodel.PageData {
-			return page(req, "Atur ulang kata sandi", "", nil, fixtures.ResetPassword(req.Query["token"]))
 		},
 	})
 	registerPage(PageRoute{
@@ -337,7 +310,6 @@ func init() {
 			}
 			return viewmodel.PageData{}, identityRedirect("/login", identity.FlashPasswordReset), nil
 		},
-		Action: action("/login", "password-reset"),
 	})
 }
 

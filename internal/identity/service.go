@@ -43,9 +43,8 @@ type Service struct {
 	now      func() time.Time
 }
 
-// New returns the identity service. A nil pool is tolerated at construction so
-// a demo build can build the route table; every database method answers 500
-// instead of panicking.
+// New returns the identity service. A nil pool is tolerated at construction for
+// the handler tests; every database method answers 500 instead of panicking.
 func New(db *store.DB, signer *secure.Signer, sessions *authn.Store) *Service {
 	return &Service{
 		db:       db,

@@ -50,9 +50,6 @@ type server struct {
 	// OPS-231). It is process-local, like the limiter, and entries disappear
 	// when their last connection ends.
 	streams *streamSlots
-	// enforceAuth is false only for the fixture preview build (APP_DEMO with no
-	// database), where no session can exist.
-	enforceAuth bool
 }
 
 // SessionResolver is the part of authn.Store the pipeline needs. It is an
@@ -63,36 +60,25 @@ type SessionResolver interface {
 	Slide(ctx context.Context, id int64) error
 }
 
-// demoSigningKey is the fixed key APP_DEMO uses when none is configured. It is
-// deliberately not random: a demo restart must not invalidate the forms a
-// reviewer already has open. It is never used when APP_DEMO is off, because
-// config.Validate refuses to start (IDN-050).
-const demoSigningKey = "quiz-v2-demo-only-signing-key-never-production"
-
 // newServer builds the dependency set. A missing or short signing key is an
 // error, never a silent fallback (IDN-050); main turns that into a fatal exit.
 func newServer(cfg config.Config, db *store.DB, logger *slog.Logger) (*server, error) {
 	if logger == nil {
 		logger = slog.Default()
 	}
-	key := []byte(cfg.SessionSigningKey)
-	if len(key) == 0 && cfg.Demo {
-		key = []byte(demoSigningKey)
-	}
-	signer, err := secure.NewSigner(key)
+	signer, err := secure.NewSigner([]byte(cfg.SessionSigningKey))
 	if err != nil {
 		return nil, err
 	}
 	s := &server{
-		cfg:         cfg,
-		db:          db,
-		views:       NewViewLoader(defaultTemplatesDir),
-		signer:      signer,
-		limiter:     secure.NewLimiter(nil),
-		logger:      logger,
-		stop:        make(chan struct{}),
-		streams:     newStreamSlots(streamConnectionCap),
-		enforceAuth: db != nil || !cfg.Demo,
+		cfg:     cfg,
+		db:      db,
+		views:   NewViewLoader(defaultTemplatesDir),
+		signer:  signer,
+		limiter: secure.NewLimiter(nil),
+		logger:  logger,
+		stop:    make(chan struct{}),
+		streams: newStreamSlots(streamConnectionCap),
 	}
 	if db != nil {
 		s.sessions = authn.NewStore(db)
@@ -121,7 +107,6 @@ func (s *server) beginShutdown() {
 func (s *server) prepare(c fiber.Ctx, route PageRoute) (*Ctx, bool) {
 	x := &Ctx{
 		DB:     s.db,
-		Demo:   s.cfg.Demo,
 		ReqID:  requestID(),
 		Params: map[string]string{},
 		Query:  url.Values{},
@@ -160,7 +145,7 @@ func (s *server) prepare(c fiber.Ctx, route PageRoute) (*Ctx, bool) {
 	if !s.checkMustChange(c, x, route) {
 		return nil, false
 	}
-	x.Flash = s.takeFlash(c, x.Demo)
+	x.Flash = s.takeFlash(c)
 	if !s.checkClass(c, x, route) {
 		return nil, false
 	}
@@ -265,15 +250,7 @@ func (s *server) checkMustChange(c fiber.Ctx, x *Ctx, route PageRoute) bool {
 // checkClass applies the authorization matrix. A signed-out user is redirected
 // to login with the expired-session flash; a wrong role gets 404 so the route's
 // existence does not leak (IDN-012, IDN-016).
-//
-// Enforcement is skipped only for the fixture preview build: APP_DEMO with no
-// database has no accounts at all, so every route would redirect to a login
-// nobody can complete. The demo holds no data and is never a production mode
-// (config.Validate requires a real signing key as soon as APP_DEMO is off).
 func (s *server) checkClass(c fiber.Ctx, x *Ctx, route PageRoute) bool {
-	if !s.enforceAuth {
-		return true
-	}
 	if routeKey(route.Method, route.Path) == streamRouteKey {
 		// An EventSource endpoint has no HTML error surface: the handler answers
 		// an unauthorised or foreign request with an empty 404 itself (ATT-191).
@@ -394,14 +371,9 @@ func sameHost(raw string, c fiber.Ctx) bool {
 		strings.EqualFold(u.Host, c.Host())
 }
 
-// takeFlash reads and clears the one-shot flash. Production reads only the
-// signed cookie; the query key is a demo-only preview (OPS-210, IDN-028).
-func (s *server) takeFlash(c fiber.Ctx, demo bool) *viewmodel.Flash {
-	if demo {
-		if key := c.Query("flash"); key != "" {
-			return viewmodel.FlashFor(key)
-		}
-	}
+// takeFlash reads and clears the one-shot flash. Only the signed cookie can
+// carry it: a query key would let a link mint a message (OPS-210, IDN-028).
+func (s *server) takeFlash(c fiber.Ctx) *viewmodel.Flash {
 	raw := c.Cookies(cookieFlash)
 	if raw == "" {
 		return nil

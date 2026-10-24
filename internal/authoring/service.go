@@ -20,9 +20,9 @@ type Service struct {
 	logger  *slog.Logger
 }
 
-// New returns the authoring service. A nil pool is tolerated at construction so
-// a demo build can build the route table; every method that needs the database
-// answers 500 instead of panicking.
+// New returns the authoring service. A nil pool is tolerated at construction
+// for the handler tests; every method that needs the database answers 500
+// instead of panicking.
 func New(db *store.DB, uploadsDir string) *Service {
 	return &Service{db: db, uploads: uploadsDir, logger: slog.Default()}
 }

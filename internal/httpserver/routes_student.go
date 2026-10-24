@@ -5,8 +5,7 @@ package httpserver
 // commands. The profile screen belongs to the identity domain and lives in
 // routes_profile.go.
 //
-// Load/Act are the production handlers (PAR, spec 03); Build/Action remain the
-// APP_DEMO fixture world.
+// Load/Act are the handlers (PAR, spec 03).
 
 import (
 	"context"
@@ -16,18 +15,9 @@ import (
 
 	"quiz-v2/internal/apperr"
 	"quiz-v2/internal/attempts"
-	"quiz-v2/internal/httpserver/fixtures"
 	"quiz-v2/internal/participation"
 	"quiz-v2/internal/viewmodel"
 )
-
-// studentQuizAction redirects back to the quiz intro with the demo-only
-// preview state and the PRG flash key.
-func studentQuizAction(state, flash string) func(PageRequest) string {
-	return func(req PageRequest) string {
-		return withParam("/quiz/:id", req) + "?state=" + state + "&flash=" + flash
-	}
-}
 
 // parService builds the per-request participation service. The ATT start rule
 // is injected here (PAR-202): PAR opens the transaction and hands it the locked
@@ -190,9 +180,6 @@ func init() {
 		Template: "pages/student/dashboard.html",
 		Nav:      "dasbor",
 		Load:     studentDashboardLoad,
-		Build: func(req PageRequest) viewmodel.PageData {
-			return page(req, "Dasbor siswa", "dasbor", fixtures.StudentUser(), fixtures.StudentDashboard())
-		},
 	})
 
 	registerPage(PageRoute{
@@ -201,9 +188,6 @@ func init() {
 		Template: "pages/student/history.html",
 		Nav:      "riwayat",
 		Load:     studentHistoryLoad,
-		Build: func(req PageRequest) viewmodel.PageData {
-			return page(req, "Riwayat kuis", "riwayat", fixtures.StudentUser(), fixtures.StudentHistory())
-		},
 	})
 
 	registerPage(PageRoute{
@@ -212,14 +196,6 @@ func init() {
 		Template: "pages/student/history-detail.html",
 		Nav:      "riwayat",
 		Load:     studentHistoryDetailLoad,
-		Build: func(req PageRequest) viewmodel.PageData {
-			detail := fixtures.StudentHistoryDetail(req.IntParam("quizID"))
-			title := "Riwayat kuis"
-			if detail.Quiz.Title != "" {
-				title = detail.Quiz.Title
-			}
-			return page(req, title, "riwayat", fixtures.StudentUser(), detail)
-		},
 	})
 
 	registerPage(PageRoute{
@@ -227,37 +203,23 @@ func init() {
 		Path:     "/quiz/:id",
 		Template: "pages/student/quiz.html",
 		Load:     studentQuizLoad,
-		Build: func(req PageRequest) viewmodel.PageData {
-			intro := fixtures.StudentQuizIntroState(req.IntParam("id"), req.State())
-			return page(req, intro.Quiz.Title, "", fixtures.StudentUser(), intro)
-		},
 	})
 
 	registerPage(PageRoute{
 		Method: "POST",
 		Path:   "/quiz/:id/register",
 		Act:    studentRegisterAct,
-		Action: studentQuizAction("registered", "registered"),
 	})
 
 	registerPage(PageRoute{
 		Method: "POST",
 		Path:   "/quiz/:id/cancel",
 		Act:    studentCancelAct,
-		Action: studentQuizAction("available", "cancelled"),
 	})
 
 	registerPage(PageRoute{
 		Method: "POST",
 		Path:   "/quiz/:id/attempts",
 		Act:    studentStartAct,
-		Action: func(req PageRequest) string {
-			// The demo's two live attempts: Matematika 5001 and, for every
-			// other quiz, the open Biologi attempt.
-			if req.IntParam("id") == fixtures.QuizMatematika {
-				return "/attempt/5001?flash=started"
-			}
-			return "/attempt/1009?flash=started"
-		},
 	})
 }

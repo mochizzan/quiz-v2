@@ -5,16 +5,15 @@ package httpserver
 // None of these require an account, and all of them accept an already signed-in
 // student, which is why their class is anonymous-or-public.
 //
-// Load/Act/ActForm are the production handlers (PAR, spec 03); Build/Action
-// remain the APP_DEMO fixture world. The POST handlers return 303 with a closed
-// flash key; only a 422 re-renders the identify form with field errors.
+// Load/Act/ActForm are the handlers (PAR, spec 03). The POST handlers return 303
+// with a closed flash key; only a 422 re-renders the identify form with field
+// errors.
 
 import (
 	"errors"
 	"strconv"
 
 	"quiz-v2/internal/apperr"
-	"quiz-v2/internal/httpserver/fixtures"
 	"quiz-v2/internal/participation"
 	"quiz-v2/internal/viewmodel"
 )
@@ -178,20 +177,11 @@ func init() {
 		Path:     "/join",
 		Template: "pages/auth/join.html",
 		Load:     joinLoad,
-		Build: func(req PageRequest) viewmodel.PageData {
-			return page(req, "Gabung dengan kode kuis", "", nil, fixtures.Join("", nil))
-		},
 	})
 	registerPage(PageRoute{
 		Method: "POST",
 		Path:   "/join",
 		Act:    joinAct,
-		Action: func(req PageRequest) string {
-			if id, ok := fixtures.QuizForJoinCode(req.Form.Get("code")); ok {
-				return "/quiz/" + strconv.FormatInt(id, 10)
-			}
-			return "/join?state=unknown"
-		},
 	})
 
 	registerPage(PageRoute{
@@ -199,9 +189,6 @@ func init() {
 		Path:     "/invite/:token",
 		Template: "pages/auth/invite.html",
 		Load:     inviteLoad,
-		Build: func(req PageRequest) viewmodel.PageData {
-			return page(req, "Undangan kuis", "", nil, fixtures.Invite(req.Param("token")))
-		},
 	})
 
 	registerPage(PageRoute{
@@ -209,14 +196,10 @@ func init() {
 		Path:     "/join/identify",
 		Template: "pages/auth/identify.html",
 		Load:     identifyLoad,
-		Build: func(req PageRequest) viewmodel.PageData {
-			return page(req, "Identitas peserta", "", nil, fixtures.Identify("", 0, 0, nil))
-		},
 	})
 	registerPage(PageRoute{
 		Method:  "POST",
 		Path:    "/join/identify",
 		ActForm: identifyAct,
-		Action:  action("/quiz/1?state=anonymous", ""),
 	})
 }

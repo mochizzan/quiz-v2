@@ -1,3 +1,6 @@
+# Every environment value lives in .env (git-ignored), copied from .env.example.
+# Nothing here sets a value, so a deployment cannot silently run on a committed
+# default.
 services:
   db:
     image: mariadb:12.3
@@ -10,11 +13,7 @@ services:
       - --collation-server=utf8mb4_unicode_ci
       - --default-time-zone=+00:00
       - --sql-mode=STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO
-    environment:
-      MARIADB_ROOT_PASSWORD: quizroot
-      MARIADB_DATABASE: quiz
-      MARIADB_USER: quiz
-      MARIADB_PASSWORD: quiz
+    env_file: .env
     # Loopback-only mapping so host-side integration tests (TEST_DB_DSN toward
     # 127.0.0.1:3306, see the foundation plan §1) can reach the container.
     ports:
@@ -26,26 +25,30 @@ services:
       interval: 5s
       timeout: 5s
       retries: 12
+  # One-shot schema and seed runner. A non-zero exit stops the deployment:
+  # compose never starts the app, and the operator sees the reason instead of a
+  # server whose every page is a 500.
+  migrate:
+    build: .
+    # The image entrypoint is the server; the one-shot runner overrides it.
+    entrypoint: ["./migrate", "bootstrap-teacher"]
+    env_file: .env
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
   app:
     build: .
+    env_file: .env
     ports:
       - "8080:8080"
-    environment:
-      APP_ADDR: ":8080"
-      # parseTime + loc=UTC + no multiStatements are enforced at startup
-      # (store.CheckDSN); the DSN must carry all three.
-      DB_DSN: "quiz:quiz@tcp(db:3306)/quiz?parseTime=true&charset=utf8mb4&collation=utf8mb4_unicode_ci&loc=UTC&timeout=5s&readTimeout=10s&writeTimeout=10s"
-      # Development default only: production supplies a real 32-byte key and
-      # never sets APP_DEMO (config.Validate refuses to start otherwise).
-      SESSION_SIGNING_KEY: "${SESSION_SIGNING_KEY:-dev-only-signing-key-change-me-32b}"
-      COOKIE_SECURE: "${COOKIE_SECURE:-false}"
-      APP_DEMO: "${APP_DEMO:-}"
-      UPLOADS_DIR: "/app/uploads"
     volumes:
       - uploads:/app/uploads
     depends_on:
       db:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/healthz"]
       interval: 5s

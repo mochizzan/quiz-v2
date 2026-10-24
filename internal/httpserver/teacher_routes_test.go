@@ -1,9 +1,8 @@
 package httpserver
 
 // teacher_routes_test.go pins the transport glue of the teacher-attempts
-// surface: domain-error mapping, the 422 draft overlay, the SSE handshake
-// headers, and the demo heartbeat that keeps the conformance suite meaningful
-// without a database.
+// surface: domain-error mapping, the 422 draft overlay, and the SSE handshake
+// headers.
 
 import (
 	"errors"
@@ -161,29 +160,6 @@ func TestSetStreamHeaders(t *testing.T) {
 	}
 	if got := resp.Header.Get("Access-Control-Allow-Origin"); got != "" {
 		t.Errorf("CORS header = %q, want none", got)
-	}
-}
-
-func TestTeacherStreamDemoHeartbeat(t *testing.T) {
-	app := New(config.Config{Addr: ":8080", Demo: true})
-	resp, err := app.Test(httptest.NewRequest(http.MethodGet, "/teacher/quizzes/123/stream", nil))
-	if err != nil {
-		t.Fatalf("app.Test: %v", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("status = %d, want 200", resp.StatusCode)
-	}
-	if got := resp.Header.Get("Content-Type"); got != "text/event-stream; charset=utf-8" {
-		t.Errorf("Content-Type = %q", got)
-	}
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		t.Fatalf("read body: %v", err)
-	}
-	want := "event: heartbeat\ndata: {\"at\":\"2026-10-23T02:42:41Z\"}\n\n"
-	if string(body) != want {
-		t.Errorf("body = %q, want %q", body, want)
 	}
 }
 

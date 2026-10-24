@@ -45,21 +45,22 @@ func TestFinishMapsUntypedErrorTo500(t *testing.T) {
 	}
 }
 
-// TestRootRedirectsToLogin pins the one static redirect in the surface.
+// TestRootRedirectsToLogin pins IDN-C01: the bare host is always a 303, and the
+// signed-out target is the single sign-in screen. The redirect is a handler
+// because a must-change session also needs a one-shot flash.
 func TestRootRedirectsToLogin(t *testing.T) {
-	var root *PageRoute
-	for _, p := range RegisteredPages() {
-		if p.Method == "GET" && p.Path == "/" {
-			route := p
-			root = &route
-			break
-		}
+	app := New(config.Config{Addr: ":8080", SessionSigningKey: strings.Repeat("k", 32)})
+	resp, err := app.Test(httptest.NewRequest(http.MethodGet, "/", nil))
+	if err != nil {
+		t.Fatalf("app.Test: %v", err)
 	}
-	if root == nil {
-		t.Fatal("GET / is not registered")
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusSeeOther {
+		t.Fatalf("status = %d, want 303", resp.StatusCode)
 	}
-	if root.Redirect != "/login" {
-		t.Errorf("GET / redirect = %q, want /login", root.Redirect)
+	if got := resp.Header.Get("Location"); got != "/login" {
+		t.Errorf("Location = %q, want /login", got)
 	}
 }
 
@@ -120,22 +121,4 @@ func TestRouteLessOrdersStaticBeforeParams(t *testing.T) {
 	}
 }
 
-// TestWithParamSubstitutesAllTokens pins the PRG helper.
-func TestWithParamSubstitutesAllTokens(t *testing.T) {
-	got := withParam("/teacher/quizzes/:id/questions/:qid", PageRequest{
-		Params: map[string]string{"id": "7", "qid": "702"},
-	})
-	if want := "/teacher/quizzes/7/questions/702"; got != want {
-		t.Errorf("withParam = %q, want %q", got, want)
-	}
-}
-
-// TestActionAppendsFlash covers the query separator cases.
-func TestActionAppendsFlash(t *testing.T) {
-	if got := action("/student", "welcome")(PageRequest{}); got != "/student?flash=welcome" {
-		t.Errorf("action = %q, want /student?flash=welcome", got)
-	}
-	if got := action("/join?state=unknown", "x")(PageRequest{}); got != "/join?state=unknown&flash=x" {
-		t.Errorf("action = %q, want /join?state=unknown&flash=x", got)
-	}
-}
+// TestRouteLessOrdersStaticBeforeParameterised is covered above.

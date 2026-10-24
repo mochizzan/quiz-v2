@@ -1062,8 +1062,8 @@ row without a file.
 
 **OPS-210** **Flash storage.** Flash is a signed, `HttpOnly`, `SameSite=Lax`, `Path=/` cookie
 with a ≤60 s lifetime and a closed message key plus at most two IDs; it is consumed once on
-render and cleared. Production never trusts `?flash=`; `APP_DEMO` may use the query key for
-previews only. The cookie carries no PII, no free text, and no token.
+render and cleared. The app never trusts `?flash=`; only the signed cookie is read. The
+cookie carries no PII, no free text, and no token.
 
 **OPS-211** **Health semantics.** `GET /healthz` performs one DB ping with a 2 s timeout:
 200 `text/plain` body `ok`, or 503 `text/plain` body `db unavailable`. No auth, no HTML, no
@@ -1240,11 +1240,13 @@ a second process would double every allowance (OPS-243).
 | `DB_DSN` | see OPS-233 | must include UTC + parseTime; no `multiStatements` |
 | `COOKIE_SECURE` | `false` | `true` behind TLS; false only on the school LAN |
 | `SESSION_SIGNING_KEY` | empty | required in production, ≥32 random bytes; signs CSRF, pending, anonymous, flash cookies |
-| `APP_DEMO` | off | production must be false; `?state=` and the demo strip are demo-only |
 | `UPLOADS_DIR` | `./uploads` | **config delta**, not schema; writable, same filesystem, outside `static/` |
 
-The runner additionally reads `BOOTSTRAP_TEACHER_NAME`, `BOOTSTRAP_TEACHER_EMAIL`, and
-`BOOTSTRAP_TEACHER_PASSWORD_HASH`; these are never read by the HTTP app.
+The runner additionally reads `BOOTSTRAP_TEACHER_NAME`, `BOOTSTRAP_TEACHER_EMAIL`, and either
+`BOOTSTRAP_TEACHER_PASSWORD` (hashed by the runner) or `BOOTSTRAP_TEACHER_PASSWORD_HASH`;
+these are never read by the HTTP app. Seeding is mandatory: a missing value, a failed
+migration, or a run that leaves no live teacher account exits non-zero, and the deployment
+must not start the app after that failure.
 
 **OPS-233** **DSN and server flags.** Use
 `parseTime=true&loc=UTC&charset=utf8mb4&collation=utf8mb4_unicode_ci&time_zone=%27%2B00%3A00%27&timeout=5s&readTimeout=10s&writeTimeout=10s`
@@ -1265,8 +1267,8 @@ rows by token hash). Session cookie: random 256-bit token, `HttpOnly`, `SameSite
 `HttpOnly`, 24 h, rotated on login/logout. Rotating the key invalidates pending/flash/CSRF
 and every outstanding join ticket; live anonymous identity cookies stay valid because they
 are hash-matched, while newly derived identities use the new key. Document this before
-rotation. An empty key in production is a startup failure; `APP_DEMO` may generate an
-ephemeral key and log a warning.
+rotation. An empty, short, or published-default key is a startup failure; there is no
+ephemeral fallback.
 
 **OPS-235** **SSE hub lifecycle.** One process-wide registry `quizID → hub`; a hub is created
 on first subscriber and destroyed on the last. Each subscriber has one buffered channel (16

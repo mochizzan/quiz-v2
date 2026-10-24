@@ -45,10 +45,9 @@ type Redirect struct {
 	Flash string
 }
 
-// Ctx is the request-scoped value a real handler receives. It replaces the
-// fixture-only PageRequest: it carries the resolved identity, the database, the
-// validated CSRF token, and the parsed inputs, but never the Fiber context, so
-// a handler can be tested without an HTTP server.
+// Ctx is the request-scoped value a handler receives. It carries the resolved
+// identity, the database, the validated CSRF token, and the parsed inputs, but
+// never the Fiber context, so a handler can be tested without an HTTP server.
 //
 // A handler does not write a status code or a header. It returns data or an
 // *apperr.Error and the HTTP layer decides.
@@ -57,7 +56,6 @@ type Ctx struct {
 	User    *viewmodel.CurrentUser
 	Session *authn.Session
 	CSRF    string
-	Demo    bool
 	IP      string
 	ReqID   string
 	Params  map[string]string
@@ -100,15 +98,6 @@ func (x *Ctx) Checked(name string) bool {
 	return false
 }
 
-// State returns the demo-only ?state= preview key. Production ignores it so a
-// hand-edited URL cannot change rendered data (contract §20, AUT-040).
-func (x *Ctx) State() string {
-	if !x.Demo {
-		return ""
-	}
-	return x.Query.Get("state")
-}
-
 // IsAuthenticated reports whether a live session was resolved.
 func (x *Ctx) IsAuthenticated() bool { return x.Session != nil }
 
@@ -134,7 +123,6 @@ func (x *Ctx) Page(title, nav string, data any) viewmodel.PageData {
 			User:   x.User,
 			Flash:  x.Flash,
 			CSRF:   x.CSRF,
-			Demo:   x.Demo,
 		},
 		Data: data,
 	}
@@ -228,6 +216,3 @@ func (x *Ctx) Context() context.Context {
 	}
 	return x.c.Context()
 }
-
-// QueryParam is a narrow accessor used by the legacy fixture builders.
-func (x *Ctx) QueryParam(name string) string { return x.Query.Get(name) }

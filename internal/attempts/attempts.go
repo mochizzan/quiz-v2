@@ -31,8 +31,8 @@ import (
 
 // Service binds the attempts domain to one database pool. It is constructed
 // per request by the HTTP layer; it holds no request state. A nil pool is
-// tolerated at construction so a demo build can build the route table; every
-// method that needs the database answers 500 instead of panicking.
+// tolerated at construction for the template-rendering tests; every method that
+// needs the database answers 500 instead of panicking.
 type Service struct {
 	db      *store.DB
 	logger  *slog.Logger

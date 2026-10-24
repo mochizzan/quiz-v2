@@ -4,7 +4,6 @@ import (
 	"strconv"
 
 	"quiz-v2/internal/apperr"
-	"quiz-v2/internal/httpserver/fixtures"
 	"quiz-v2/internal/participation"
 	"quiz-v2/internal/viewmodel"
 )
@@ -14,9 +13,9 @@ import (
 // roster and teacher approval belong to identity and live in
 // routes_teacher_mgmt.go.
 //
-// Each route keeps its fixture Build/Action for APP_DEMO previews and adds the
-// production Load/ActForm/Act beside it. Every write carries the shared
-// teacher-management rate bucket and re-renders the failing form at 422.
+// Each route carries its production Load/ActForm/Act handler. Every write
+// carries the shared teacher-management rate bucket and re-renders the failing
+// form at 422.
 
 // init registers the eight catalogue routes.
 func init() {
@@ -39,10 +38,6 @@ func init() {
 			}
 			return x.Page("Peserta anonim", "siswa", list), nil
 		},
-		Build: func(req PageRequest) viewmodel.PageData {
-			filter := fixtures.AnonymousFilter{Query: req.Query["q"], Page: pageNumber(req)}
-			return page(req, "Peserta anonim", "siswa", fixtures.TeacherUser(), fixtures.AnonymousListPage(filter))
-		},
 	})
 	registerPage(PageRoute{
 		Method:   "GET",
@@ -61,9 +56,6 @@ func init() {
 				return viewmodel.PageData{}, err
 			}
 			return x.Page("Ubah peserta anonim", "siswa", form), nil
-		},
-		Build: func(req PageRequest) viewmodel.PageData {
-			return page(req, "Ubah peserta anonim", "siswa", fixtures.TeacherUser(), fixtures.AnonymousFormPage(req.IntParam("id")))
 		},
 	})
 	registerPage(PageRoute{
@@ -89,7 +81,6 @@ func init() {
 			}
 			return viewmodel.PageData{}, x.Redirect(res.Result.Path, res.Result.Flash), nil
 		},
-		Action: action("/teacher/anonymous", "saved"),
 	})
 	registerPage(PageRoute{
 		Method: "POST",
@@ -108,7 +99,6 @@ func init() {
 			}
 			return x.Redirect(res.Path, res.Flash), nil
 		},
-		Action: action("/teacher/anonymous", "deleted"),
 	})
 
 	registerPage(PageRoute{
@@ -127,9 +117,6 @@ func init() {
 				return viewmodel.PageData{}, err
 			}
 			return x.Page("Jurusan", "pengaturan", page), nil
-		},
-		Build: func(req PageRequest) viewmodel.PageData {
-			return page(req, "Jurusan", "pengaturan", fixtures.TeacherUser(), fixtures.MajorsPage())
 		},
 	})
 	registerPage(PageRoute{
@@ -152,7 +139,6 @@ func init() {
 			}
 			return viewmodel.PageData{}, x.Redirect(res.Result.Path, res.Result.Flash), nil
 		},
-		Action: action("/teacher/majors", "saved"),
 	})
 	registerPage(PageRoute{
 		Method: "POST",
@@ -175,7 +161,6 @@ func init() {
 			}
 			return viewmodel.PageData{}, x.Redirect(res.Result.Path, res.Result.Flash), nil
 		},
-		Action: action("/teacher/majors", "saved"),
 	})
 	registerPage(PageRoute{
 		Method: "POST",
@@ -194,7 +179,6 @@ func init() {
 			}
 			return x.Redirect(res.Path, res.Flash), nil
 		},
-		Action: action("/teacher/majors", "deleted"),
 	})
 }
 

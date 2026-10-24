@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"quiz-v2/internal/apperr"
-	"quiz-v2/internal/httpserver/fixtures"
 	"quiz-v2/internal/identity"
 	"quiz-v2/internal/viewmodel"
 )
@@ -16,9 +15,9 @@ import (
 // teacher approval. Anonymous participants and majors belong to the
 // participation domain and live in routes_teacher_catalogue.go.
 //
-// Each route keeps its fixture Build/Action for APP_DEMO previews and adds the
-// production Load/Act beside it. The edit command uses ActForm so a rejected
-// edit re-renders the same form with the teacher's values (IDN-083).
+// Each route carries its production Load/Act handler. The edit command uses
+// ActForm so a rejected edit re-renders the same form with the teacher's values
+// (IDN-083).
 
 func init() {
 	registerPage(PageRoute{
@@ -63,13 +62,6 @@ func init() {
 			}
 			return identityPage(x, "Siswa", "siswa", list), nil
 		},
-		Build: func(req PageRequest) viewmodel.PageData {
-			list := fixtures.StudentListPage(studentFilter(req))
-			if req.Query["token"] != "" {
-				list.ResetToken = fixtures.ResetToken()
-			}
-			return page(req, "Siswa", "siswa", fixtures.TeacherUser(), list)
-		},
 	})
 	registerPage(PageRoute{
 		Method:   "GET",
@@ -88,9 +80,6 @@ func init() {
 				return viewmodel.PageData{}, identityFailure(err)
 			}
 			return identityPage(x, "Ubah siswa", "siswa", form), nil
-		},
-		Build: func(req PageRequest) viewmodel.PageData {
-			return page(req, "Ubah siswa", "siswa", fixtures.TeacherUser(), fixtures.StudentFormPage(req.IntParam("id")))
 		},
 	})
 	registerPage(PageRoute{
@@ -117,9 +106,6 @@ func init() {
 			}
 			return viewmodel.PageData{}, Redirect{}, identityFailure(err)
 		},
-		Action: func(req PageRequest) string {
-			return withParam("/teacher/students/:id", req) + "?flash=saved"
-		},
 	})
 	registerPage(PageRoute{
 		Method: "POST",
@@ -138,7 +124,6 @@ func init() {
 			}
 			return identityRedirect("/teacher/students", identity.FlashDeletedStudent), nil
 		},
-		Action: action("/teacher/students", "deleted"),
 	})
 	registerPage(PageRoute{
 		Method: "POST",
@@ -172,9 +157,6 @@ func init() {
 			x.SetCookie(identity.CookieReveal, revealToken, identity.RevealCookieMaxAge, identity.RevealCookiePath)
 			return identityRedirect("/teacher/students", identity.FlashToken), nil
 		},
-		Action: func(PageRequest) string {
-			return "/teacher/students?token=" + fixtures.DemoResetToken + "&flash=token"
-		},
 	})
 
 	registerPage(PageRoute{
@@ -195,9 +177,6 @@ func init() {
 			}
 			return identityPage(x, "Guru", "pengaturan", teachers), nil
 		},
-		Build: func(req PageRequest) viewmodel.PageData {
-			return page(req, "Guru", "pengaturan", fixtures.TeacherUser(), fixtures.TeachersPage())
-		},
 	})
 	registerPage(PageRoute{
 		Method: "POST",
@@ -216,7 +195,6 @@ func init() {
 			}
 			return identityRedirect("/teacher/teachers", flash), nil
 		},
-		Action: action("/teacher/teachers", "approved"),
 	})
 }
 
@@ -248,20 +226,6 @@ func studentEdit422(x *Ctx, id int64, fields map[string]string) (viewmodel.PageD
 	// report (§12.2).
 	data.Base.Flash = &viewmodel.Flash{Kind: "danger", Title: apperr.MsgValidation}
 	return data, Redirect{}, apperr.Validationf(fields)
-}
-
-// studentFilter parses the list query into the neutral fixture filter. The
-// grade tabs may echo their label ("Kelas XI") into the form, so both the
-// numeric grade and its label are accepted.
-func studentFilter(req PageRequest) fixtures.StudentFilter {
-	majorID, _ := strconv.ParseInt(req.Query["major_id"], 10, 64)
-	return fixtures.StudentFilter{
-		Query:   strings.TrimSpace(req.Query["q"]),
-		Grade:   parseGrade(req.Query["grade"]),
-		MajorID: majorID,
-		Sort:    viewmodel.SortOrder(req.Query["sort"]),
-		Page:    pageNumber(req),
-	}
 }
 
 func parseGrade(raw string) int {

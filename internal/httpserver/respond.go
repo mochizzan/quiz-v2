@@ -105,7 +105,6 @@ func (s *server) errorPage(c fiber.Ctx, err *apperr.Error) viewmodel.PageData {
 		Base: viewmodel.Base{
 			Title: title,
 			CSRF:  c.Cookies(cookieCSRF),
-			Demo:  s.cfg.Demo,
 		},
 		Data: viewmodel.ErrorPage{
 			Code:     code,

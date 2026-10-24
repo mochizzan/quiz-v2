@@ -17,8 +17,7 @@ type Config struct {
 	Addr              string // APP_ADDR, default ":8080"
 	DBDSN             string // DB_DSN, default points at the compose service
 	CookieSecure      bool   // COOKIE_SECURE, default false (school LAN)
-	SessionSigningKey string // SESSION_SIGNING_KEY, required in production
-	Demo              bool   // APP_DEMO=1 enables ?state= previews and the demo strip
+	SessionSigningKey string // SESSION_SIGNING_KEY, required
 	UploadsDir        string // UPLOADS_DIR, default "./uploads"
 }
 
@@ -35,23 +34,30 @@ func Load() Config {
 		DBDSN:             envOr("DB_DSN", DefaultDSN),
 		CookieSecure:      strings.EqualFold(os.Getenv("COOKIE_SECURE"), "true"),
 		SessionSigningKey: os.Getenv("SESSION_SIGNING_KEY"),
-		Demo:              strings.EqualFold(os.Getenv("APP_DEMO"), "1") || strings.EqualFold(os.Getenv("APP_DEMO"), "true"),
 		UploadsDir:        envOr("UPLOADS_DIR", "./uploads"),
 	}
 }
 
-// ErrSigningKey is returned when production would run without a usable key.
-var ErrSigningKey = errors.New("config: SESSION_SIGNING_KEY must be at least 32 bytes when APP_DEMO is off")
+// ErrSigningKey is returned when the process would run without a usable key.
+var ErrSigningKey = errors.New("config: SESSION_SIGNING_KEY must be at least 32 bytes")
+
+// devSigningKey is the value a compose file once shipped as a default. It is a
+// valid length and therefore passes the minimum, but it is public knowledge, so
+// accepting it would let anyone forge a session or CSRF token. Compare against
+// it by value, not by length.
+const devSigningKey = "dev-only-signing-key-change-me-32b"
+
+// ErrDevSigningKey is returned when the well-known development key is supplied.
+var ErrDevSigningKey = errors.New("config: SESSION_SIGNING_KEY is the published development default, generate a real secret")
 
 // Validate rejects a configuration that would start a process unable to honour
-// its security rules. Demo mode is exempt: it is explicitly not production, and
-// it uses a fixed, documented key so previews work out of the box.
+// its security rules (IDN-050, OPS-232).
 func Validate(cfg Config) error {
-	if cfg.Demo {
-		return nil
-	}
 	if len(cfg.SessionSigningKey) < secure.MinKeyBytes {
 		return ErrSigningKey
+	}
+	if cfg.SessionSigningKey == devSigningKey {
+		return ErrDevSigningKey
 	}
 	return nil
 }

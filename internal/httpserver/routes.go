@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"net/url"
-	"strconv"
 	"strings"
 	"time"
 
@@ -17,15 +15,13 @@ import (
 
 // PageRoute describes one server-rendered route.
 //
-// Two handler styles exist while the backend is being wired:
+// Load/Act are the production handlers. They receive a *Ctx (identity,
+// database, validated CSRF, parsed inputs), return typed data or an
+// *apperr.Error, and never touch Fiber or a status code. ActForm is Act with
+// the ability to hand back a rendered form when the command fails validation.
 //
-//   - Load/Act are the production handlers. They receive a *Ctx (identity,
-//     database, validated CSRF, parsed inputs), return typed data or an
-//     *apperr.Error, and never touch Fiber or a status code.
-//   - Build/Action are the fixture handlers the UI build uses. They stay for
-//     APP_DEMO previews and are replaced route by route as each domain lands.
-//
-// Handler is the escape hatch for non-page endpoints (SSE stream, beacon).
+// Handler/HandlerCtx are the escape hatches for non-page endpoints (the SSE
+// stream and the beacon).
 type PageRoute struct {
 	Method   string
 	Path     string
@@ -50,9 +46,6 @@ type PageRoute struct {
 	// ActForm wins if a route sets it.
 	ActForm func(*Ctx) (viewmodel.PageData, Redirect, error)
 
-	Build    func(PageRequest) viewmodel.PageData
-	Action   func(PageRequest) string
-	Redirect string
 	// Handler is the raw Fiber escape hatch (the SSE stream).
 	Handler func(fiber.Ctx) error
 	// HandlerCtx is the escape hatch for non-page endpoints that need the
@@ -62,48 +55,13 @@ type PageRoute struct {
 	HandlerCtx func(*Ctx) error
 }
 
-// PageRequest is the fixture-era request: path params, the query map, submitted
-// form values, and whether APP_DEMO is on. It is retained for Build/Action so
-// the existing demo pages keep working; new handlers take *Ctx.
-type PageRequest struct {
-	Params map[string]string
-	Query  map[string]string
-	Form   url.Values
-	Demo   bool
-
-	csrf  string
-	user  *viewmodel.CurrentUser
-	flash *viewmodel.Flash
-}
-
-// Param returns a path parameter or "".
-func (r PageRequest) Param(name string) string { return r.Params[name] }
-
-// IntParam parses a path parameter, returning 0 when it is absent or invalid.
-func (r PageRequest) IntParam(name string) int64 {
-	n, _ := strconv.ParseInt(r.Params[name], 10, 64)
-	return n
-}
-
-// State returns the demo-only ?state= preview key. In production the key is
-// ignored entirely so a hand-edited URL cannot change the rendered data.
-func (r PageRequest) State() string {
-	if !r.Demo {
-		return ""
-	}
-	return r.Query["state"]
-}
-
-// FlashKey returns the closed ?flash= key, if any.
-func (r PageRequest) FlashKey() string { return r.Query["flash"] }
-
 // PageData is the template data every page receives.
 type PageData = viewmodel.PageData
 
 // CSRFPlaceholder is the token a page renders when it is built outside the HTTP
 // pipeline (unit tests, template rendering). A real request always carries a
 // signed token from Ctx.CSRF.
-const CSRFPlaceholder = "demo-csrf-token"
+const CSRFPlaceholder = "csrf-placeholder"
 
 // pageRoutes is the package-level route registry. Each route group registers
 // itself from init() in its own routes_<group>.go file; nobody edits server.go
@@ -122,74 +80,13 @@ func RegisteredPages() []PageRoute {
 	return pages
 }
 
-// page builds the common chrome for a fixture-backed page.
-func page(r PageRequest, title, nav string, user *viewmodel.CurrentUser, data any) viewmodel.PageData {
-	if user == nil {
-		user = r.user
-	}
-	flash := r.flash
-	if flash == nil {
-		flash = viewmodel.FlashFor(r.FlashKey())
-	}
-	csrf := r.csrf
-	if csrf == "" {
-		csrf = CSRFPlaceholder
-	}
-	return viewmodel.PageData{
-		Base: viewmodel.Base{
-			Title:  title,
-			Active: nav,
-			User:   user,
-			Flash:  flash,
-			CSRF:   csrf,
-			Demo:   r.Demo,
-		},
-		Data: data,
-	}
-}
-
-// action is the one-line PRG helper: redirect to path with a flash key.
-func action(path, flash string) func(PageRequest) string {
-	return func(PageRequest) string {
-		if flash == "" {
-			return path
-		}
-		sep := "?"
-		if strings.Contains(path, "?") {
-			sep = "&"
-		}
-		return path + sep + "flash=" + flash
-	}
-}
-
-// pageNumber reads ?page= and clamps bad or missing input to the first page.
-func pageNumber(r PageRequest) int {
-	n, err := strconv.Atoi(r.Query["page"])
-	if err != nil || n < 1 {
-		return 1
-	}
-	return n
-}
-
-// withParam substitutes :name tokens in a redirect target from the request.
-func withParam(path string, r PageRequest) string {
-	parts := strings.Split(path, "/")
-	for i, p := range parts {
-		if strings.HasPrefix(p, ":") {
-			parts[i] = r.Params[strings.TrimPrefix(p, ":")]
-		}
-	}
-	return strings.Join(parts, "/")
-}
-
 // commandDeadline is OPS-100's request budget for a mutating command. A
 // command that exceeds it fails as a 500; a GET is exempt because the SSE
 // route is deliberately long-lived.
 const commandDeadline = 10 * time.Second
 
 // serveRoute is the single entry point for every registered route. The pipeline
-// runs first; then the production handler if one exists, then the fixture
-// handler, then the legacy redirect table.
+// runs first, then the route's own handler.
 func (s *server) serveRoute(c fiber.Ctx, route PageRoute) error {
 	if route.Method == fiber.MethodPost {
 		ctx, cancel := context.WithTimeout(c.Context(), commandDeadline)
@@ -205,13 +102,6 @@ func (s *server) serveRoute(c fiber.Ctx, route PageRoute) error {
 	}
 	if route.Handler != nil {
 		return route.Handler(c)
-	}
-
-	// Demo mode serves the fixture world; production prefers the real handler.
-	// The two never mix, so a fixture can never answer a production request and
-	// a real handler can never be skipped in favour of demo data.
-	if x.Demo {
-		return s.serveFixture(c, x, route)
 	}
 
 	switch {
@@ -231,51 +121,8 @@ func (s *server) serveRoute(c fiber.Ctx, route PageRoute) error {
 		}
 		return s.redirectFlash(c, r.Path, r.Flash)
 	default:
-		return s.serveFixture(c, x, route)
-	}
-}
-
-// serveFixture is the fixture-era path: static redirect, POST action, or a
-// Build function rendering demo data.
-func (s *server) serveFixture(c fiber.Ctx, x *Ctx, route PageRoute) error {
-	switch {
-	case route.Redirect != "":
-		return s.redirect(c, route.Redirect)
-	case route.Method == fiber.MethodPost || route.Action != nil:
-		target := ""
-		if route.Action != nil {
-			target = route.Action(x.legacyRequest())
-		}
-		if target == "" {
-			return s.respondError(c, apperr.NotFoundf())
-		}
-		return s.redirect(c, target)
-	case route.Build != nil:
-		return s.finish(x, route, route.Build(x.legacyRequest()), nil)
-	default:
 		return s.respondError(c, apperr.NotFoundf())
 	}
-}
-
-// legacyRequest adapts *Ctx to the fixture-era PageRequest so Build/Action keep
-// receiving the same shape they always did, now with the real identity and
-// CSRF token attached.
-func (x *Ctx) legacyRequest() PageRequest {
-	r := PageRequest{
-		Params: x.Params,
-		Query:  map[string]string{},
-		Form:   x.Form,
-		Demo:   x.Demo,
-		csrf:   x.CSRF,
-		user:   x.User,
-		flash:  x.Flash,
-	}
-	for k, vs := range x.Query {
-		if len(vs) > 0 {
-			r.Query[k] = vs[0]
-		}
-	}
-	return r
 }
 
 // RedirectError is returned by a handler that must answer 303 instead of
@@ -316,7 +163,6 @@ func (s *server) finish(x *Ctx, route PageRoute, data viewmodel.PageData, err er
 			if data.Base.User == nil {
 				data.Base.User = x.User
 			}
-			data.Base.Demo = x.Demo
 			return s.render(x.c, route.Template, data, appErr.Status())
 		}
 		return s.respondError(x.c, appErr)
@@ -330,7 +176,6 @@ func (s *server) finish(x *Ctx, route PageRoute, data viewmodel.PageData, err er
 	if data.Base.Flash == nil {
 		data.Base.Flash = x.Flash
 	}
-	data.Base.Demo = x.Demo
 	return s.render(x.c, route.Template, data, fiber.StatusOK)
 }
 
