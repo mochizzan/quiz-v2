@@ -182,25 +182,134 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  // ---- Character counter + autosave flash ---------------------------------
+  // ---- Character counter ---------------------------------------------------
+  // With a ceiling (textarea maxlength), the counter reads "312 / 2000" so
+  // the limit is visible before the browser starts truncating silently.
   document.querySelectorAll("[data-char-count]").forEach((input) => {
     const output = document.getElementById(input.dataset.charCount);
     if (!output) return;
+    const limit = input.maxLength >= 0 ? input.maxLength : null;
     const update = () => {
-      output.textContent = `${input.value.length} karakter`;
+      output.textContent = limit
+        ? `${input.value.length} / ${limit} karakter`
+        : `${input.value.length} karakter`;
     };
     input.addEventListener("input", update);
     update();
   });
 
-  const essayInput = document.getElementById("essay-input");
-  const autosave = document.getElementById("autosave-indicator");
-  if (essayInput && autosave) {
-    essayInput.addEventListener("input", () => {
-      autosave.classList.add("show");
-      window.setTimeout(() => autosave.classList.remove("show"), 1200);
+  // ---- Attempt answers save themselves -------------------------------------
+  // Commits ride the page's own POST through a hidden "quiet" submitter —
+  // fetch/XHR/beacons are banned in this file — and the server answers with
+  // the same question and no flash, so the reload reads as nothing happening.
+  // Scroll position and keyboard focus survive that reload. The visible Simpan
+  // button is the no-JS fallback and steps aside once autosave is armed.
+  document
+    .querySelectorAll("form[data-attempt-form]")
+    .forEach((form) => {
+      form.classList.add("is-autosave");
+
+      const status = document.createElement("div");
+      status.className = "visually-hidden";
+      status.setAttribute("role", "status");
+      status.setAttribute("aria-live", "polite");
+      form.appendChild(status);
+
+      const quiet = document.createElement("button");
+      quiet.type = "submit";
+      quiet.name = "nav";
+      quiet.value = "autosave";
+      quiet.hidden = true;
+      quiet.setAttribute("data-quiet", "");
+      form.appendChild(quiet);
+
+      const remember = () => {
+        const active = document.activeElement;
+        const mark =
+          active && form.contains(active) && active.matches("input, textarea")
+            ? active.id
+              ? "id:" + active.id
+              : "value:" + active.value
+            : null;
+        try {
+          window.sessionStorage.setItem(
+            "attempt-retake",
+            JSON.stringify({ scroll: Math.round(window.scrollY), mark })
+          );
+        } catch {
+          // Storage may be unavailable; the reload just loses its position.
+        }
+      };
+
+      let timer = 0;
+      const save = () => {
+        if (quiet.disabled) return;
+        remember();
+        quiet.click();
+      };
+
+      form.addEventListener("submit", (event) => {
+        const submitter = event.submitter;
+        if (!submitter || submitter.disabled) return;
+        window.clearTimeout(timer);
+
+        // Disabling the submitter (below) drops its name/value from the
+        // submission, so mirror the routing pair into a hidden input first.
+        if (submitter.name) {
+          const mirror = document.createElement("input");
+          mirror.type = "hidden";
+          mirror.name = submitter.name;
+          mirror.value = submitter.value;
+          form.appendChild(mirror);
+        }
+        submitter.disabled = true;
+
+        // Automatic commits stay silent; explicit ones show the DESIGN §8
+        // spinner and announce themselves.
+        if (submitter.hasAttribute("data-quiet")) return;
+        status.textContent = "Menyimpan…";
+        form.setAttribute("aria-busy", "true");
+        const spinner = document.createElement("span");
+        spinner.className = "spinner-border spinner-border-sm me-2";
+        spinner.setAttribute("aria-hidden", "true");
+        submitter.prepend(spinner);
+      });
+
+      form.querySelectorAll("input[type=radio], input[type=checkbox]").forEach((input) => {
+        input.addEventListener("change", () => {
+          window.clearTimeout(timer);
+          timer = window.setTimeout(save, 450);
+        });
+      });
+
+      const essay = form.querySelector(".essay-input");
+      if (essay) {
+        essay.addEventListener("input", () => {
+          window.clearTimeout(timer);
+          timer = window.setTimeout(save, 1400);
+        });
+      }
+
+      // Put the reader back where they were after a quiet reload.
+      let retake = null;
+      try {
+        retake = JSON.parse(window.sessionStorage.getItem("attempt-retake") || "null");
+        window.sessionStorage.removeItem("attempt-retake");
+      } catch {
+        retake = null;
+      }
+      if (retake) {
+        window.scrollTo(0, retake.scroll || 0);
+        if (retake.mark) {
+          const target = retake.mark.startsWith("id:")
+            ? form.querySelector(`[id="${retake.mark.slice(3)}"]`)
+            : form.querySelector(
+                `input[type=radio][value="${retake.mark.slice(6)}"], input[type=checkbox][value="${retake.mark.slice(6)}"]`
+              );
+          if (target) target.focus({ preventScroll: true });
+        }
+      }
     });
-  }
 
   // ---- Leave guard while an attempt is open -------------------------------
   const attemptForm = document.querySelector("[data-attempt-form]");
@@ -228,5 +337,24 @@ document.addEventListener("DOMContentLoaded", () => {
       }
       form.classList.add("was-validated");
     });
+  });
+
+  // ---- Nav drawer expanded state ------------------------------------------
+  // Bootstrap's Drawer never mirrors open state back onto the toggler, so
+  // watch the <dialog open> attribute instead and keep every matching
+  // [data-bs-toggle="drawer"] in sync for screen readers.
+  document.querySelectorAll("dialog.drawer").forEach((dialog) => {
+    const toggles = document.querySelectorAll(
+      `[data-bs-toggle="drawer"][data-bs-target="#${dialog.id}"]`
+    );
+    if (!toggles.length) return;
+    const syncDrawer = () => {
+      const open = dialog.hasAttribute("open");
+      toggles.forEach((toggle) => {
+        toggle.setAttribute("aria-expanded", open ? "true" : "false");
+      });
+    };
+    new MutationObserver(syncDrawer).observe(dialog, { attributeFilter: ["open"] });
+    syncDrawer();
   });
 });

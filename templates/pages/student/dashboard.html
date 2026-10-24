@@ -7,7 +7,9 @@
       <h1 class="h1">Halo, {{.Data.GreetingName}}</h1>
       <p class="page-sub">{{with .User}}{{.ClassLabel}}{{end}} · {{.Data.DateLine}}</p>
     </div>
-    <a class="btn btn-outline theme-primary" href="/join">
+    {{/* The navbar carries the join CTA from md up; this one serves <768px
+         so the key action always appears exactly once per screen. */}}
+    <a class="btn btn-outline theme-primary d-inline-flex md:d-none" href="/join">
       <svg width="17" height="17" aria-hidden="true"><use href="#i-bolt"></use></svg>
       Gabung kuis
     </a>
@@ -17,35 +19,50 @@
     <div class="row g-3">
       <div class="col-6 md:col-4 xl:col">
         <div class="card metric-tile p-3 h-100">
-          <span class="metric-label">Kuis tersedia</span>
+          <div class="metric-head">
+            <span class="metric-label">Kuis tersedia</span>
+            <span class="metric-icon" aria-hidden="true"><svg width="18" height="18" aria-hidden="true"><use href="#i-quiz"></use></svg></span>
+          </div>
           <span class="metric-value">{{.Data.Stats.Assigned}}</span>
           <span class="metric-foot">Sesuai kelas Anda</span>
         </div>
       </div>
       <div class="col-6 md:col-4 xl:col">
         <div class="card metric-tile p-3 h-100">
-          <span class="metric-label">Terdaftar</span>
+          <div class="metric-head">
+            <span class="metric-label">Terdaftar</span>
+            <span class="metric-icon" aria-hidden="true"><svg width="18" height="18" aria-hidden="true"><use href="#i-clipboard"></use></svg></span>
+          </div>
           <span class="metric-value">{{.Data.Stats.Registered}}</span>
           <span class="metric-foot">Belum dimulai</span>
         </div>
       </div>
       <div class="col-6 md:col-4 xl:col">
         <div class="card metric-tile p-3 h-100">
-          <span class="metric-label">Sedang berjalan</span>
+          <div class="metric-head">
+            <span class="metric-label">Sedang berjalan</span>
+            <span class="metric-icon" aria-hidden="true"><svg width="18" height="18" aria-hidden="true"><use href="#i-play"></use></svg></span>
+          </div>
           <span class="metric-value">{{.Data.Stats.InProgress}}</span>
           <span class="metric-foot">Percobaan aktif</span>
         </div>
       </div>
       <div class="col-6 md:col-4 xl:col">
         <div class="card metric-tile p-3 h-100">
-          <span class="metric-label">Selesai</span>
+          <div class="metric-head">
+            <span class="metric-label">Selesai</span>
+            <span class="metric-icon" aria-hidden="true"><svg width="18" height="18" aria-hidden="true"><use href="#i-check"></use></svg></span>
+          </div>
           <span class="metric-value">{{.Data.Stats.Completed}}</span>
           <span class="metric-foot">Kuis dengan jawaban terkirim</span>
         </div>
       </div>
-      <div class="col-12 md:col-4 xl:col">
+      <div class="col-6 md:col-4 xl:col">
         <div class="card metric-tile p-3 h-100">
-          <span class="metric-label">Skor terbaik</span>
+          <div class="metric-head">
+            <span class="metric-label">Skor terbaik</span>
+            <span class="metric-icon" aria-hidden="true"><svg width="18" height="18" aria-hidden="true"><use href="#i-star"></use></svg></span>
+          </div>
           {{with .Data.Stats.BestScore}}
           <span class="metric-value metric-accent">{{.}}</span>
           {{else}}
@@ -59,31 +76,12 @@
 
   {{if or .Data.Ready .Data.Live .Data.Latest .Data.Recent}}
 
-  {{if .Data.Ready}}
-  <section class="d-flex flex-column gap-3">
-    <div class="row-between">
-      <div>
-        <h2 class="section-title">Siap dimulai</h2>
-        <p class="section-sub">Kuis yang sudah Anda daftar dan belum dikerjakan.</p>
-      </div>
-      <span class="page-sub">{{len .Data.Ready}} kuis</span>
-    </div>
-    <div class="row g-3">
-      {{range .Data.Ready}}
-      <div class="col-12 lg:col-6">{{template "partials/quiz-card.html" .}}</div>
-      {{end}}
-    </div>
-  </section>
-  {{end}}
-
+  {{/* Unfinished attempts come first: resuming beats starting. */}}
   {{if .Data.Live}}
-  <section class="d-flex flex-column gap-3">
-    <div class="row-between">
-      <div>
-        <h2 class="section-title">Sedang berjalan</h2>
-        <p class="section-sub">Lanjutkan dari soal terakhir yang sudah tersimpan.</p>
-      </div>
-      <span class="page-sub">{{len .Data.Live}} percobaan</span>
+  <section class="d-flex flex-column gap-3" aria-labelledby="live-title">
+    <div>
+      <h2 class="section-title" id="live-title">Sedang berjalan <span class="count-pill">{{len .Data.Live}} percobaan</span></h2>
+      <p class="section-sub">Lanjutkan dari soal terakhir yang sudah tersimpan.</p>
     </div>
     <div class="row g-3">
       {{range .Data.Live}}
@@ -93,13 +91,25 @@
   </section>
   {{end}}
 
+  {{if .Data.Ready}}
+  <section class="d-flex flex-column gap-3" aria-labelledby="ready-title">
+    <div>
+      <h2 class="section-title" id="ready-title">Siap dimulai <span class="count-pill">{{len .Data.Ready}} kuis</span></h2>
+      <p class="section-sub">Kuis yang sudah Anda daftar dan belum dikerjakan.</p>
+    </div>
+    <div class="row g-3">
+      {{range .Data.Ready}}
+      <div class="col-12 lg:col-6">{{template "partials/quiz-card.html" .}}</div>
+      {{end}}
+    </div>
+  </section>
+  {{end}}
+
   {{if .Data.Latest}}
-  <section class="d-flex flex-column gap-3">
-    <div class="row-between">
-      <div>
-        <h2 class="section-title">Baru untuk Anda</h2>
-        <p class="section-sub">Kuis terbuka yang sesuai kelas Anda dan belum diikuti.</p>
-      </div>
+  <section class="d-flex flex-column gap-3" aria-labelledby="latest-title">
+    <div>
+      <h2 class="section-title" id="latest-title">Baru untuk Anda <span class="count-pill">{{len .Data.Latest}} kuis</span></h2>
+      <p class="section-sub">Kuis terbuka yang sesuai kelas Anda dan belum diikuti.</p>
     </div>
     <div class="row g-3">
       {{range .Data.Latest}}
@@ -110,13 +120,13 @@
   {{end}}
 
   {{if .Data.Recent}}
-  <section class="d-flex flex-column gap-3">
+  <section class="d-flex flex-column gap-3" aria-labelledby="recent-title">
     <div class="row-between">
       <div>
-        <h2 class="section-title">Hasil terbaru</h2>
+        <h2 class="section-title" id="recent-title">Hasil terbaru <span class="count-pill">{{len .Data.Recent}} hasil</span></h2>
         <p class="section-sub">Percobaan yang sudah dikirim, terbaru lebih dulu.</p>
       </div>
-      <a class="link-quiet" href="/student/history">Riwayat lengkap</a>
+      <a class="link-quiet text-nowrap" href="/student/history">Riwayat lengkap</a>
     </div>
     <div class="card p-0">
       <div class="table-responsive">
@@ -144,7 +154,7 @@
                 <span class="badge theme-success">Selesai</span>
                 {{end}}
               </td>
-              <td class="text-end"><a class="link-quiet" href="{{.Href}}">Lihat hasil</a></td>
+              <td class="text-end text-nowrap"><a class="link-quiet" href="{{.Href}}">Lihat hasil</a></td>
             </tr>
             {{end}}
           </tbody>

@@ -1,90 +1,84 @@
 {{define "partials/page-style"}}{{template "partials/auth-style.html" .}}{{end}}
+
+{{/* The front door. Two ways in, both visible: the quiz code on the brand
+     field (no account, the path every student uses) and the school account
+     form in the card. The server resolves the role from the account, so there
+     is no role switch here. */}}
+{{define "partials/auth-aside"}}
+<form class="panel-join" action="/join" method="post" data-validate>
+  <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+  <label class="panel-label" for="aside-code">Punya kode kuis?</label>
+  <div class="panel-row">
+    <input class="panel-code num" type="text" id="aside-code" name="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="off" spellcheck="false" placeholder="482915" aria-describedby="aside-code-help" required>
+    <button type="submit" class="btn panel-join-btn">Gabung</button>
+  </div>
+  <p class="panel-help" id="aside-code-help">Enam angka dari layar guru. Tanpa akun.</p>
+</form>
+{{end}}
+
 {{define "content"}}
-{{/* The front door: one form for both roles, no role switch. The server
-     resolves the role from the account; the demo emails below are a hint,
-     never a selector. */}}
-<div class="auth-heading">
-  <span class="auth-kicker">Masuk ke Twisty Quiz</span>
-  <h1 class="h1 auth-title">Selamat datang kembali</h1>
-  <p class="auth-subtitle">Satu pintu masuk untuk guru dan siswa. Gunakan email sekolah Anda untuk melanjutkan.</p>
+<div class="auth-head">
+  <h2 class="auth-title">Masuk ke akun sekolah</h2>
+  <p class="auth-sub">Satu formulir untuk guru dan siswa.</p>
 </div>
 
-<form class="login-form" action="/login" method="post" data-validate>
+<form class="auth-form" action="/login" method="post" data-validate>
   <input type="hidden" name="csrf_token" value="{{.CSRF}}">
 
   <div class="field-group">
-    <label class="form-label" for="login-email">Email</label>
+    <label class="form-label" for="login-email">Email sekolah</label>
     <input class="form-control" type="email" id="login-email" name="email" value="{{.Data.Email}}" inputmode="email" autocomplete="username" placeholder="nama@sekolah.sch.id" aria-describedby="login-email-help login-email-error" required>
-    <div class="field-help" id="login-email-help">Email sekolah yang terdaftar di akun Anda.</div>
+    <div class="field-help" id="login-email-help"><span class="d-block">Guru: nama@sekolah.sch.id</span><span class="d-block">Siswa: nama@siswa.sekolah.sch.id</span></div>
     {{with .Errors.Get "email"}}<div class="field-error" id="login-email-error" role="alert">{{.}}</div>{{end}}
   </div>
 
   <div class="field-group">
-    <label class="form-label d-inline-flex align-items-center gap-2" for="login-password">
-      <svg width="16" height="16" aria-hidden="true"><use href="#i-lock"></use></svg>
-      Kata sandi
-    </label>
+    <div class="field-label-row">
+      <label class="form-label" for="login-password">Kata sandi</label>
+      <a class="field-link" href="/reset-password">Lupa kata sandi?</a>
+    </div>
     <div class="position-relative">
-      <input class="form-control pe-5" type="password" id="login-password" name="password" autocomplete="current-password" placeholder="Kata sandi Anda" aria-describedby="login-password-help login-password-error" required>
+      <input class="form-control pe-5" type="password" id="login-password" name="password" autocomplete="current-password" placeholder="Kata sandi akun sekolah" aria-describedby="login-password-error" required>
       <button type="button" class="btn btn-text position-absolute top-50 end-0 translate-middle-y me-1" data-toggle-password="login-password" aria-label="Tampilkan kata sandi" aria-pressed="false" aria-controls="login-password">
         <svg width="20" height="20" aria-hidden="true"><use href="#i-eye"></use></svg>
       </button>
     </div>
-    <div class="field-help" id="login-password-help">Kata sandi akun sekolah Anda.</div>
     {{with .Errors.Get "password"}}<div class="field-error" id="login-password-error" role="alert">{{.}}</div>{{end}}
   </div>
 
-  <div class="form-options">
-    <span class="fg-secondary">Butuh bantuan masuk?</span>
-    <a class="fg-secondary py-2" href="/reset-password">Lupa kata sandi?</a>
-  </div>
-
-  <button type="submit" class="btn btn-solid theme-primary w-100 login-submit">
+  <button type="submit" class="btn btn-solid theme-primary auth-submit">
     Masuk
     <svg width="16" height="16" aria-hidden="true"><use href="#i-arrow-right"></use></svg>
   </button>
 </form>
 
 {{if .Demo}}
-<div class="alert theme-info mt-3" role="note">
-  <span class="badge bg-subtle-accent mb-2">Mode demo</span>
-  <p class="mb-1">Guru: <code>{{.Data.DemoTeacherEmail}}</code></p>
-  <p class="mb-1">Siswa: <code>{{.Data.DemoStudentEmail}}</code></p>
-  <p class="mb-0">Kata sandi apa pun diterima selama mode demo aktif.</p>
+<div class="auth-note" role="note">
+  <span class="auth-note-title">Mode demo</span>
+  <p>Guru: {{.Data.DemoTeacherEmail}}</p>
+  <p>Siswa: {{.Data.DemoStudentEmail}}</p>
+  <p>Kata sandi apa pun diterima selama mode demo aktif.</p>
 </div>
 {{end}}
 
-<div class="auth-divider">
-  <hr class="divider-line">
-  <span>Belum punya akun?</span>
-  <hr class="divider-line">
-</div>
-
-<div class="register-grid">
-  <a class="register-card" href="/register/student">
-    <span class="register-icon">
-      <svg width="16" height="16" aria-hidden="true"><use href="#i-person"></use></svg>
-    </span>
-    <span class="register-copy">
-      <strong>Akun siswa</strong>
-      <span>Langsung aktif</span>
-    </span>
-    <svg class="register-arrow" width="16" height="16" aria-hidden="true"><use href="#i-chev-right"></use></svg>
-  </a>
-  <a class="register-card" href="/register/teacher">
-    <span class="register-icon">
-      <svg width="16" height="16" aria-hidden="true"><use href="#i-cap"></use></svg>
-    </span>
-    <span class="register-copy">
-      <strong>Akun guru</strong>
-      <span>Perlu persetujuan</span>
-    </span>
-    <svg class="register-arrow" width="16" height="16" aria-hidden="true"><use href="#i-chev-right"></use></svg>
-  </a>
-</div>
-
-<div class="alert theme-info mb-0 d-flex flex-wrap align-items-center justify-content-between gap-3 join-promo">
-  <span>Punya kode kuis dari guru?</span>
-  <a class="btn btn-outline theme-primary auth-submit" href="/join">Gabung tanpa akun</a>
+<div class="auth-zone">
+  <h3 class="zone-title">Belum punya akun?</h3>
+  <p class="zone-note">Dua jenis akun, dua aturan masuk yang berbeda.</p>
+  <div class="zone-rows">
+    <a class="zone-row" href="/register/student">
+      <span>
+        <span class="zone-row-title">Akun siswa</span>
+        <span class="zone-row-note">Langsung aktif setelah mendaftar</span>
+      </span>
+      <svg width="18" height="18" aria-hidden="true"><use href="#i-chev-right"></use></svg>
+    </a>
+    <a class="zone-row" href="/register/teacher">
+      <span>
+        <span class="zone-row-title">Akun guru</span>
+        <span class="zone-row-note">Menunggu persetujuan guru aktif di sekolah</span>
+      </span>
+      <svg width="18" height="18" aria-hidden="true"><use href="#i-chev-right"></use></svg>
+    </a>
+  </div>
 </div>
 {{end}}

@@ -1,4 +1,5 @@
 {{/* progress-bar.html — ONE parameterized partial; pages pass the literal
      percent, e.g. {{template "partials/progress-bar.html" 68}} and place their
-     own labels ("68%" / "17 dari 25 soal") beside it. */}}
-{{define "partials/progress-bar.html"}}<div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{.}}"><div class="progress-bar theme-primary" style="width: {{.}}%"></div></div>{{end}}
+     own labels ("68%" / "17 dari 25 soal") beside it.
+     Uses DESIGN §7 progress-fill token (6px height, pill radius, secondary fill). */}}
+{{define "partials/progress-bar.html"}}<div class="progress-ring" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{.}}"><div class="progress-fill" style="width: {{.}}%"></div></div>{{end}}

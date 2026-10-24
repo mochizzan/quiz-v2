@@ -269,9 +269,9 @@ func TestEveryPartialSubContracts(t *testing.T) {
 	t.Run("progress-bar", func(t *testing.T) {
 		body := readPartial(t, "progress-bar")
 		for _, want := range []string{
-			`class="progress" role="progressbar"`,
+			`class="progress-ring" role="progressbar"`,
 			`aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{.}}"`,
-			`class="progress-bar theme-primary"`,
+			`class="progress-fill"`,
 			`style="width: {{.}}%"`,
 		} {
 			if !strings.Contains(body, want) {
@@ -400,6 +400,7 @@ func TestEveryPartialSubContracts(t *testing.T) {
 			`href="/teacher/grading"`, `href="/teacher/teachers"`,
 			`aria-current="page"`, `data-bs-toggle="drawer"`,
 			`data-bs-target="#nav-drawer"`, `aria-label="Buka menu"`,
+			`aria-expanded="false"`,
 			`{{with .User}}`, `.FullName`, `.Role.Label`,
 			`action="/logout"`, `name="csrf_token"`, `value="{{.CSRF}}"`,
 			`aria-label="Keluar"`,
@@ -424,7 +425,7 @@ func TestEveryPartialSubContracts(t *testing.T) {
 			`href="/student"`, `href="/student/history"`, `href="/profile"`,
 			`href="/join"`, `aria-current="page"`, `{{with .User}}`,
 			`.FullName`, `.ClassLabel`, `action="/logout"`,
-			`data-bs-target="#nav-drawer-student"`,
+			`data-bs-target="#nav-drawer-student"`, `aria-expanded="false"`,
 		} {
 			if !strings.Contains(body, want) {
 				t.Errorf("navbar-student.html missing %q", want)
@@ -435,7 +436,7 @@ func TestEveryPartialSubContracts(t *testing.T) {
 	t.Run("drawer-teacher", func(t *testing.T) {
 		body := readPartial(t, "drawer-teacher")
 		for _, want := range []string{
-			`<dialog class="drawer drawer-end" id="nav-drawer" aria-label="Menu navigasi">`,
+			`<dialog class="drawer drawer-end app-drawer" id="nav-drawer" aria-label="Menu navigasi">`,
 			`drawer-header`, `drawer-body`, `data-bs-dismiss="drawer"`,
 			`aria-label="Tutup"`, `href="/teacher"`, `href="/teacher/quizzes"`,
 			`href="/teacher/students"`, `href="/teacher/grading"`,
@@ -451,7 +452,7 @@ func TestEveryPartialSubContracts(t *testing.T) {
 	t.Run("drawer-student", func(t *testing.T) {
 		body := readPartial(t, "drawer-student")
 		for _, want := range []string{
-			`<dialog class="drawer drawer-end" id="nav-drawer-student" aria-label="Menu navigasi">`,
+			`<dialog class="drawer drawer-end app-drawer" id="nav-drawer-student" aria-label="Menu navigasi">`,
 			`drawer-header`, `drawer-body`, `data-bs-dismiss="drawer"`,
 			`aria-label="Tutup"`, `href="/student"`, `href="/student/history"`,
 			`href="/profile"`, `href="/join"`, `action="/logout"`,

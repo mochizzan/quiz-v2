@@ -288,9 +288,10 @@ func QuizResultsData(quizID int64, state, query string, page int) viewmodel.Quiz
 	base := resultsPath(quizID)
 	pagination := viewmodel.NewPagination(base, values, list.Page, resultsPageSize, list.Total)
 
-	var average *viewmodel.Score
+	var average *viewmodel.Average
 	if scoreCount > 0 {
-		average = ScorePtr(int(float64(scoreSum)/float64(scoreCount) + 0.5))
+		avg := viewmodel.NewAverage(float64(scoreSum) / float64(scoreCount))
+		average = &avg
 	}
 
 	empty := viewmodel.EmptyState{

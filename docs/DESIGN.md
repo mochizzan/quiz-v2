@@ -388,6 +388,9 @@ utilities and headings below `h2` are not used anywhere in this system.
 | Badge / caption | 11 / 14 px | 600 | State tags, counts, day markers. |
 
 Question body text is at least 16px so a student can read it on a phone.
+The attempt question line is set at 20px/600 (mirroring the h2 step) — kept
+deliberately above the 16px body-prominent so the one text a student must
+read dominates the card.
 Scores, timers, and counts use tabular numerals so digits do not shift.
 
 ## 4. Layout
@@ -400,7 +403,10 @@ Scores, timers, and counts use tabular numerals so digits do not shift.
   content column stacks a row of stat tiles, then a feature panel, then a
   list panel.
 - **Student attempt** — a single focused column, max `960px`. One question
-  per page; dashboard chrome and unrelated actions are removed.
+  per page; dashboard chrome and unrelated actions are removed. The
+  question navigator is a card of numbered pills — inline above the question
+  in portrait, a sticky left rail from `xl` — not a drawer (decided against
+  the prototype's drawer during the type-data port).
 - **Auth** — a split screen: an atmospheric brand panel beside a centred
   auth card.
 - **Spacing scale** — base unit `4px`. Common steps `8` / `12` / `16` /
@@ -493,8 +499,13 @@ sign-in form, join-by-code form, and register form.
 ### Student attempt page
 A sticky top bar with the quiz title and live answered count; the question
 card with question text, optional image, and full-width option rows; a
-progress rail showing answered / total / unanswered; a question-navigation
-drawer; and a sticky bottom action bar carrying Previous / Next / Save.
+progress rail showing answered / total / unanswered; a question-navigator
+card with numbered pills and no status legend (fill tone carries the state;
+`aria-current` / `aria-label` carry it for assistive tech); and an action bar
+carrying Previous / Next, sticky bottom on phones. Answers commit
+automatically when a choice changes or typing pauses — Save exists only as
+the no-JS fallback. From `xl` the navigator becomes a sticky left rail beside
+the question.
 
 ## 8. Component states
 
@@ -508,7 +519,7 @@ defect.
 | Empty | A white card with a calm message and one primary action. |
 | Error | A `danger` alert with a retry action; the previous content stays visible. |
 | Saving | A spinner inside the control, which is disabled, plus `role="status"`. |
-| Saved | A brief success toast; never a permanent state marker. |
+| Saved | Automatic answers save silently — the live answered count is the confirmation; an explicit fallback save shows a brief success toast. Never a permanent state marker. |
 | Stale | A persistent `warning` banner explaining that live updates stopped. |
 | Offline / no-JS | A `warning` banner naming exactly what is unavailable. |
 
@@ -525,7 +536,8 @@ threshold.
   wrapper.
 - **768px–1279px** — two-column metric grids; content column centred.
 - **1280px and above** — four-column metric grids; full asymmetric workspace;
-  the attempt column caps at `960px`.
+  the attempt sets its navigator as a sticky left rail beside the question and
+  may use its full `960px` width.
 
 ## 10. Accessibility
 

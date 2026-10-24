@@ -357,7 +357,10 @@ type QuestionForm struct {
 type ResultsCounts struct {
 	Submitted  int
 	InProgress int
-	Average    *Score
+	// Average is the quiz-wide mean over graded attempts, rendered with one
+	// decimal and an Indonesian comma (ATT-174). Nil means "no graded attempt
+	// yet" and the template renders an em dash.
+	Average *Average
 }
 
 // ResultsRow is one attempt in the teacher results table.

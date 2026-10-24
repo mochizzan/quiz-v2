@@ -3,32 +3,18 @@
 {{/* Teacher approval holding screen. The same template carries the three
      closed PendingState values; the route supplies the state, the copy below
      never recomputes it. */}}
-<div class="auth-heading text-center">
-  {{if eq .Data.State "approved"}}
-  <span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-subtle-success fg-success p-3 mb-3">
-    <svg width="28" height="28" aria-hidden="true"><use href="#i-check"></use></svg>
-  </span>
-  {{else if eq .Data.State "expired"}}
-  <span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-subtle-warning fg-warning p-3 mb-3">
-    <svg width="28" height="28" aria-hidden="true"><use href="#i-clock"></use></svg>
-  </span>
-  {{else}}
-  <span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-subtle-primary fg-primary p-3 mb-3">
-    <svg width="28" height="28" aria-hidden="true"><use href="#i-clock"></use></svg>
-  </span>
-  {{end}}
-  <span class="auth-kicker">Akun guru</span>
-  <h1 class="h1 auth-title">
+<div class="auth-head">
+  <h2 class="auth-title">
     {{if eq .Data.State "approved"}}Akun disetujui{{else if eq .Data.State "expired"}}Persetujuan kedaluwarsa{{else}}Menunggu persetujuan{{end}}
-  </h1>
-  <p class="auth-subtitle mx-auto">
+  </h2>
+  <p class="auth-sub">
     {{if eq .Data.State "approved"}}Akun Anda sudah aktif dan siap dipakai.{{else if eq .Data.State "expired"}}Permintaan persetujuan ini sudah tidak berlaku.{{else}}Pendaftaran Anda sudah kami terima.{{end}}
   </p>
 </div>
 
-<div class="alert theme-{{if eq .Data.State "approved"}}success{{else if eq .Data.State "expired"}}warning{{else}}info{{end}} text-center" role="status">
-  <strong class="d-block mb-1">{{.Data.State.Label}}</strong>
-  <span>
+<div class="auth-note{{if eq .Data.State "approved"}} is-ok{{else if eq .Data.State "expired"}} is-warn{{end}}" role="status">
+  <span class="auth-note-title">{{.Data.State.Label}}</span>
+  <p>
     {{if eq .Data.State "approved"}}
       {{with .Data.FullName}}{{.}} sekarang dapat masuk dan mengelola kuis.{{else}}Akun Anda sekarang dapat masuk dan mengelola kuis.{{end}}
     {{else if eq .Data.State "expired"}}
@@ -36,10 +22,10 @@
     {{else}}
       Guru aktif di sekolah Anda perlu menyetujui akun ini. Kabar persetujuan dikirim ke email yang Anda daftarkan.
     {{end}}
-  </span>
+  </p>
 </div>
 
-<div class="d-grid gap-2 mt-2">
+<div class="auth-actions">
   {{if eq .Data.State "approved"}}
   <a class="btn btn-solid theme-primary auth-submit" href="{{.Data.LoginHref}}">Masuk ke akun</a>
   {{else if eq .Data.State "expired"}}
@@ -50,5 +36,5 @@
   {{end}}
 </div>
 
-<p class="field-help text-center mt-3 mb-0">Butuh bantuan? Hubungi admin sekolah Anda.</p>
+<p class="auth-foot">Butuh bantuan? Hubungi admin sekolah Anda.</p>
 {{end}}

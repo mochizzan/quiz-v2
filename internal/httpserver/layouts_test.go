@@ -16,7 +16,7 @@ import (
 // routes_error.go) must answer 200 with the styled server-error page. TestMain
 // chdirs to the repository root, so ./templates resolves under app.Test.
 func TestErrorPagesRender(t *testing.T) {
-	app := httpserver.New(config.Config{Addr: ":8080"})
+	app := httpserver.New(config.Config{Addr: ":8080", SessionSigningKey: testSigningKey})
 
 	t.Run("404 catch-all", func(t *testing.T) {
 		resp, err := app.Test(httptest.NewRequest("GET", "/definitely-missing", nil))
@@ -29,7 +29,7 @@ func TestErrorPagesRender(t *testing.T) {
 		body, _ := io.ReadAll(resp.Body)
 		html := string(body)
 		if !strings.Contains(html, `lang="id"`) {
-			t.Errorf("404 page must declare lang=id (spec §15.10), got %q", html)
+			t.Errorf("404 page must declare lang=id (spec Â§15.10), got %q", html)
 		}
 		if !strings.Contains(html, "Halaman tidak ditemukan") {
 			t.Errorf("404 page must contain its heading copy, got %q", html)
@@ -54,10 +54,10 @@ func TestErrorPagesRender(t *testing.T) {
 // TestLayoutWrappersArePresent pins the layout chrome every page renders
 // through (Task 6 layouts + Task 5 head/foot partials), driven through the
 // /error/500 page: carrier stylesheets with tokens.css AFTER bootstrap.min.css
-// (spec §15.1), the Bootstrap ESM bundle script, the forced-light html root,
+// (spec Â§15.1), the Bootstrap ESM bundle script, the forced-light html root,
 // and exactly ONE <style> element (the @font-face block from head.html).
 func TestLayoutWrappersArePresent(t *testing.T) {
-	app := httpserver.New(config.Config{Addr: ":8080"})
+	app := httpserver.New(config.Config{Addr: ":8080", SessionSigningKey: testSigningKey})
 	resp, err := app.Test(httptest.NewRequest("GET", "/error/500", nil))
 	if err != nil {
 		t.Fatal(err)
@@ -71,7 +71,7 @@ func TestLayoutWrappersArePresent(t *testing.T) {
 		t.Fatalf("page must link both stylesheets (bootstrap=%d tokens=%d)", bootstrapIdx, tokensIdx)
 	}
 	if bootstrapIdx > tokensIdx {
-		t.Error("tokens.css link must appear AFTER bootstrap.min.css (spec §15.1)")
+		t.Error("tokens.css link must appear AFTER bootstrap.min.css (spec Â§15.1)")
 	}
 	for _, want := range []string{
 		`type="module" src="/static/vendor/bootstrap/bootstrap.bundle.min.js"`,

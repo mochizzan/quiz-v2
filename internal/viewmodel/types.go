@@ -67,14 +67,32 @@ func FlashFor(key string) *Flash {
 		return &Flash{Kind: "success", Title: "Perubahan tersimpan."}
 	case "registered":
 		return &Flash{Kind: "success", Title: "Anda terdaftar di kuis ini."}
+	case "already_registered":
+		return &Flash{Kind: "info", Title: "Anda sudah terdaftar di kuis ini."}
 	case "cancelled":
 		return &Flash{Kind: "info", Title: "Pendaftaran dibatalkan."}
+	case "not-open":
+		return &Flash{Kind: "error", Title: "Kuis ini belum dibuka atau sudah ditutup."}
+	case "not-registered":
+		return &Flash{Kind: "error", Title: "Anda belum terdaftar di kuis ini."}
+	case "cancel-blocked":
+		return &Flash{Kind: "error", Title: "Pendaftaran tidak dapat dibatalkan karena percobaan sudah dimulai."}
+	case "attempts-exhausted":
+		return &Flash{Kind: "error", Title: "Batas percobaan untuk kuis ini sudah tercapai."}
+	case "quiz-empty":
+		return &Flash{Kind: "error", Title: "Kuis ini belum memiliki soal.", Body: "Hubungi guru Anda."}
+	case "identity-switched":
+		return &Flash{Kind: "info", Title: "Identitas peserta di perangkat ini dihapus.", Body: "Isi identitas baru."}
+	case "major-in-use":
+		return &Flash{Kind: "error", Title: "Jurusan tidak dapat dihapus karena masih dipakai."}
 	case "started":
-		return &Flash{Kind: "success", Title: "Percobaan dimulai.", Body: "Jawaban tersimpan saat Anda menekan Simpan."}
+		return &Flash{Kind: "success", Title: "Percobaan dimulai.", Body: "Jawaban tersimpan otomatis setiap kali Anda mengubah pilihan atau mengetik."}
 	case "submitted":
 		return &Flash{Kind: "success", Title: "Jawaban terkirim."}
 	case "graded":
 		return &Flash{Kind: "success", Title: "Nilai esai tersimpan."}
+	case "already_graded":
+		return &Flash{Kind: "error", Title: "Esai ini sudah dinilai dan tidak dapat diubah."}
 	case "published":
 		return &Flash{Kind: "success", Title: "Kuis dibuka."}
 	case "closed":
@@ -101,6 +119,10 @@ func FlashFor(key string) *Flash {
 		return &Flash{Kind: "success", Title: "Urutan soal diperbarui."}
 	case "logout":
 		return &Flash{Kind: "info", Title: "Anda telah keluar."}
+	case "session_expired":
+		return &Flash{Kind: "warning", Title: "Sesi Anda berakhir.", Body: "Silakan masuk lagi."}
+	case "must_change":
+		return &Flash{Kind: "warning", Title: "Ubah kata sandi Anda sebelum melanjutkan."}
 	default:
 		return nil
 	}
@@ -353,6 +375,10 @@ func (q QuizCard) AudienceText() string {
 	}
 	return "Publik · Semua kelas"
 }
+
+// IsPrivate reports the private-audience rule. Card meta shows the audience
+// only when it varies from all-cards default (public, whole school).
+func (q QuizCard) IsPrivate() bool { return q.Visibility == VisibilityPrivate }
 
 // CodeText renders the join code or a dash.
 func (q QuizCard) CodeText() string {

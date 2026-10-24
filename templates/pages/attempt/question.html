@@ -5,7 +5,7 @@
     <header class="attempt-top">
       <div class="row-between">
         <div class="d-flex align-items-center gap-3 min-w-0">
-          <span class="empty-icon" style="width: 40px; height: 40px">
+          <span class="empty-icon empty-icon-sm" aria-hidden="true">
             <svg width="20" height="20" aria-hidden="true"><use href="#i-quiz"></use></svg>
           </span>
           <div class="min-w-0">
@@ -28,86 +28,93 @@
       </div>
     </header>
 
-    <nav class="card p-3" aria-label="Navigasi soal">
-      <div class="row-between mb-3">
-        <span class="section-title">Navigasi soal</span>
-        <span class="cell-sub">Dimulai {{.Data.Header.StartedAt.DateTime}} WIB</span>
-      </div>
-      <div class="question-nav">
-        {{range .Data.Nav}}
-        <a class="{{.Class}}" href="{{.Href}}"{{if .Current}} aria-current="step"{{end}} aria-label="Soal {{.Position}}{{if .Answered}}, sudah dijawab{{else}}, belum dijawab{{end}}">{{.Position}}</a>
-        {{end}}
-      </div>
-      <p class="section-sub mt-3 mb-0">
-        <span class="badge theme-primary">Aktif</span>
-        <span class="badge theme-info ms-1">Terjawab</span>
-        <span class="badge bg-2 fg-secondary ms-1">Belum dijawab</span>
-      </p>
-    </nav>
+    {{/* Portrait and tablet keep one column with the navigator between the
+         sticky bar and the question. Landscape (xl, 1280+) turns the navigator
+         into a sticky left rail so the wide axis carries navigation. */}}
+    <div class="attempt-body">
+      <nav class="card p-3 attempt-rail" aria-label="Navigasi soal">
+        <div class="row-between mb-3">
+          <span class="section-title">Navigasi soal</span>
+          <span class="cell-sub">Dimulai {{.Data.Header.StartedAt.DateTime}} WIB</span>
+        </div>
+        <div class="question-nav">
+          {{range .Data.Nav}}
+          <a class="{{.Class}}" href="{{.Href}}"{{if .Current}} aria-current="step"{{end}} aria-label="Soal {{.Position}}{{if .Answered}}, sudah dijawab{{else}}, belum dijawab{{end}}">{{.Position}}</a>
+          {{end}}
+        </div>
+      </nav>
 
-    <form method="post" action="{{.Data.AnswerHref}}" data-attempt-form>
-      <input type="hidden" name="csrf_token" value="{{.CSRF}}">
-      <input type="hidden" name="question_id" value="{{.Data.QuestionID}}">
+      <form method="post" action="{{.Data.AnswerHref}}" data-attempt-form>
+        <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+        <input type="hidden" name="question_id" value="{{.Data.QuestionID}}">
 
-      <div class="card question-card">
-        <div class="row-between">
-          <span class="question-position">Soal {{.Data.Position}} dari {{.Data.Total}}</span>
-          <span class="badge bg-2 fg-secondary">{{.Data.Type.Label}}</span>
+        <div class="card question-card">
+          <div class="row-between">
+            <span class="badge bg-2 fg-body">{{.Data.Type.Label}}</span>
+          </div>
+
+          <p class="question-body">{{.Data.Body}}</p>
+
+          {{with .Data.Image}}
+          <img class="question-image" src="{{.URL}}" alt="{{.Alt}}" loading="lazy">
+          {{end}}
+
+          {{if eq .Data.Type "essay"}}
+          <div class="stack-2">
+            <label class="form-label" for="essay-input">Jawaban Anda</label>
+            <textarea id="essay-input" data-char-count="essay-count" class="form-control essay-input" name="essay_text" rows="{{.Data.Essay.Rows}}"{{if gt .Data.Essay.MaxChars 0}} maxlength="{{.Data.Essay.MaxChars}}"{{end}}>{{.Data.Essay.Value}}</textarea>
+            <div class="row-between">
+              <span class="field-help">Tulis jawaban lengkap. Guru akan menilai esai ini setelah dikumpulkan.</span>
+              <span id="essay-count" class="char-count"></span>
+            </div>
+          </div>
+          {{else}}
+          <fieldset>
+            <legend class="visually-hidden">Pilih jawaban</legend>
+            {{range .Data.Options}}
+            <label class="option-row">
+              <input type="{{if eq $.Data.Type "multiple"}}checkbox{{else}}radio{{end}}" class="{{if eq $.Data.Type "multiple"}}check{{else}}radio{{end}}" name="selected_option_ids[]" value="{{.ID}}"{{if .Checked}} checked{{end}}>
+              <span class="option-letter" aria-hidden="true">{{.Letter}}</span>
+              <span class="option-body">{{.Body}}</span>
+            </label>
+            {{end}}
+          </fieldset>
+          <p class="field-help mb-0">
+            {{if eq .Data.Type "multiple"}}Pilih semua jawaban yang benar.{{else}}Pilih satu jawaban yang paling tepat.{{end}}
+            {{if .Data.RandomizeAnswers}}Urutan pilihan diacak untuk setiap percobaan.{{end}}
+          </p>
+          {{end}}
         </div>
 
-        <p class="question-body">{{.Data.Body}}</p>
+        <div class="attempt-footer mt-4">
+          {{/* Exit lives with the "go elsewhere, don't commit" cluster (prev).
+               Answers save themselves; Simpan is the no-JS fallback and app.js
+               hides it as soon as autosave is armed. */}}
+          {{if .Data.PrevHref}}
+          <div class="group">
+            <button type="submit" class="btn btn-outline theme-primary" name="nav" value="prev">
+              <svg width="18" height="18" aria-hidden="true"><use href="#i-arrow-left"></use></svg>
+              Sebelumnya
+            </button>
+            <a class="link-quiet align-self-center" href="{{.Data.QuizHref}}">Kembali ke kuis</a>
+          </div>
+          {{else}}
+          <div class="group">
+            <button type="button" class="btn btn-outline theme-primary" disabled>Sebelumnya</button>
+            <a class="link-quiet align-self-center" href="{{.Data.QuizHref}}">Kembali ke kuis</a>
+          </div>
+          {{end}}
 
-        {{with .Data.Image}}
-        <img class="question-image" src="{{.URL}}" alt="{{.Alt}}" loading="lazy">
-        {{end}}
-
-        {{if eq .Data.Type "essay"}}
-        <div class="stack-2">
-          <label class="form-label" for="essay-input">Jawaban Anda</label>
-          <textarea id="essay-input" data-char-count="essay-count" class="form-control essay-input" name="essay_text" rows="{{.Data.Essay.Rows}}"{{if gt .Data.Essay.MaxChars 0}} maxlength="{{.Data.Essay.MaxChars}}"{{end}}>{{.Data.Essay.Value}}</textarea>
-          <div class="row-between">
-            <span class="field-help">Tulis jawaban lengkap. Guru akan menilai esai ini setelah dikumpulkan.</span>
-            <span id="essay-count" class="char-count"></span>
+          <div class="group">
+            <button type="submit" class="btn btn-outline theme-primary btn-save" name="nav" value="save">Simpan</button>
+            <button type="submit" class="btn btn-solid theme-primary" name="nav" value="next">
+              {{if .Data.IsLast}}Tinjau jawaban{{else}}Selanjutnya{{end}}
+              <svg width="18" height="18" aria-hidden="true"><use href="#i-arrow-right"></use></svg>
+            </button>
           </div>
         </div>
-        {{else}}
-        <fieldset>
-          <legend class="visually-hidden">Pilih jawaban</legend>
-          {{range .Data.Options}}
-          <label class="option-row">
-            <input type="{{if eq $.Data.Type "multiple"}}checkbox{{else}}radio{{end}}" name="selected_option_ids[]" value="{{.ID}}"{{if .Checked}} checked{{end}}>
-            <span class="option-letter" aria-hidden="true">{{.Letter}}</span>
-            <span class="option-body">{{.Body}}</span>
-          </label>
-          {{end}}
-        </fieldset>
-        <p class="field-help mb-0">
-          {{if eq .Data.Type "multiple"}}Pilih semua jawaban yang benar.{{else}}Pilih satu jawaban yang paling tepat.{{end}}
-          {{if .Data.RandomizeAnswers}}Urutan pilihan diacak untuk setiap percobaan.{{end}}
-        </p>
-        {{end}}
-      </div>
-
-      <div class="attempt-footer mt-4">
-        {{if .Data.PrevHref}}
-        <button type="submit" class="btn btn-outline theme-primary" name="nav" value="prev">
-          <svg width="18" height="18" aria-hidden="true"><use href="#i-arrow-left"></use></svg>
-          Sebelumnya
-        </button>
-        {{else}}
-        <button type="button" class="btn btn-outline theme-primary" disabled>Sebelumnya</button>
-        {{end}}
-
-        <div class="group">
-          <a class="link-quiet align-self-center me-2" href="{{.Data.QuizHref}}">Kembali ke kuis</a>
-          <button type="submit" class="btn btn-outline theme-primary" name="nav" value="save">Simpan</button>
-          <button type="submit" class="btn btn-solid theme-primary" name="nav" value="next">
-            {{if .Data.IsLast}}Tinjau jawaban{{else}}Selanjutnya{{end}}
-            <svg width="18" height="18" aria-hidden="true"><use href="#i-arrow-right"></use></svg>
-          </button>
-        </div>
-      </div>
-    </form>
+      </form>
+    </div>
 
   </div>
 </div>

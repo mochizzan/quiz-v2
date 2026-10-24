@@ -5,88 +5,47 @@
     <div>
       <span class="eyebrow">Dasbor siswa</span>
       <h1 class="h1">Riwayat kuis</h1>
-      <p class="page-sub">{{.Data.Rows.Total}} kuis pernah Anda ikuti. Buka satu baris untuk melihat setiap percobaan.</p>
+      <p class="page-sub">{{.Data.Rows.Total}} kuis pernah Anda ikuti. Buka satu kuis untuk melihat setiap percobaannya.</p>
     </div>
-    <a class="btn btn-outline theme-primary" href="/student">
-      <svg width="17" height="17" aria-hidden="true"><use href="#i-arrow-left"></use></svg>
-      Kembali ke dasbor
-    </a>
   </header>
 
   {{if .Data.Rows.Empty}}
   {{template "partials/empty-state.html" .Data.Empty}}
   {{else}}
 
-  <div class="d-flex flex-column gap-3">
-    {{range .Data.Rows.Items}}
-    <details class="quiz-card">
-      <summary>
-        <span class="d-flex flex-column gap-3">
-          <span class="quiz-card-top">
-            <span class="min-w-0">
-              <span class="eyebrow">{{.TeacherName}}</span>
-              <span class="d-block quiz-title">{{.Quiz.Title}}</span>
-            </span>
-            <span class="{{.State.BadgeClass}}">{{.State.Label}}</span>
-          </span>
-          <span class="row g-2">
-            <span class="col-6 md:col-4">
-              <span class="cell-sub d-block">Percobaan</span>
-              <span class="d-block fw-semibold num">{{len .Attempts}}</span>
-            </span>
-            <span class="col-6 md:col-4">
-              <span class="cell-sub d-block">Skor terbaik</span>
-              <span class="d-block num">{{if .ShowScore}}{{with .BestScore}}{{template "partials/score.html" .}}{{else}}—{{end}}{{else}}—{{end}}</span>
-            </span>
-            <span class="col-12 md:col-4">
-              <span class="cell-sub d-block">Terakhir dikirim</span>
-              <span class="d-block num">{{with .LastAttempt}}{{.Short}}{{else}}—{{end}}</span>
-            </span>
-          </span>
-        </span>
-      </summary>
-
-      <div class="table-responsive">
-        <table class="table table-clean">
-          <caption class="visually-hidden">Percobaan untuk {{.Quiz.Title}}</caption>
-          <thead>
-            <tr>
-              <th scope="col">Percobaan</th>
-              <th scope="col">Dimulai</th>
-              <th scope="col">Dikirim</th>
-              <th scope="col">Skor</th>
-              <th scope="col">Status</th>
-              <th scope="col"><span class="visually-hidden">Aksi</span></th>
-            </tr>
-          </thead>
-          <tbody>
-            {{range .Attempts}}
-            <tr>
-              <td class="num">{{.Number}}{{if .MaxAttempts}} <span class="cell-sub">dari {{.MaxAttempts}}</span>{{end}}</td>
-              <td class="num">{{with .StartedAt}}{{.DateTime}}{{else}}—{{end}}</td>
-              <td class="num">{{with .SubmittedAt}}{{.DateTime}}{{else}}—{{end}}</td>
-              <td class="num">{{with .Score}}{{template "partials/score.html" .}}{{else}}—{{end}}</td>
-              <td><span class="badge theme-{{.StatusTone}}">{{.StatusLabel}}</span></td>
-              <td class="text-end">
-                {{if eq .State "in_progress"}}
-                <a class="link-quiet" href="{{.ResultHref}}">Lanjutkan</a>
-                {{else}}
-                <a class="link-quiet" href="{{.ResultHref}}">Lihat hasil</a>
-                {{end}}
-              </td>
-            </tr>
-            {{end}}
-          </tbody>
-        </table>
-      </div>
-
-      <div class="row-between">
-        <span class="page-sub">{{if .ShowScore}}Skor ditampilkan guru.{{else}}Guru tidak menampilkan skor untuk kuis ini.{{end}}</span>
-        <a class="btn btn-outline theme-primary" href="{{.DetailHref}}">Buka detail</a>
-      </div>
-    </details>
-    {{end}}
+  <div class="card p-0">
+    <div class="table-responsive">
+      <table class="table table-clean">
+        <caption class="visually-hidden">Kuis yang Anda ikuti beserta hasilnya</caption>
+        <thead>
+          <tr>
+            <th scope="col">Kuis</th>
+            <th scope="col">Percobaan</th>
+            <th scope="col">Skor terbaik</th>
+            <th scope="col">Dikirim</th>
+            <th scope="col">Status</th>
+            <th scope="col"><span class="visually-hidden">Aksi</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          {{range .Data.Rows.Items}}
+          <tr>
+            <td>
+              <span class="cell-title d-block">{{.Quiz.Title}}</span>
+              <span class="cell-sub d-block">{{.TeacherName}}</span>
+            </td>
+            <td class="num">{{len .Attempts}}</td>
+            <td class="num">{{if .ShowScore}}{{with .BestScore}}{{template "partials/score.html" .}}{{else}}—{{end}}{{else}}—{{end}}</td>
+            <td class="num">{{with .LastAttempt}}{{.Short}}{{else}}—{{end}}</td>
+            <td><span class="{{.State.BadgeClass}}">{{.State.Label}}</span></td>
+            <td class="text-end text-nowrap"><a class="link-quiet" href="{{.DetailHref}}">Buka detail</a></td>
+          </tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
   </div>
+  <p class="page-sub">Skor terbaik muncul sebagai — ketika guru tidak menampilkan skor untuk kuis tersebut.</p>
 
   {{template "partials/pagination.html" .Data.Pagination}}
   {{end}}

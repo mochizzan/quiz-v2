@@ -5,90 +5,42 @@
 <body>
 {{template "partials/icons.html" .}}
 {{template "partials/demo-strip.html" .}}
-{{/* Two-panel auth shell — structure follows docs/template/LOGIN.html
-     (framed canvas > .login-layout grid: brand panel left, auth column
-     right; one column below lg with the panel collapsing to a compact
-     header row). The brand gradient is rebuilt from palette stops and the
-     card padding lives in partials/auth-style.html — see the DEVIATION note
-     there. No topbar: it belongs to the dashboard template. */}}
+{{/* Auth shell — the split from docs/template/LOGIN.html, rebuilt as two
+     fields: the school's navy promise beside the white form card. The panel
+     carries one real object on the page that needs it (the quiz code, defined
+     by pages/auth/login.html into the "partials/auth-aside" slot); every other
+     auth page gets the quieter panel. No topbar: that belongs to the signed-in
+     shells. */}}
 <div class="auth-page">
   <div class="auth-shell">
-    <div class="login-layout">
-      <section class="brand-panel" aria-label="Tentang Twisty Quiz">
+    <div class="auth-layout">
+      <aside class="brand-panel" aria-labelledby="auth-promise">
         <span class="brand-mark">
-          <svg width="26" height="26" aria-hidden="true"><use href="#i-star"></use></svg>
+          <svg width="24" height="24" aria-hidden="true"><use href="#i-star"></use></svg>
           <span>TWISTY QUIZ</span>
         </span>
-        <div class="hero-content">
-          <span class="hero-badge">
-            <svg width="14" height="14" aria-hidden="true"><use href="#i-sparkle"></use></svg>
-            Kuis sekolah tanpa ribet
-          </span>
-          <p class="hero-title">Ujian yang <span class="hero-accent">tenang</span>, cepat, dan mudah diikuti.</p>
-          <p class="hero-subtitle">Satu ruang tenang untuk kuis harian, cek pemahaman, dan progres kelas.</p>
-        </div>
-        {{/* Decorative quiz mock with the canonical demo data (aria-hidden:
-             it repeats the proof row's meaning visually). */}}
-        <div class="hero-visual" aria-hidden="true">
-          <div class="question-mock">
-            <div class="mock-head">
-              <span class="mock-pill">Contoh soal</span>
-              <span class="mock-count">Soal 4</span>
-            </div>
-            <p class="mock-question">Organel apa yang berfungsi sebagai tempat respirasi sel untuk menghasilkan energi?</p>
-            <div class="mock-options">
-              <div class="mock-option"><span class="option-letter">A</span><span>Nukleus</span></div>
-              <div class="mock-option is-correct"><span class="option-letter">B</span><span>Mitokondria</span>
-                <svg class="mock-check" width="15" height="15" aria-hidden="true"><use href="#i-check"></use></svg>
-              </div>
-              <div class="mock-option"><span class="option-letter">C</span><span>Ribosom</span></div>
-            </div>
-            <div class="mock-foot">
-              <span class="mock-progress"><span class="mock-progress-bar"></span></span>
-              <span class="mock-next">Lanjut
-                <svg width="13" height="13" aria-hidden="true"><use href="#i-arrow-right"></use></svg>
-              </span>
-            </div>
-          </div>
-          <div class="float-card score-float">
-            <span class="score-ring"><span>78</span></span>
-            <span class="float-copy">
-              <strong>Progres kelas</strong>
-              <small>Contoh tampilan</small>
-            </span>
-          </div>
-          <div class="float-card live-float">
-            <span class="live-dot"></span>
-            Kuis aktif
-          </div>
-        </div>
-        <div class="hero-proof">
-          <div class="avatar-stack" aria-hidden="true">
-            <span class="avatar av-1">AL</span>
-            <span class="avatar av-2">BP</span>
-            <span class="avatar av-3">CH</span>
-            <span class="avatar av-4">DA</span>
-            <span class="avatar av-5">EN</span>
-          </div>
-          <div class="proof-copy">
-            <strong>Belajar bersama</strong>
-            <span>di Twisty Quiz.</span>
-          </div>
-          <span class="proof-star">
-            <svg width="13" height="13" aria-hidden="true"><use href="#i-clock"></use></svg>
-            Selesai lebih cepat
-          </span>
-        </div>
-      </section>
-      <div class="auth-column">
+        <h1 class="panel-title" id="auth-promise">Kuis sekolah, satu soal satu layar.</h1>
+        <p class="panel-lead">Guru menyusun kuis dan menilai jawaban. Siswa mengerjakan dari perangkatnya sendiri.</p>
+        {{template "partials/auth-aside" .}}
+        <ul class="panel-facts" role="list">
+          <li><span class="fact-num">6</span><span class="fact-text">angka pada kode kuis, untuk bergabung tanpa akun</span></li>
+          <li><span class="fact-num">1</span><span class="fact-text">pertanyaan per layar saat siswa mengerjakan</span></li>
+          <li><span class="fact-num">X–XII</span><span class="fact-text">kelas dan jurusan tercatat di setiap hasil</span></li>
+        </ul>
+      </aside>
+      <main class="auth-column">
         <div class="auth-card">
           {{template "partials/flash.html" .}}
           {{template "content" .}}
         </div>
-      </div>
+      </main>
     </div>
   </div>
 </div>
 {{template "partials/foot.html" .}}
 </body>
 </html>{{end}}
+
+{{/* Panel slot: empty by default; pages/auth/login.html overrides it with the
+     real join-by-code form. */}}
+{{define "partials/auth-aside"}}{{end}}

@@ -1,3 +1,93 @@
+{{define "partials/page-style"}}
+/* ---- pages/attempt/result — score band + answer audit -------------------
+   Page-scoped additions; shared components (score-hero, score-pill,
+   answer-box, review-index) live in ui-style. Palette reaches these rules
+   through the token layer only. */
+
+.result-band { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; }
+.result-score { display: flex; flex-direction: column; }
+.result-score-val {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 6px 0 4px;
+}
+.result-facts {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-top: 16px;
+  border-top: 1px solid var(--bs-border-subtle);
+}
+.result-fact { display: flex; flex-direction: column; }
+.result-fact-val {
+  margin-top: 2px;
+  color: var(--bs-fg-1);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+}
+@media (min-width: 768px) {
+  .result-band { grid-template-columns: minmax(0, 1fr) minmax(220px, 250px); gap: 24px; }
+  .result-facts {
+    border-top: 0;
+    border-left: 1px solid var(--bs-border-subtle);
+    padding: 0 0 0 24px;
+  }
+}
+.result-flag {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--bs-bg-2);
+}
+.result-flag svg { flex-shrink: 0; margin-top: 1px; color: var(--bs-danger-base); }
+
+.result-type { color: var(--bs-fg-2); font-size: 12px; font-weight: 500; line-height: 18px; }
+.result-question { margin: 10px 0 0; font-size: 16px; font-weight: 600; line-height: 22px; }
+.result-pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  margin-top: 10px;
+}
+@media (min-width: 576px) {
+  .result-pair.split { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+.answer-key {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--bs-success-bg-subtle);
+  font-size: 13px;
+  line-height: 1.55;
+}
+.result-box-label {
+  display: block;
+  margin-bottom: 1px;
+  color: var(--bs-fg-1);
+  font-size: 11px;
+  font-weight: 600;
+}
+.result-feedback {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 8px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--bs-accent-bg-subtle);
+}
+.result-feedback svg { flex-shrink: 0; margin-top: 2px; color: var(--bs-accent-base); }
+.result-feedback-text { font-size: 13px; line-height: 1.55; }
+
+/* The essay grade chip renders a point value, not a bare percent. */
+.score-pill small { color: inherit; font-size: 11px; font-weight: 600; }
+{{end}}
+
 {{define "content"}}
 <div class="container py-4">
   <div class="attempt-shell">
@@ -14,101 +104,128 @@
     </header>
 
     <section class="card p-4" aria-labelledby="result-summary-title">
-      <div class="row-between">
-        <div>
-          <h2 class="section-title" id="result-summary-title">Ringkasan</h2>
-          <p class="section-sub">Tampilan hasil: {{.Data.ModeLabel}}</p>
-        </div>
-        {{if .Data.Waiting}}
-        <span class="badge theme-warning">Menunggu penilaian</span>
-        {{else if .Data.Graded}}
-        <span class="badge theme-success">Sudah dinilai</span>
-        {{end}}
-      </div>
+      <h2 class="visually-hidden" id="result-summary-title">Ringkasan</h2>
 
-      <div class="row g-4 mt-1 align-items-start">
-        <div class="col-12 md:col-4">
+      <div class="result-band">
+        <div class="result-score">
           {{if .Data.Waiting}}
-          <span class="metric-label">Skor</span>
-          <span class="d-block fw-semibold mt-1">Menunggu penilaian</span>
+          <span class="metric-label">Skor akhir</span>
+          <div class="result-score-val">
+            <span class="badge theme-warning">Menunggu penilaian</span>
+          </div>
           <span class="metric-foot">Esai Anda belum selesai dinilai guru.</span>
           {{else if .Data.ShowScore}}
           <span class="metric-label">Skor akhir</span>
-          <span class="score-hero">{{with .Data.Score}}{{.Int}}<small>/100</small>{{else}}—{{end}}</span>
-          <span class="metric-foot">Dihitung otomatis dari seluruh jawaban.</span>
+          <div class="result-score-val">
+            {{with .Data.Score}}<span class="score-hero">{{.Int}}<small>/100</small></span>{{else}}<span class="score-hero">—</span>{{end}}
+            {{if and .Data.Graded .Data.SubmittedAt}}<span class="badge theme-success">Sudah dinilai</span>{{end}}
+          </div>
+          {{if .Data.SubmittedAt}}<span class="metric-foot">Dihitung otomatis dari seluruh jawaban.</span>{{else}}<span class="metric-foot">Skor muncul setelah kuis dikumpulkan.</span>{{end}}
           {{else}}
           <span class="metric-label">Skor akhir</span>
-          <span class="score-hero">—</span>
+          <div class="result-score-val">
+            <span class="score-hero">—</span>
+            {{if and .Data.Graded .Data.SubmittedAt}}<span class="badge theme-success">Sudah dinilai</span>{{end}}
+          </div>
           <span class="metric-foot">Skor tidak ditampilkan. Guru menyembunyikan skor untuk kuis ini.</span>
           {{end}}
         </div>
-        <div class="col-12 md:col-4">
-          <span class="metric-label">Dikumpulkan</span>
-          <span class="d-block fw-semibold num mt-1">{{with .Data.SubmittedAt}}{{.DateTime}} WIB{{else}}Belum dikumpulkan{{end}}</span>
-          <span class="metric-foot num">{{.Data.AttemptsUsed}} dari {{.Data.MaxAttempts}} percobaan</span>
-        </div>
-        <div class="col-12 md:col-4">
-          <span class="metric-label">Soal</span>
-          <span class="d-block fw-semibold num mt-1">{{len .Data.Rows}} soal</span>
-          <span class="metric-foot">
-            {{if .Data.Unanswered}}{{len .Data.Unanswered}} tidak dijawab{{else}}Semua dijawab{{end}}
-          </span>
+
+        <div class="result-facts">
+          <div class="result-fact">
+            <span class="metric-label">Dikumpulkan</span>
+            <span class="result-fact-val num">{{with .Data.SubmittedAt}}{{.DateTime}} WIB{{else}}Belum dikumpulkan{{end}}</span>
+            <span class="metric-foot num">{{.Data.AttemptsUsed}} dari {{.Data.MaxAttempts}} percobaan</span>
+          </div>
+          <div class="result-fact">
+            <span class="metric-label">Soal</span>
+            <span class="result-fact-val num">{{len .Data.Rows}} soal</span>
+            <span class="metric-foot">
+              {{if .Data.Unanswered}}{{len .Data.Unanswered}} tidak dijawab{{else}}Semua dijawab{{end}}
+            </span>
+          </div>
         </div>
       </div>
 
       {{if gt .Data.FocusLoss 0}}
-      <p class="focus-flag mt-3 mb-0">
+      <p class="result-flag">
         <svg width="16" height="16" aria-hidden="true"><use href="#i-warn"></use></svg>
-        Tercatat {{.Data.FocusLoss}} kali meninggalkan layar kuis.
+        <span class="focus-flag">Tercatat {{.Data.FocusLoss}} kali meninggalkan layar kuis.</span>
       </p>
       {{end}}
     </section>
 
     <section class="card p-4" aria-labelledby="answers-title">
-      <div class="row-between mb-2">
-        <div>
-          <h2 class="section-title" id="answers-title">{{if .Data.Mode.ShowsQuestions}}Telaah jawaban{{else}}Kunci jawaban{{end}}</h2>
-          <p class="section-sub">Tampilan mengikuti pengaturan guru untuk kuis ini.</p>
-        </div>
-        <span class="badge bg-2 fg-secondary">{{.Data.ModeLabel}}</span>
+      <div class="mb-2">
+        <h2 class="section-title" id="answers-title">{{if .Data.Mode.ShowsQuestions}}Telaah jawaban{{else}}Kunci jawaban{{end}}</h2>
+        <p class="section-sub">Tampilan hasil: {{.Data.ModeLabel}}</p>
       </div>
 
       {{range .Data.Rows}}
       <article class="result-row">
         <div class="result-head">
-          <div class="d-flex flex-wrap align-items-center gap-2">
+          <div class="d-flex flex-wrap align-items-center gap-2 min-w-0">
             <span class="review-index" aria-hidden="true">{{.Position}}</span>
-            <span class="badge bg-2 fg-secondary">{{.Type.Label}}</span>
+            <span class="result-type">{{.Type.Label}}</span>
             {{if $.Data.Mode.ShowsVerdict}}
+            {{if eq .Verdict "unanswered"}}
+            <span class="badge bg-2 fg-secondary">{{.VerdictLabel}}</span>
+            {{else if eq .Verdict "ungraded"}}
+            <span class="badge theme-warning">{{.VerdictLabel}}</span>
+            {{else if .Essay}}
+            {{else}}
             <span class="badge theme-{{.VerdictTone}}">{{.VerdictLabel}}</span>
             {{end}}
+            {{end}}
           </div>
-          {{if and $.Data.ShowScore $.Data.Mode.ShowsVerdict}}
-          {{with .Score}}{{template "partials/score.html" .}}{{end}}
+          {{if and $.Data.ShowScore $.Data.Mode.ShowsVerdict .Essay .Graded}}
+          {{with .Score}}<span class="score-pill theme-{{.Tone}}">{{.Int}}<small>/100</small></span>{{end}}
           {{end}}
         </div>
 
         {{if $.Data.Mode.ShowsQuestions}}
-        <p class="fw-semibold mb-2 mt-2">{{.Body}}</p>
+        <p class="result-question">{{.Body}}</p>
         {{with .Image}}
         <img class="question-image" src="{{.URL}}" alt="{{.Alt}}" loading="lazy">
         {{end}}
 
-        <div class="answer-box mt-2 {{if $.Data.Mode.ShowsVerdict}}{{if eq .Verdict "correct"}}is-correct{{else if eq .Verdict "incorrect"}}is-wrong{{else if eq .Verdict "ungraded"}}is-waiting{{end}}{{end}}">
-          <span class="cell-sub d-block">Jawaban Anda</span>
-          <span class="d-block">{{.StudentAnswer}}</span>
+        <div class="result-pair{{if and $.Data.Mode.ShowsKey (not .Essay)}} split{{end}}">
+          <div class="answer-box {{if and $.Data.Mode.ShowsVerdict (not .Essay)}}{{if eq .Verdict "correct"}}is-correct{{else if eq .Verdict "incorrect"}}is-wrong{{end}}{{end}}">
+            <span class="cell-sub d-block">Jawaban Anda</span>
+            <span class="d-block">{{.StudentAnswer}}</span>
+          </div>
+          {{if and $.Data.Mode.ShowsKey (not .Essay)}}
+          <div class="answer-key">
+            <span class="result-box-label">Kunci jawaban</span>
+            <span class="d-block">{{.Key}}</span>
+          </div>
+          {{end}}
         </div>
+
+        {{if and $.Data.Mode.ShowsKey .Essay}}
+        {{if .Graded}}
+        {{if not .Feedback}}
+        <p class="result-type mt-2">Esai dinilai oleh guru.</p>
+        {{end}}
+        {{end}}
+        {{end}}
         {{end}}
 
-        {{if $.Data.Mode.ShowsKey}}
-        <p class="key-line mt-2 mb-0">{{if .Essay}}Esai dinilai oleh guru.{{else}}Kunci jawaban: {{.Key}}{{end}}</p>
+        {{if and $.Data.Mode.ShowsKey (not $.Data.Mode.ShowsQuestions) (not .Essay)}}
+        <div class="answer-key">
+          <span class="result-box-label">Kunci jawaban</span>
+          <span class="d-block">{{.Key}}</span>
+        </div>
         {{end}}
 
         {{if and $.Data.Mode.ShowsQuestions $.Data.Mode.ShowsVerdict}}
         {{if .Feedback}}
-        <div class="answer-box mt-2">
-          <span class="cell-sub d-block">Umpan balik guru</span>
-          {{.Feedback}}
+        <div class="result-feedback">
+          <svg width="16" height="16" aria-hidden="true"><use href="#i-pencil"></use></svg>
+          <div class="min-w-0">
+            <span class="result-box-label">Umpan balik guru</span>
+            <span class="d-block result-feedback-text">{{.Feedback}}</span>
+          </div>
         </div>
         {{end}}
         {{end}}

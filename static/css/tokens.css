@@ -173,6 +173,43 @@
 .btn-solid.theme-primary:focus-visible { --bs-theme-focus-ring: rgba(66, 116, 217, .36); --bs-focus-ring-color: rgba(66, 116, 217, .36) }
 .btn-close:hover { --bs-btn-close-hover-opacity: 1 }
 
+/* -- Button outline variant (pragmatic addition: DESIGN §7 only defines
+     solid/secondary/accent but outline is used pervasively for secondary actions).
+     outline-primary: transparent bg, primary border/text, primary hover bg. */
+.btn-outline.theme-primary {
+  --bs-btn-bg: transparent;
+  --bs-btn-border-color: var(--bs-primary-base);
+  --bs-btn-color: var(--bs-primary-base);
+  --bs-btn-hover-bg: var(--bs-primary-bg-subtle);
+  --bs-btn-hover-border-color: var(--bs-primary-base);
+  --bs-btn-hover-color: var(--bs-primary-fg-emphasis);
+  --bs-btn-active-bg: var(--bs-primary-bg-subtle);
+  --bs-btn-active-border-color: var(--bs-primary-fg-emphasis);
+  --bs-btn-active-color: var(--bs-primary-fg-emphasis);
+}
+.btn-outline.theme-danger {
+  --bs-btn-bg: transparent;
+  --bs-btn-border-color: var(--bs-danger-base);
+  --bs-btn-color: var(--bs-danger-base);
+  --bs-btn-hover-bg: var(--bs-danger-bg-subtle);
+  --bs-btn-hover-border-color: var(--bs-danger-base);
+  --bs-btn-hover-color: var(--bs-danger-fg-emphasis);
+  --bs-btn-active-bg: var(--bs-danger-bg-subtle);
+  --bs-btn-active-border-color: var(--bs-danger-fg-emphasis);
+  --bs-btn-active-color: var(--bs-danger-fg-emphasis);
+}
+.btn-outline.theme-secondary {
+  --bs-btn-bg: transparent;
+  --bs-btn-border-color: var(--bs-secondary-base);
+  --bs-btn-color: var(--bs-secondary-base);
+  --bs-btn-hover-bg: var(--bs-secondary-bg-subtle);
+  --bs-btn-hover-border-color: var(--bs-secondary-base);
+  --bs-btn-hover-color: var(--bs-secondary-fg-emphasis);
+  --bs-btn-active-bg: var(--bs-secondary-bg-subtle);
+  --bs-btn-active-border-color: var(--bs-secondary-fg-emphasis);
+  --bs-btn-active-color: var(--bs-secondary-fg-emphasis);
+}
+
 /* .menu-item:hover paints var(--bs-theme-bg-subtle, var(--bs-menu-item-hover-bg))
    and .menu-item.active paints var(--bs-theme-bg, var(--bs-menu-item-active-bg))
    with var(--bs-theme-contrast, var(--bs-menu-item-active-color)) — set BOTH

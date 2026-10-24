@@ -4,52 +4,46 @@
      quiz or one closed JoinError; the template renders that decision and never
      recomputes eligibility. */}}
 {{if .Data.Outcome}}
-<div class="auth-heading">
-  <span class="auth-kicker">Undangan kuis</span>
-  <h1 class="h1 auth-title">Undangan belum bisa dibuka</h1>
-  <p class="auth-subtitle">Tautan undangan ini tidak dapat dipakai saat ini.</p>
+<div class="auth-head">
+  <h2 class="auth-title">Undangan belum bisa dibuka</h2>
+  <p class="auth-sub">Tautan undangan ini tidak dapat dipakai saat ini.</p>
 </div>
 
-<div class="alert theme-danger" role="alert">
-  <strong class="d-block mb-1">Undangan tidak berlaku</strong>
-  <span>{{.Data.Outcome.Label}}</span>
+<div class="auth-note is-bad" role="alert">
+  <span class="auth-note-title">Undangan tidak berlaku</span>
+  <p>{{.Data.Outcome.Label}}</p>
 </div>
 
 {{with .Data.Quiz}}
-<div class="alert theme-info mb-0" role="note">
-  <span class="field-help d-block">Kuis</span>
-  <strong class="d-block">{{.Title}}</strong>
-  {{with $.Data.Audience}}<span class="field-help d-block mt-2">{{.}}</span>{{end}}
+<div class="auth-note">
+  <h3 class="auth-quiz-title">{{.Title}}</h3>
+  {{with $.Data.Audience}}<p class="mt-1">{{.}}</p>{{end}}
 </div>
 {{end}}
 
-<div class="d-grid gap-2 mt-3">
+<div class="auth-actions">
   <a class="btn btn-solid theme-primary auth-submit" href="{{.Data.LoginHref}}">Masuk ke akun</a>
   <a class="btn btn-outline theme-primary auth-submit" href="{{.Data.DashboardHref}}">Buka dasbor</a>
 </div>
 
-<p class="field-help mt-3 mb-0">Jika tautan berasal dari guru, minta undangan baru atau gunakan kode kuis.</p>
+<p class="auth-foot">Jika tautan berasal dari guru, minta undangan baru atau gunakan kode kuis.</p>
 {{else}}
-<div class="auth-heading">
-  <span class="auth-kicker">Undangan kuis</span>
-  <h1 class="h1 auth-title">Anda diundang ke kuis</h1>
-  <p class="auth-subtitle">Undangan ini terbuka untuk Anda. Periksa detailnya sebelum bergabung.</p>
+<div class="auth-head">
+  <h2 class="auth-title">Anda diundang ke kuis</h2>
+  <p class="auth-sub">Undangan ini terbuka untuk Anda. Periksa detailnya sebelum bergabung.</p>
 </div>
 
 {{with .Data.Quiz}}
-<div class="alert theme-info" role="note">
-  <span class="badge bg-subtle-accent mb-2">Undangan terbuka</span>
-  <h2 class="h2 mb-1">{{.Title}}</h2>
-  <p class="field-help mb-1">Audiens dan jadwal</p>
-  <p class="mb-0">{{$.Data.Audience}}</p>
+<div class="auth-note">
+  <h3 class="auth-quiz-title">{{.Title}}</h3>
 </div>
 {{end}}
 
-<div class="d-grid gap-2">
+<div class="auth-actions">
   <a class="btn btn-solid theme-primary auth-submit" href="{{.Data.JoinHref}}">Gabung ke kuis</a>
   <a class="btn btn-outline theme-primary auth-submit" href="{{.Data.LoginHref}}">Masuk dengan akun</a>
 </div>
 
-<p class="field-help mt-3 mb-0">Anda akan mengisi nama dan kelas sebelum kuis dimulai.</p>
+<p class="auth-foot">Anda akan mengisi nama dan kelas sebelum kuis dimulai.</p>
 {{end}}
 {{end}}

@@ -12,6 +12,11 @@ import (
 	"quiz-v2/internal/httpserver"
 )
 
+// testSigningKey is the fixed key every test injects. Production requires a
+// real 32-byte key whenever APP_DEMO is off (IDN-050); tests supply a stable
+// one so CSRF and signed tokens behave exactly as they do in production.
+const testSigningKey = "0123456789abcdef0123456789abcdef"
+
 // TestMain runs tests from the repository root so that relative paths such as
 // ./templates resolve to the real templates directory rather than the package
 // directory (go test sets the working directory to the package dir).
@@ -36,7 +41,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestHealthzRoute(t *testing.T) {
-	app := httpserver.New(config.Config{Addr: ":8080"})
+	app := httpserver.New(config.Config{Addr: ":8080", SessionSigningKey: testSigningKey})
 	req := httptest.NewRequest("GET", "/healthz", nil)
 	resp, err := app.Test(req)
 	if err != nil {
@@ -52,7 +57,7 @@ type deadPinger struct{}
 func (deadPinger) Ping(context.Context) error { return errors.New("db down") }
 
 func TestHealthzReturns503WhenDBDown(t *testing.T) {
-	app := httpserver.NewWithStore(config.Config{Addr: ":8080"}, deadPinger{})
+	app := httpserver.NewWithStore(config.Config{Addr: ":8080", SessionSigningKey: testSigningKey}, deadPinger{})
 	resp, err := app.Test(httptest.NewRequest("GET", "/healthz", nil))
 	if err != nil {
 		t.Fatal(err)

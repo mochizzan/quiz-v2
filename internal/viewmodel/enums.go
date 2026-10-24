@@ -226,8 +226,10 @@ func (m ReviewMode) ShowsKey() bool {
 }
 
 // ShowsVerdict reports whether correct/incorrect marks are visible.
+// ATT-152/R-18: the verdict (and its colour) appears only in
+// questions_and_key and questions_only; key_only and answers_only hide it.
 func (m ReviewMode) ShowsVerdict() bool {
-	return m == ReviewQuestionsAndKey || m == ReviewKeyOnly
+	return m == ReviewQuestionsAndKey || m == ReviewQuestionsOnly
 }
 
 // EssayState is the grading state of one essay answer.

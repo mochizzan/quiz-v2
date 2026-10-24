@@ -47,20 +47,23 @@ var allowedStateRules = map[string]bool{
 
 // allowedComponentRules is the CLOSED component-override list (spec §15.11).
 var allowedComponentRules = map[string]bool{
-	".card":                       true,
-	".dialog":                     true,
-	".drawer":                     true,
-	".alert":                      true,
-	".popover":                    true,
-	".list-group":                 true,
-	".btn":                        true,
-	".badge":                      true,
-	".pagination":                 true,
-	".form-control":               true,
-	".form-control:not(textarea)": true,
-	".h1":                         true,
-	".h2":                         true,
-	".spinner-border":             true,
+	".card":                        true,
+	".dialog":                      true,
+	".drawer":                      true,
+	".alert":                       true,
+	".popover":                     true,
+	".list-group":                  true,
+	".btn":                         true,
+	".btn-outline.theme-primary":   true,
+	".btn-outline.theme-danger":    true,
+	".btn-outline.theme-secondary": true,
+	".badge":                       true,
+	".pagination":                  true,
+	".form-control":                true,
+	".form-control:not(textarea)":  true,
+	".h1":                          true,
+	".h2":                          true,
+	".spinner-border":              true,
 }
 
 // allowedReducedMotionMedia is the single permitted at-rule; its body may

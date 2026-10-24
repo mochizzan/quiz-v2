@@ -3,41 +3,43 @@
 {{/* Public code entry. The only failure this screen carries is an unknown
      code; a wrong-audience or not-open quiz is explained on the invitation
      landing instead. */}}
-<div class="auth-heading">
-  <span class="auth-kicker">Tanpa akun</span>
-  <h1 class="h1 auth-title">Gabung dengan kode kuis</h1>
-  <p class="auth-subtitle">Masukkan kode dari guru Anda. Anda akan mengisi identitas sebelum kuis dimulai.</p>
+<div class="auth-head">
+  <h2 class="auth-title">Gabung dengan kode kuis</h2>
+  <p class="auth-sub">Masukkan kode dari guru Anda. Identitas diminta setelah kode diterima.</p>
 </div>
 
 {{with .Data.Error}}
-<div class="alert theme-danger" id="join-code-error" role="alert">
-  <strong class="d-block mb-1">Kode belum bisa dipakai</strong>
-  <span>{{.Label}}</span>
+<div class="auth-note is-bad" id="join-code-error" role="alert">
+  <span class="auth-note-title">Kode belum bisa dipakai</span>
+  <p>{{.Label}}</p>
 </div>
 {{end}}
 
-<form class="login-form" action="/join" method="post" data-validate>
+<form class="auth-form" action="/join" method="post" data-validate>
   <input type="hidden" name="csrf_token" value="{{.CSRF}}">
 
   <div class="field-group">
     <label class="form-label" for="join-code">Kode kuis</label>
-    <input class="form-control num" type="text" id="join-code" name="code" value="{{.Data.Code}}" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="off" spellcheck="false" placeholder="Contoh: 482915" aria-describedby="join-code-help{{if .Data.Error}} join-code-error{{end}}"{{if .Data.Error}} aria-invalid="true"{{end}} required>
+    <input class="form-control num auth-code" type="text" id="join-code" name="code" value="{{.Data.Code}}" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="off" spellcheck="false" placeholder="482915" aria-describedby="join-code-help{{if .Data.Error}} join-code-error{{end}}"{{if .Data.Error}} aria-invalid="true"{{end}} required>
     <div class="field-help" id="join-code-help">Enam angka, sama seperti yang tampil di layar guru.</div>
   </div>
 
-  <button type="submit" class="btn btn-solid theme-primary w-100 login-submit">
+  <button type="submit" class="btn btn-solid theme-primary auth-submit">
     Gabung ke kuis
     <svg width="16" height="16" aria-hidden="true"><use href="#i-arrow-right"></use></svg>
   </button>
 </form>
 
-<div class="auth-divider">
-  <hr class="divider-line">
-  <span>atau</span>
-  <hr class="divider-line">
+<div class="auth-zone">
+  <h3 class="zone-title">Punya akun sekolah?</h3>
+  <div class="zone-rows">
+    <a class="zone-row" href="/login">
+      <span>
+        <span class="zone-row-title">Masuk dengan akun</span>
+        <span class="zone-row-note">Riwayat kuis Anda tersimpan di sana</span>
+      </span>
+      <svg width="18" height="18" aria-hidden="true"><use href="#i-chev-right"></use></svg>
+    </a>
+  </div>
 </div>
-
-<a class="btn btn-outline theme-primary auth-submit w-100" href="/login">Masuk dengan akun sekolah</a>
-
-<p class="field-help mt-3 mb-0">Kode hanya berlaku untuk satu kuis. Minta kode baru kepada guru bila sudah kedaluwarsa.</p>
 {{end}}

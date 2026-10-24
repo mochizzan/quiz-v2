@@ -2,7 +2,9 @@
 <html lang="id" data-bs-theme="light">
 <head>
 {{template "partials/head.html" .}}</head>
-<body>
+{{/* Attempt & error shells float their cards on the canvas like every other
+     shell (DESIGN §2.2: cards resting on the canvas are always #FFFFFF). */}}
+<body class="bg-4 min-vh-100">
 {{template "partials/icons.html" .}}
 {{template "partials/demo-strip.html" .}}
 {{template "partials/flash.html" .}}

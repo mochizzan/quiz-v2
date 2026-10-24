@@ -66,7 +66,7 @@
   height: 38px;
   border-radius: 12px;
   color: #FFFFFF;
-  background-image: linear-gradient(135deg, #293681 0%, #4274D9 100%);
+  background-image: linear-gradient(135deg, var(--bs-primary-base) 0%, var(--bs-secondary-base) 100%);
   box-shadow: var(--bs-box-shadow-xs);
   font-size: 18px;
   font-weight: 700;
@@ -81,7 +81,7 @@
   height: 8px;
   border: 2px solid #FFFFFF;
   border-radius: 50%;
-  background-color: #E24A21;
+  background-color: var(--bs-accent-base);
 }
 .app-brand-title {
   display: inline-flex;
@@ -169,16 +169,16 @@
   min-height: 38px;
   padding: 0 38px 0 16px;
   font-size: 13px;
-  color: #121721;
-  background-color: #F4F6F8;
+  color: var(--bs-fg-body);
+  background-color: var(--bs-bg-2);
   border-color: transparent;
 }
 .app-nav-search .form-control::placeholder {
-  color: #687182;
+  color: var(--bs-fg-2);
 }
 .app-nav-search .form-control:focus {
-  background-color: #FFFFFF;
-  border-color: #4274D9;
+  background-color: var(--bs-bg-1);
+  border-color: var(--bs-secondary-base);
 }
 .app-nav-search-icon {
   position: absolute;
@@ -267,11 +267,10 @@
   color: #94A3B8;
 }
 
-/* ---- Mobile drawer ----------------------------------------------------- */
-/* Scoped to the right-hand app drawer: the attempt screen reuses the
-   #nav-drawer id for its bottom question navigator. */
-#nav-drawer.drawer-end,
-#nav-drawer-student.drawer-end {
+/* ---- Mobile drawer ------------------------------------------------------ */
+/* Right-hand nav disclosure shared by the teacher + student chrome; any
+   later drawer opts into this treatment with .app-drawer. */
+.app-drawer.drawer-end {
   width: 320px;
   max-width: 86vw;
   max-height: 100%;
@@ -281,21 +280,22 @@
   border-radius: 24px 0 0 24px;
   box-shadow: var(--bs-box-shadow-lg);
 }
-#nav-drawer.drawer-end .drawer-header,
-#nav-drawer-student.drawer-end .drawer-header {
+.app-drawer .drawer-header {
   padding: 20px 22px 16px;
   border-bottom: 1px solid #ECEFF2;
 }
-#nav-drawer.drawer-end .drawer-body,
-#nav-drawer-student.drawer-end .drawer-body {
+.app-drawer .drawer-body {
   padding: 20px 22px;
+  /* inset-block: 0 makes the panel full-bleed, so keep the bottom controls
+     clear of the home indicator (DESIGN §9 safe-area rule). */
+  padding-block-end: max(20px, env(safe-area-inset-bottom, 0px));
 }
-#nav-drawer.drawer-end .nav-link,
-#nav-drawer-student.drawer-end .nav-link {
+.app-drawer .nav-link {
   display: flex;
   width: 100%;
   align-items: center;
   justify-content: flex-start;
+  min-height: 44px;
   gap: 12px;
   padding: 10px 16px;
   border-left: 3px solid transparent;
@@ -304,17 +304,19 @@
   font-size: 14px;
   font-weight: 600;
 }
-#nav-drawer.drawer-end .nav-link:hover,
-#nav-drawer-student.drawer-end .nav-link:hover {
+.app-drawer .nav-link:hover {
   color: #121721;
   background-color: #F4F6F8;
 }
-#nav-drawer.drawer-end .nav-link.active,
-#nav-drawer-student.drawer-end .nav-link.active {
+.app-drawer .nav-link.active {
   color: #121721;
   background-color: #E2E7EC;
   border-left-color: #E24A21;
   font-weight: 700;
+}
+/* Phone primary actions are touch targets (DESIGN §10). */
+.app-drawer .btn {
+  min-height: 44px;
 }
 .app-brand-mark-sm {
   width: 32px;
@@ -363,6 +365,7 @@
 
 @media (prefers-reduced-motion: no-preference) {
   .app-nav .nav-link,
+  .app-drawer .nav-link,
   .app-icon-btn,
   .app-profile {
     transition: color 0.15s, background-color 0.15s, border-color 0.15s,

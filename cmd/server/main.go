@@ -1,10 +1,11 @@
-// Command server runs the quiz-v2 monolith: it loads configuration, opens the
-// database store and serves the Fiber app on cfg.Addr.
+// Command server runs the quiz-v2 monolith: it loads and validates
+// configuration, opens the database pool and serves the Fiber app on cfg.Addr.
 package main
 
 import (
 	"context"
 	"log"
+	"log/slog"
 	"os"
 	"time"
 
@@ -26,16 +27,35 @@ type pingerFunc func(context.Context) error
 func (f pingerFunc) Ping(ctx context.Context) error { return f(ctx) }
 
 func main() {
+	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stdout, nil)))
 	logger := log.New(os.Stdout, "", log.LstdFlags)
 
 	cfg := config.Load()
-	logger.Printf("config loaded: addr=%s", cfg.Addr)
+	logger.Printf("config loaded: addr=%s demo=%t", cfg.Addr, cfg.Demo)
+
+	// Configuration that cannot honour a security rule is fatal, never a
+	// degraded start (IDN-050, OPS-232).
+	if err := config.Validate(cfg); err != nil {
+		logger.Printf("fatal: %v", err)
+		os.Exit(1)
+	}
+	if err := store.CheckDSN(cfg.DBDSN); err != nil {
+		logger.Printf("fatal: %v", err)
+		os.Exit(1)
+	}
+
+	// The upload root must exist before the first multipart POST. A failure is
+	// a warning here and a 500 at upload time, never a silent success.
+	if err := os.MkdirAll(cfg.UploadsDir, 0o755); err != nil {
+		logger.Printf("warning: cannot create uploads dir %s: %v", cfg.UploadsDir, err)
+	}
 
 	db, err := store.Open(cfg.DBDSN)
 	if err != nil {
 		logger.Printf("fatal: open store: %v", err)
 		os.Exit(1)
 	}
+	defer func() { _ = db.Close() }()
 	logger.Printf("store opened")
 
 	ctx, cancel := context.WithTimeout(context.Background(), advisoryPingTimeout)
@@ -48,7 +68,11 @@ func main() {
 	}
 
 	pinger := pingerFunc(func(ctx context.Context) error { return store.Ping(ctx, db) })
-	app := httpserver.NewWithStore(cfg, pinger)
+	app, err := httpserver.NewWithDeps(cfg, httpserver.Deps{DB: db, Pinger: pinger})
+	if err != nil {
+		logger.Printf("fatal: build app: %v", err)
+		os.Exit(1)
+	}
 
 	logger.Printf("server starting on %s", cfg.Addr)
 	if err := app.Listen(cfg.Addr); err != nil {

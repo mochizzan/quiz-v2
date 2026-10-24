@@ -4,21 +4,22 @@
       <span class="eyebrow">{{.TeacherName}}</span>
       <h2 class="quiz-title"><a href="{{.Href}}">{{.Title}}</a></h2>
     </div>
+    {{/* One badge: the viewer's participation when the two already know each
+         other, the quiz lifecycle otherwise (new-to-you cards). */}}
+    {{if .Participation}}
+    <span class="{{.Participation.BadgeClass}}">{{.StatusLabel}}</span>
+    {{else}}
     <span class="{{.State.BadgeClass}}">{{.State.Label}}</span>
+    {{end}}
   </div>
   {{if .Description}}<p class="quiz-desc text-truncate-2">{{.Description}}</p>{{end}}
   <div class="quiz-meta">
-    <span><svg width="14" height="14" aria-hidden="true"><use href="#i-quiz"></use></svg>{{.QuestionCount}} soal</span>
+    <span><svg width="14" height="14" aria-hidden="true"><use href="#i-bank"></use></svg>{{.QuestionCount}} soal</span>
     <span><svg width="14" height="14" aria-hidden="true"><use href="#i-calendar"></use></svg>{{.Schedule}}</span>
-    <span>{{.AudienceText}}</span>
+    {{if .Participation}}<span>{{.AttemptText}}</span>{{end}}
+    {{if .IsPrivate}}<span>{{.AudienceText}}</span>{{end}}
     {{if .Code}}<span class="quiz-code">{{.CodeText}}</span>{{end}}
   </div>
-  {{if .Participation}}
-  <div class="row-between">
-    <span class="{{.Participation.BadgeClass}}">{{.StatusLabel}}</span>
-    <span class="quiz-meta"><span>{{.AttemptText}}</span></span>
-  </div>
-  {{end}}
   <div class="quiz-actions">
     {{with .Primary}}<a class="btn {{if eq .Style "primary"}}btn-solid theme-primary{{else if eq .Style "danger"}}btn-outline theme-danger{{else}}btn-outline theme-primary{{end}}" href="{{.Href}}">{{.Label}}</a>{{end}}
     {{with .Secondary}}<a class="btn {{if eq .Style "primary"}}btn-solid theme-primary{{else if eq .Style "danger"}}btn-outline theme-danger{{else}}btn-outline theme-primary{{end}}" href="{{.Href}}">{{.Label}}</a>{{end}}

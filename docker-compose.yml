@@ -1,11 +1,24 @@
 services:
   db:
     image: mariadb:12.3
+    # Server settings are part of the business contract, not tuning: utf8mb4 is
+    # the only encoding the copy and names are valid in, +00:00 is the clock the
+    # expiry rules assume, and strict mode turns a truncated value into an error
+    # instead of silent data loss (OPS-233).
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-time-zone=+00:00
+      - --sql-mode=STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO
     environment:
       MARIADB_ROOT_PASSWORD: quizroot
       MARIADB_DATABASE: quiz
       MARIADB_USER: quiz
       MARIADB_PASSWORD: quiz
+    # Loopback-only mapping so host-side integration tests (TEST_DB_DSN toward
+    # 127.0.0.1:3306, see the foundation plan §1) can reach the container.
+    ports:
+      - "127.0.0.1:3306:3306"
     volumes:
       - dbdata:/var/lib/mysql
     healthcheck:
@@ -19,7 +32,17 @@ services:
       - "8080:8080"
     environment:
       APP_ADDR: ":8080"
-      DB_DSN: "quiz:quiz@tcp(db:3306)/quiz?parseTime=true"
+      # parseTime + loc=UTC + no multiStatements are enforced at startup
+      # (store.CheckDSN); the DSN must carry all three.
+      DB_DSN: "quiz:quiz@tcp(db:3306)/quiz?parseTime=true&charset=utf8mb4&collation=utf8mb4_unicode_ci&loc=UTC&timeout=5s&readTimeout=10s&writeTimeout=10s"
+      # Development default only: production supplies a real 32-byte key and
+      # never sets APP_DEMO (config.Validate refuses to start otherwise).
+      SESSION_SIGNING_KEY: "${SESSION_SIGNING_KEY:-dev-only-signing-key-change-me-32b}"
+      COOKIE_SECURE: "${COOKIE_SECURE:-false}"
+      APP_DEMO: "${APP_DEMO:-}"
+      UPLOADS_DIR: "/app/uploads"
+    volumes:
+      - uploads:/app/uploads
     depends_on:
       db:
         condition: service_healthy
@@ -31,3 +54,4 @@ services:
       start_period: 10s
 volumes:
   dbdata:
+  uploads:

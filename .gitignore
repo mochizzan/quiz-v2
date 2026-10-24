@@ -9,3 +9,5 @@ coverage.out
 .codegraph/
 .omp/
 .superpowers/
+.opencode/
+.taste-skill/

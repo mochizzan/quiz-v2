@@ -2,18 +2,17 @@
 {{define "content"}}
 {{/* Student registration. Students are active immediately, so there is no
      approval note: the form says plainly that they can start right away. */}}
-<div class="auth-heading">
-  <span class="auth-kicker">Akun siswa</span>
-  <h1 class="h1 auth-title">Daftar sebagai siswa</h1>
-  <p class="auth-subtitle">Simpan riwayat kuis dan lihat hasil Anda kapan saja setelah masuk.</p>
+<div class="auth-head">
+  <h2 class="auth-title">Daftar sebagai siswa</h2>
+  <p class="auth-sub">Simpan riwayat kuis dan buka lagi hasil Anda kapan saja.</p>
 </div>
 
-<div class="alert theme-info" role="note">
-  <strong class="d-block mb-1">Langsung aktif</strong>
-  <span>Akun siswa tidak menunggu persetujuan. Anda bisa masuk segera setelah mendaftar.</span>
+<div class="auth-note is-ok">
+  <span class="auth-note-title">Langsung aktif</span>
+  <p>Akun siswa tidak menunggu persetujuan. Anda bisa masuk segera setelah mendaftar.</p>
 </div>
 
-<form class="login-form" action="/register/student" method="post" data-validate>
+<form class="auth-form" action="/register/student" method="post" data-validate>
   <input type="hidden" name="csrf_token" value="{{.CSRF}}">
 
   <div class="field-group">
@@ -70,47 +69,37 @@
   <div class="field-group">
     <label class="form-label" for="student-password-confirm">Konfirmasi kata sandi</label>
     <div class="position-relative">
-      <input class="form-control pe-5" type="password" id="student-password-confirm" name="password_confirm" autocomplete="new-password" minlength="{{.Data.MinPassword}}" placeholder="Ulangi kata sandi" aria-describedby="student-password-confirm-help student-password-confirm-error" required>
+      <input class="form-control pe-5" type="password" id="student-password-confirm" name="password_confirm" autocomplete="new-password" minlength="{{.Data.MinPassword}}" placeholder="Ulangi kata sandi" aria-describedby="student-password-confirm-error" required>
       <button type="button" class="btn btn-text position-absolute top-50 end-0 translate-middle-y me-1" data-toggle-password="student-password-confirm" aria-label="Tampilkan kata sandi" aria-pressed="false" aria-controls="student-password-confirm">
         <svg width="20" height="20" aria-hidden="true"><use href="#i-eye"></use></svg>
       </button>
     </div>
-    <div class="field-help" id="student-password-confirm-help">Tulis ulang kata sandi yang sama.</div>
     {{with .Errors.Get "password_confirm"}}<div class="field-error" id="student-password-confirm-error" role="alert">{{.}}</div>{{end}}
   </div>
 
-  <button type="submit" class="btn btn-solid theme-primary w-100 login-submit">
+  <button type="submit" class="btn btn-solid theme-primary auth-submit">
     Buat akun siswa
     <svg width="16" height="16" aria-hidden="true"><use href="#i-arrow-right"></use></svg>
   </button>
 </form>
 
-<div class="auth-divider">
-  <hr class="divider-line">
-  <span>Sudah punya akun?</span>
-  <hr class="divider-line">
-</div>
-
-<div class="register-grid">
-  <a class="register-card" href="/login">
-    <span class="register-icon">
-      <svg width="16" height="16" aria-hidden="true"><use href="#i-lock"></use></svg>
-    </span>
-    <span class="register-copy">
-      <strong>Masuk</strong>
-      <span>Lanjutkan belajar</span>
-    </span>
-    <svg class="register-arrow" width="16" height="16" aria-hidden="true"><use href="#i-chev-right"></use></svg>
-  </a>
-  <a class="register-card" href="/register/teacher">
-    <span class="register-icon">
-      <svg width="16" height="16" aria-hidden="true"><use href="#i-cap"></use></svg>
-    </span>
-    <span class="register-copy">
-      <strong>Akun guru</strong>
-      <span>Perlu persetujuan</span>
-    </span>
-    <svg class="register-arrow" width="16" height="16" aria-hidden="true"><use href="#i-chev-right"></use></svg>
-  </a>
+<div class="auth-zone">
+  <h3 class="zone-title">Sudah punya akun?</h3>
+  <div class="zone-rows">
+    <a class="zone-row" href="/login">
+      <span>
+        <span class="zone-row-title">Masuk</span>
+        <span class="zone-row-note">Lanjutkan belajar</span>
+      </span>
+      <svg width="18" height="18" aria-hidden="true"><use href="#i-chev-right"></use></svg>
+    </a>
+    <a class="zone-row" href="/register/teacher">
+      <span>
+        <span class="zone-row-title">Akun guru</span>
+        <span class="zone-row-note">Perlu persetujuan guru aktif</span>
+      </span>
+      <svg width="18" height="18" aria-hidden="true"><use href="#i-chev-right"></use></svg>
+    </a>
+  </div>
 </div>
 {{end}}

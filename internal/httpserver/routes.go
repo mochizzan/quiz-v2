@@ -2,41 +2,78 @@ package httpserver
 
 import (
 	"bytes"
+	"context"
+	"errors"
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gofiber/fiber/v3"
 
+	"quiz-v2/internal/apperr"
 	"quiz-v2/internal/viewmodel"
 )
 
-// PageRoute describes one server-rendered route. GET routes carry a Build
-// function that returns the page model; POST routes carry an Action that
-// validates nothing server-side (UI-only build) and returns the PRG redirect
-// target. Redirect is the fixed-target shortcut for static redirects such as
-// GET / → /login.
+// PageRoute describes one server-rendered route.
+//
+// Two handler styles exist while the backend is being wired:
+//
+//   - Load/Act are the production handlers. They receive a *Ctx (identity,
+//     database, validated CSRF, parsed inputs), return typed data or an
+//     *apperr.Error, and never touch Fiber or a status code.
+//   - Build/Action are the fixture handlers the UI build uses. They stay for
+//     APP_DEMO previews and are replaced route by route as each domain lands.
+//
+// Handler is the escape hatch for non-page endpoints (SSE stream, beacon).
 type PageRoute struct {
 	Method   string
 	Path     string
 	Template string
 	Nav      string
+
+	// Auth is informational: the authoritative matrix is routeClasses, keyed
+	// by method+path. It exists so a route file states its own class next to
+	// the route it protects.
+	Auth AuthClass
+	// CSRFExempt is reserved for POST /attempt/:id/beacon; validation rejects
+	// any other route that sets it.
+	CSRFExempt bool
+
+	Load func(*Ctx) (viewmodel.PageData, error)
+	Act  func(*Ctx) (Redirect, error)
+
+	// ActForm is Act with the ability to hand back a rendered form when the
+	// command fails validation. A POST that rejects input must answer 422 with
+	// the user's values and field errors (plan §7), and Act alone cannot carry
+	// data through its error. A route uses either Act or ActForm, never both;
+	// ActForm wins if a route sets it.
+	ActForm func(*Ctx) (viewmodel.PageData, Redirect, error)
+
 	Build    func(PageRequest) viewmodel.PageData
 	Action   func(PageRequest) string
 	Redirect string
-	// Handler is the escape hatch for non-page endpoints (SSE stream, 204
-	// beacon). When set it runs instead of the template/redirect path.
+	// Handler is the raw Fiber escape hatch (the SSE stream).
 	Handler func(fiber.Ctx) error
+	// HandlerCtx is the escape hatch for non-page endpoints that need the
+	// resolved request context: database, session, identity cookie, limiter,
+	// and path params. The beacon uses it. It wins over Handler when both are
+	// set.
+	HandlerCtx func(*Ctx) error
 }
 
-// PageRequest is the request-scoped data a builder may read: path params, the
-// query map, submitted form values, and whether APP_DEMO is on. Builders never
-// touch Fiber directly, which keeps page fixtures testable and templates pure.
+// PageRequest is the fixture-era request: path params, the query map, submitted
+// form values, and whether APP_DEMO is on. It is retained for Build/Action so
+// the existing demo pages keep working; new handlers take *Ctx.
 type PageRequest struct {
 	Params map[string]string
 	Query  map[string]string
 	Form   url.Values
 	Demo   bool
+
+	csrf  string
+	user  *viewmodel.CurrentUser
+	flash *viewmodel.Flash
 }
 
 // Param returns a path parameter or "".
@@ -63,8 +100,9 @@ func (r PageRequest) FlashKey() string { return r.Query["flash"] }
 // PageData is the template data every page receives.
 type PageData = viewmodel.PageData
 
-// CSRFPlaceholder is the token the UI-only forms carry until the backend
-// issues real per-session tokens.
+// CSRFPlaceholder is the token a page renders when it is built outside the HTTP
+// pipeline (unit tests, template rendering). A real request always carries a
+// signed token from Ctx.CSRF.
 const CSRFPlaceholder = "demo-csrf-token"
 
 // pageRoutes is the package-level route registry. Each route group registers
@@ -86,13 +124,24 @@ func RegisteredPages() []PageRoute {
 
 // page builds the common chrome for a fixture-backed page.
 func page(r PageRequest, title, nav string, user *viewmodel.CurrentUser, data any) viewmodel.PageData {
+	if user == nil {
+		user = r.user
+	}
+	flash := r.flash
+	if flash == nil {
+		flash = viewmodel.FlashFor(r.FlashKey())
+	}
+	csrf := r.csrf
+	if csrf == "" {
+		csrf = CSRFPlaceholder
+	}
 	return viewmodel.PageData{
 		Base: viewmodel.Base{
 			Title:  title,
 			Active: nav,
 			User:   user,
-			Flash:  viewmodel.FlashFor(r.FlashKey()),
-			CSRF:   CSRFPlaceholder,
+			Flash:  flash,
+			CSRF:   csrf,
 			Demo:   r.Demo,
 		},
 		Data: data,
@@ -133,58 +182,148 @@ func withParam(path string, r PageRequest) string {
 	return strings.Join(parts, "/")
 }
 
-// renderPage is the single page handler. Static redirects win; POST actions
-// redirect 303; GET builders render through the view loader. A render error
-// maps to a plain-text 500, never a stack trace.
-func renderPage(c fiber.Ctx, views *ViewLoader, route PageRoute, req PageRequest) error {
+// commandDeadline is OPS-100's request budget for a mutating command. A
+// command that exceeds it fails as a 500; a GET is exempt because the SSE
+// route is deliberately long-lived.
+const commandDeadline = 10 * time.Second
+
+// serveRoute is the single entry point for every registered route. The pipeline
+// runs first; then the production handler if one exists, then the fixture
+// handler, then the legacy redirect table.
+func (s *server) serveRoute(c fiber.Ctx, route PageRoute) error {
+	if route.Method == fiber.MethodPost {
+		ctx, cancel := context.WithTimeout(c.Context(), commandDeadline)
+		defer cancel()
+		c.SetContext(ctx)
+	}
+	x, ok := s.prepare(c, route)
+	if !ok {
+		return nil
+	}
+	if route.HandlerCtx != nil {
+		return route.HandlerCtx(x)
+	}
 	if route.Handler != nil {
 		return route.Handler(c)
 	}
-	if route.Redirect != "" {
-		return c.Redirect().Status(fiber.StatusSeeOther).To(route.Redirect)
+
+	// Demo mode serves the fixture world; production prefers the real handler.
+	// The two never mix, so a fixture can never answer a production request and
+	// a real handler can never be skipped in favour of demo data.
+	if x.Demo {
+		return s.serveFixture(c, x, route)
 	}
-	if route.Method == fiber.MethodPost || route.Action != nil {
-		target := ""
-		if route.Action != nil {
-			target = route.Action(req)
+
+	switch {
+	case route.Method == fiber.MethodGet && route.Load != nil:
+		data, err := route.Load(x)
+		return s.finish(x, route, data, err)
+	case route.Method == fiber.MethodPost && route.ActForm != nil:
+		data, r, err := route.ActForm(x)
+		if err != nil {
+			return s.finish(x, route, data, err)
 		}
-		if target == "" {
-			return c.Status(fiber.StatusNotFound).SendString("not found")
+		return s.redirectFlash(c, r.Path, r.Flash)
+	case route.Method == fiber.MethodPost && route.Act != nil:
+		r, err := route.Act(x)
+		if err != nil {
+			return s.finish(x, route, viewmodel.PageData{}, err)
 		}
-		return c.Redirect().Status(fiber.StatusSeeOther).To(target)
+		return s.redirectFlash(c, r.Path, r.Flash)
+	default:
+		return s.serveFixture(c, x, route)
 	}
-	data := viewmodel.PageData{}
-	if route.Build != nil {
-		data = route.Build(req)
-	}
-	var buf bytes.Buffer
-	if err := views.Render(&buf, route.Template, data); err != nil {
-		return c.Status(fiber.StatusInternalServerError).SendString("internal server error")
-	}
-	return c.Status(fiber.StatusOK).Type("html").Send(buf.Bytes())
 }
 
-// newPageRequest copies Fiber's request into the neutral PageRequest shape.
-// The route path is parsed for :params so builders never need Fiber's Ctx.
-func newPageRequest(c fiber.Ctx, routePath string, demo bool) PageRequest {
-	req := PageRequest{
-		Params: map[string]string{},
-		Query:  c.Queries(),
-		Form:   url.Values{},
-		Demo:   demo,
+// serveFixture is the fixture-era path: static redirect, POST action, or a
+// Build function rendering demo data.
+func (s *server) serveFixture(c fiber.Ctx, x *Ctx, route PageRoute) error {
+	switch {
+	case route.Redirect != "":
+		return s.redirect(c, route.Redirect)
+	case route.Method == fiber.MethodPost || route.Action != nil:
+		target := ""
+		if route.Action != nil {
+			target = route.Action(x.legacyRequest())
+		}
+		if target == "" {
+			return s.respondError(c, apperr.NotFoundf())
+		}
+		return s.redirect(c, target)
+	case route.Build != nil:
+		return s.finish(x, route, route.Build(x.legacyRequest()), nil)
+	default:
+		return s.respondError(c, apperr.NotFoundf())
 	}
-	for _, seg := range strings.Split(routePath, "/") {
-		if strings.HasPrefix(seg, ":") {
-			name := strings.TrimPrefix(seg, ":")
-			req.Params[name] = c.Params(name)
+}
+
+// legacyRequest adapts *Ctx to the fixture-era PageRequest so Build/Action keep
+// receiving the same shape they always did, now with the real identity and
+// CSRF token attached.
+func (x *Ctx) legacyRequest() PageRequest {
+	r := PageRequest{
+		Params: x.Params,
+		Query:  map[string]string{},
+		Form:   x.Form,
+		Demo:   x.Demo,
+		csrf:   x.CSRF,
+		user:   x.User,
+		flash:  x.Flash,
+	}
+	for k, vs := range x.Query {
+		if len(vs) > 0 {
+			r.Query[k] = vs[0]
 		}
 	}
-	if c.Method() == fiber.MethodPost {
-		c.Request().PostArgs().VisitAll(func(k, v []byte) {
-			req.Form.Add(string(k), string(v))
-		})
+	return r
+}
+
+// RedirectError is returned by a handler that must answer 303 instead of
+// rendering: the role router (IDN-026) and an idempotent GET. It is a transport
+// signal, not a business failure, so it is never logged as an error.
+type RedirectError struct {
+	To Redirect
+}
+
+// Error implements error.
+func (e *RedirectError) Error() string { return "redirect to " + e.To.Path }
+
+// finish renders a handler's result: its data at 200, or the mapped error page.
+func (s *server) finish(x *Ctx, route PageRoute, data viewmodel.PageData, err error) error {
+	if err != nil {
+		// A GET that must redirect (role router, idempotent PRG) says so with
+		// RedirectError rather than rendering a page.
+		var redirect *RedirectError
+		if errors.As(err, &redirect) {
+			return s.redirectFlash(x.c, redirect.To.Path, redirect.To.Flash)
+		}
+		// A 422 re-renders the submitting form when the handler supplied one;
+		// otherwise the generic error page carries the message.
+		var appErr *apperr.Error
+		if errors.As(err, &appErr) && appErr.Kind() == apperr.Validation && data.Data != nil {
+			data.Base.Errors = viewmodel.FieldErrors(appErr.Fields())
+			if data.Base.CSRF == "" {
+				data.Base.CSRF = x.CSRF
+			}
+			if data.Base.User == nil {
+				data.Base.User = x.User
+			}
+			data.Base.Demo = x.Demo
+			return s.render(x.c, route.Template, data, appErr.Status())
+		}
+		return s.respondError(x.c, appErr)
 	}
-	return req
+	if data.Base.CSRF == "" {
+		data.Base.CSRF = x.CSRF
+	}
+	if data.Base.User == nil {
+		data.Base.User = x.User
+	}
+	if data.Base.Flash == nil {
+		data.Base.Flash = x.Flash
+	}
+	data.Base.Demo = x.Demo
+	return s.render(x.c, route.Template, data, fiber.StatusOK)
 }
 
 // routeLess orders registration so static paths win over parameterised ones:
@@ -205,3 +344,7 @@ func routeLess(a, b PageRoute) bool {
 	}
 	return a.Method < b.Method
 }
+
+// renderBuffer keeps the render path allocation-light and, more importantly,
+// guarantees a template failure produces no partial body.
+var renderBuffer bytes.Buffer

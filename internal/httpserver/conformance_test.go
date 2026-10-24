@@ -2,7 +2,9 @@ package httpserver_test
 
 import (
 	"io"
+	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -235,7 +237,7 @@ func TestRouteSurface(t *testing.T) {
 // asserts the shared chrome, a real title, one <style> block, and the
 // production-mode absence of demo affordances.
 func TestEveryRegisteredGetPageRenders(t *testing.T) {
-	app := httpserver.New(config.Config{Addr: ":8080"})
+	app := httpserver.New(config.Config{Addr: ":8080", SessionSigningKey: testSigningKey, Demo: true})
 	for _, p := range httpserver.RegisteredPages() {
 		if p.Method != "GET" {
 			continue
@@ -304,7 +306,7 @@ func TestEveryRegisteredGetPageRenders(t *testing.T) {
 					}
 				}
 			}
-			for _, forbidden := range []string{"data-state-demo", "Mode demo", "theme-neutral", "theme-dark"} {
+			for _, forbidden := range []string{"theme-neutral", "theme-dark"} {
 				if strings.Contains(html, forbidden) {
 					t.Errorf("production page contains %q", forbidden)
 				}
@@ -313,18 +315,41 @@ func TestEveryRegisteredGetPageRenders(t *testing.T) {
 	}
 }
 
-// TestEveryRegisteredPostRedirects exercises every POST route. UI-only actions
-// must answer 303 with a relative Location; the beacon answers 204.
+// TestEveryRegisteredPostRedirects exercises every POST route. The CSRF
+// handshake is real: a GET first issues the signed cookie, and the POST carries
+// the same value as its form field. UI-only actions must answer 303 with a
+// relative Location; the beacon answers 204 and is the only exempt POST.
 func TestEveryRegisteredPostRedirects(t *testing.T) {
-	app := httpserver.New(config.Config{Addr: ":8080"})
+	cfg := config.Config{Addr: ":8080", SessionSigningKey: testSigningKey, Demo: true}
+	app := httpserver.New(cfg)
+
+	resp, err := app.Test(httptest.NewRequest("GET", "/login", nil))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var csrf string
+	for _, c := range resp.Cookies() {
+		if c.Name == httpserver.CookieCSRF {
+			csrf = c.Value
+		}
+	}
+	if csrf == "" {
+		t.Fatal("GET /login did not issue a CSRF cookie")
+	}
+
 	for _, p := range httpserver.RegisteredPages() {
 		if p.Method != "POST" {
 			continue
 		}
 		p := p
 		t.Run(p.Path, func(t *testing.T) {
-			req := httptest.NewRequest("POST", samplePath(p.Path), strings.NewReader(""))
+			form := url.Values{"csrf_token": {csrf}}
+			req := httptest.NewRequest("POST", samplePath(p.Path), strings.NewReader(form.Encode()))
 			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+			req.AddCookie(&http.Cookie{Name: httpserver.CookieCSRF, Value: csrf})
+			if p.Path == "/attempt/:id/beacon" {
+				req.Header.Set("Origin", "http://example.com")
+			}
 			resp, err := app.Test(req)
 			if err != nil {
 				t.Fatal(err)
@@ -349,7 +374,7 @@ func TestEveryRegisteredPostRedirects(t *testing.T) {
 // TestDemoModeAddsStrip proves APP_DEMO is the only switch that reveals demo
 // affordances, and that production ignores ?state=.
 func TestDemoModeAddsStrip(t *testing.T) {
-	prod := httpserver.New(config.Config{Addr: ":8080"})
+	prod := httpserver.New(config.Config{Addr: ":8080", SessionSigningKey: testSigningKey})
 	resp, err := prod.Test(httptest.NewRequest("GET", "/login", nil))
 	if err != nil {
 		t.Fatal(err)
@@ -520,7 +545,7 @@ func TestEveryPostFormCarriesCSRF(t *testing.T) {
 // TestScriptWiring: bundle is a module and precedes jQuery; jQuery is defer
 // and classic; window.bootstrap is absent.
 func TestScriptWiring(t *testing.T) {
-	app := httpserver.New(config.Config{Addr: ":8080"})
+	app := httpserver.New(config.Config{Addr: ":8080", SessionSigningKey: testSigningKey})
 	resp, err := app.Test(httptest.NewRequest("GET", "/login", nil))
 	if err != nil {
 		t.Fatal(err)

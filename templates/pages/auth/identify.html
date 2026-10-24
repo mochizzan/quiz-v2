@@ -2,25 +2,23 @@
 {{define "content"}}
 {{/* Anonymous participant identity. The quiz is fixed by the fixture, so the
      card names it and the form only asks for name, grade, and major. */}}
-<div class="auth-heading">
-  <span class="auth-kicker">Identitas peserta</span>
-  <h1 class="h1 auth-title">Lengkapi identitas Anda</h1>
-  <p class="auth-subtitle">Nama dan kelas dipakai guru untuk mencocokkan jawaban dengan daftar siswa.</p>
+<div class="auth-head">
+  <h2 class="auth-title">Lengkapi identitas Anda</h2>
+  <p class="auth-sub">Nama dan kelas dipakai guru untuk mencocokkan jawaban dengan daftar siswa.</p>
 </div>
 
-<div class="alert theme-info" role="note">
-  <span class="field-help d-block">Kuis yang Anda ikuti</span>
-  <strong class="d-block">{{.Data.Quiz.Title}}</strong>
+<div class="auth-note">
+  <h3 class="auth-quiz-title">{{.Data.Quiz.Title}}</h3>
 </div>
 
 {{with .Data.Error}}
-<div class="alert theme-danger" role="alert">
-  <strong class="d-block mb-1">Identitas belum bisa dipakai</strong>
-  <span>{{.Label}}</span>
+<div class="auth-note is-bad" role="alert">
+  <span class="auth-note-title">Identitas belum bisa dipakai</span>
+  <p>{{.Label}}</p>
 </div>
 {{end}}
 
-<form class="login-form" action="/join/identify" method="post" data-validate>
+<form class="auth-form" action="/join/identify" method="post" data-validate>
   <input type="hidden" name="csrf_token" value="{{.CSRF}}">
 
   <div class="field-group">
@@ -55,11 +53,11 @@
     </div>
   </div>
 
-  <button type="submit" class="btn btn-solid theme-primary w-100 login-submit">
+  <button type="submit" class="btn btn-solid theme-primary auth-submit">
     Mulai kuis
     <svg width="16" height="16" aria-hidden="true"><use href="#i-arrow-right"></use></svg>
   </button>
 </form>
 
-<p class="field-help mt-3 mb-0">Identitas ini hanya berlaku untuk kuis ini.</p>
+<p class="auth-foot">Identitas ini hanya berlaku untuk kuis ini.</p>
 {{end}}

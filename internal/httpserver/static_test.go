@@ -13,7 +13,7 @@ import (
 // TestStaticBootstrapCSSServed: the vendored Bootstrap 6 stylesheet is served
 // from /static with the go-web-ssr caching convention (MaxAge 86400).
 func TestStaticBootstrapCSSServed(t *testing.T) {
-	app := httpserver.New(config.Config{Addr: ":8080"})
+	app := httpserver.New(config.Config{Addr: ":8080", SessionSigningKey: testSigningKey})
 	resp, err := app.Test(httptest.NewRequest("GET", "/static/vendor/bootstrap/bootstrap.min.css", nil))
 	if err != nil {
 		t.Fatal(err)
@@ -35,7 +35,7 @@ func TestStaticBootstrapCSSServed(t *testing.T) {
 
 // TestStaticJQueryServed: the vendored jQuery 4 build is served from /static.
 func TestStaticJQueryServed(t *testing.T) {
-	app := httpserver.New(config.Config{Addr: ":8080"})
+	app := httpserver.New(config.Config{Addr: ":8080", SessionSigningKey: testSigningKey})
 	resp, err := app.Test(httptest.NewRequest("GET", "/static/vendor/jquery/jquery-4.0.0.min.js", nil))
 	if err != nil {
 		t.Fatal(err)
@@ -53,7 +53,7 @@ func TestStaticJQueryServed(t *testing.T) {
 // head.html's @font-face block is vendored and served from /static. Checking
 // the wOF2 magic catches a truncating or non-woff2 conversion.
 func TestStaticFontFacesServed(t *testing.T) {
-	app := httpserver.New(config.Config{Addr: ":8080"})
+	app := httpserver.New(config.Config{Addr: ":8080", SessionSigningKey: testSigningKey})
 	faces := []string{
 		"gotham-rounded-light", "gotham-rounded-light-italic",
 		"gotham-rounded-book", "gotham-rounded-book-italic",

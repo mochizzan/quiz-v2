@@ -1,0 +1,9 @@
+{{define "content"}}{{with .Data}}<div class="text-center">
+  <span class="eyebrow">Error {{.Code}}</span>
+  <p class="display-4 fw-bold mb-2" style="color: var(--bs-primary-base)">{{.Code}}</p>
+  <h1 class="h2 mb-2">{{.Title}}</h1>
+  <p class="page-sub measure mx-auto mb-4">{{.Message}}</p>
+  <div class="d-flex flex-wrap justify-content-center gap-2">
+    <a class="btn btn-solid theme-primary" href="{{.HomeHref}}">Kembali ke halaman masuk</a>
+  </div>
+</div>{{end}}{{end}}
