@@ -56,6 +56,12 @@ const ensureLedger = `CREATE TABLE IF NOT EXISTS schema_migrations (
 // and returns the names it applied. It is safe to run any number of times and
 // from any number of processes.
 func Apply(ctx context.Context, db *store.DB) (applied []string, err error) {
+	return apply(ctx, db, lockWaitSeconds)
+}
+
+// apply is Apply with an injectable lock wait, so tests can prove the runner
+// refuses to proceed when another process already holds the advisory lock.
+func apply(ctx context.Context, db *store.DB, waitSeconds int) (applied []string, err error) {
 	// GET_LOCK is scoped to a connection, so the pool is not enough:
 	// database/sql may hand the next statement a different connection while
 	// the lock quietly evaporates (§9.3 step 3). Everything below runs on
@@ -70,9 +76,18 @@ func Apply(ctx context.Context, db *store.DB) (applied []string, err error) {
 		}
 	}()
 
-	if _, err := conn.ExecContext(ctx, "SELECT GET_LOCK(?, ?)", lockName, lockWaitSeconds); err != nil {
+	// GET_LOCK reports its verdict as a value, not an error: 1 acquired, 0
+	// timed out, NULL a bad call. Checking only ExecContext's error would let
+	// two runners past the lock and interleave DDL and ledger writes.
+	var acquired sql.NullInt64
+	if err := conn.QueryRowContext(ctx, "SELECT GET_LOCK(?, ?)", lockName, waitSeconds).Scan(&acquired); err != nil {
 		return nil, fmt.Errorf("migrate: acquire %s: %w", lockName, err)
 	}
+	if !acquired.Valid || acquired.Int64 != 1 {
+		return nil, fmt.Errorf("migrate: acquire %s: not granted after %ds, another runner holds it",
+			lockName, waitSeconds)
+	}
+
 	// Release on the same connection; after ExecContext the result is not
 	// checked because every later failure path is more interesting than a
 	// missed advisory lock that dies with the connection anyway.

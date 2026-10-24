@@ -1,8 +1,49 @@
 package httpserver
 
 import (
+	"errors"
+	"log/slog"
+	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
+
+	"quiz-v2/internal/config"
+	"quiz-v2/internal/viewmodel"
+
+	"github.com/gofiber/fiber/v3"
 )
+
+// TestFinishMapsUntypedErrorTo500 pins OPS-215 at the transport seam. A handler
+// that returns a bare error (an integrity witness, a driver failure) must
+// render a logged 500. Before apperr.From, finish passed a nil errors.As target
+// to respondError, which invents a 404 for a server fault.
+func TestFinishMapsUntypedErrorTo500(t *testing.T) {
+	srv, err := newServer(
+		config.Config{SessionSigningKey: strings.Repeat("k", 32)},
+		nil,
+		slog.New(slog.DiscardHandler),
+	)
+	if err != nil {
+		t.Fatalf("newServer: %v", err)
+	}
+
+	app := fiber.New()
+	app.Get("/boom", func(c fiber.Ctx) error {
+		return srv.finish(&Ctx{c: c}, PageRoute{}, viewmodel.PageData{}, errors.New("integrity witness"))
+	})
+
+	resp, err := app.Test(httptest.NewRequest(http.MethodGet, "/boom", nil))
+	if err != nil {
+		t.Fatalf("app.Test: %v", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusInternalServerError {
+		t.Fatalf("status = %d, want 500: an unclassified error is a server fault, not a missing row",
+			resp.StatusCode)
+	}
+}
 
 // TestRootRedirectsToLogin pins the one static redirect in the surface.
 func TestRootRedirectsToLogin(t *testing.T) {

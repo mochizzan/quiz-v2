@@ -2,7 +2,9 @@ package migrate
 
 import (
 	"context"
+	"database/sql"
 	"os"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -245,5 +247,37 @@ func TestBootstrapTeacherIdempotent(t *testing.T) {
 	}
 	if deletedAt == nil || deletedAt.(time.Time).Format("2006-01-02 15:04:05") != store.LiveAt {
 		t.Errorf("deleted_at = %v, want the sentinel %s", deletedAt, store.LiveAt)
+	}
+}
+
+// TestApplyRefusesWhenAnotherRunnerHoldsTheLock covers §9.3 step 3. GET_LOCK
+// answers with a value, so an applier that only checked the statement's error
+// would sail past a held lock and interleave DDL with the runner that owns it.
+func TestApplyRefusesWhenAnotherRunnerHoldsTheLock(t *testing.T) {
+	db := testDB(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	holder, err := db.Conn(ctx)
+	if err != nil {
+		t.Fatalf("pin holder connection: %v", err)
+	}
+	defer holder.Close()
+
+	var got sql.NullInt64
+	if err := holder.QueryRowContext(ctx, "SELECT GET_LOCK(?, ?)", lockName, 1).Scan(&got); err != nil {
+		t.Fatalf("holder GET_LOCK: %v", err)
+	}
+	if !got.Valid || got.Int64 != 1 {
+		t.Fatalf("holder GET_LOCK = %v, want 1", got)
+	}
+	defer func() {
+		_, _ = holder.ExecContext(context.Background(), "SELECT RELEASE_LOCK(?)", lockName)
+	}()
+
+	if _, err := apply(ctx, db, 1); err == nil {
+		t.Fatal("apply proceeded while another runner held the lock")
+	} else if !strings.Contains(err.Error(), "not granted") {
+		t.Fatalf("apply error = %v, want a lock refusal", err)
 	}
 }

@@ -299,8 +299,16 @@ func (s *server) finish(x *Ctx, route PageRoute, data viewmodel.PageData, err er
 		}
 		// A 422 re-renders the submitting form when the handler supplied one;
 		// otherwise the generic error page carries the message.
-		var appErr *apperr.Error
-		if errors.As(err, &appErr) && appErr.Kind() == apperr.Validation && data.Data != nil {
+		//
+		// From normalises the error first: a handler that returns an untyped
+		// error (an integrity witness, a driver failure) must become a logged
+		// 500, not a 404. Passing the raw errors.As target to respondError
+		// would leave it nil and render "not found" for a server fault.
+		appErr := apperr.From(err)
+		if appErr.Kind() == apperr.Internal && appErr.Rule() == "" {
+			appErr = appErr.WithRule("OPS-215")
+		}
+		if appErr.Kind() == apperr.Validation && data.Data != nil {
 			data.Base.Errors = viewmodel.FieldErrors(appErr.Fields())
 			if data.Base.CSRF == "" {
 				data.Base.CSRF = x.CSRF
