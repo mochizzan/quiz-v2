@@ -18,8 +18,7 @@ import (
 )
 
 // conformance_test.go is the whole-frontend gate for the typed-data build. It
-// pins the exact 78-route surface from the design contract, renders every GET
-// page and exercises every POST action, and walks the template/CSS/JS sources
+// pins the exact 85-route surface from the design contract, renders every GET// page and exercises every POST action, and walks the template/CSS/JS sources
 // for the design bans. TestMain (server_test.go) chdirs to the repository root,
 // so ./templates and ./static resolve correctly.
 
@@ -51,9 +50,9 @@ type route struct{ method, path string }
 
 func r(method, path string) route { return route{method: method, path: path} }
 
-// contractRoutes is the exact 78-entry surface from the design contract:
-// public/auth 18, student 9, attempt 6, teacher core/authoring 19, grading 4,
-// management 17, error 5.
+// contractRoutes is the exact 85-entry surface from the design contract:
+// public/auth 18, student 11, attempt 6, teacher core/authoring 19, grading 4,
+// management 19, profile photos 2, error 6.
 var contractRoutes = []route{
 	// Public and auth (18).
 	r("GET", "/"),
@@ -133,9 +132,15 @@ var contractRoutes = []route{
 	r("GET", "/teacher/profile"), r("POST", "/teacher/profile"),
 	r("GET", "/teacher/profile/password"), r("POST", "/teacher/profile/password"),
 
-	// Error pages (5; the 404 catch-all is additionally tested below).
+	// Profile photos (2). GET /avatars/:name is an asset route outside this
+	// pin, like GET /uploads/:name (AVT-062, OPS-220).
+	r("POST", "/profile/photo"),
+	r("POST", "/profile/photo/remove"),
+
+	// Error pages (6; the 404 catch-all is additionally tested below).
 	r("GET", "/error/403"),
 	r("GET", "/error/404"),
+	r("GET", "/error/413"),
 	r("GET", "/error/422"),
 	r("GET", "/error/429"),
 	r("GET", "/error/500"),
@@ -166,8 +171,7 @@ func walkTemplates(t *testing.T) map[string]string {
 	return files
 }
 
-// TestRouteSurface pins the exact 78 method+path pairs. Membership equality is
-// used, not slice order, because registration order is an implementation detail
+// TestRouteSurface pins the exact 85 method+path pairs. Membership equality is// used, not slice order, because registration order is an implementation detail
 // (server.go sorts a copy).
 func TestRouteSurface(t *testing.T) {
 	want := map[string]bool{}
@@ -178,8 +182,8 @@ func TestRouteSurface(t *testing.T) {
 		}
 		want[key] = true
 	}
-	if len(want) != 82 {
-		t.Fatalf("contract fixture = %d routes, want 82", len(want))
+	if len(want) != 85 {
+		t.Fatalf("contract fixture = %d routes, want 85", len(want))
 	}
 
 	seen := map[string]int{}

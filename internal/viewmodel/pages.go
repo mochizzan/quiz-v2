@@ -382,6 +382,7 @@ type ResultsRow struct {
 	Waiting     bool
 	FocusLoss   int
 	RecapHref   string
+	Avatar      Avatar
 }
 
 // QuizResults is /teacher/quizzes/:id/results. GradingHref is this quiz's
@@ -442,6 +443,7 @@ type ParticipantRow struct {
 	StartedAt      *LocalTime
 	UpdatedAt      *LocalTime
 	Anonymous      bool
+	Avatar         Avatar
 }
 
 // MonitorPage is /teacher/quizzes/:id/monitor, open quizzes only. The page is a
@@ -474,6 +476,7 @@ type GradingRow struct {
 	GradedLabel     string
 	EditedLabel     string
 	Href            string
+	Avatar          Avatar
 }
 
 // GradingCounts is the queue header strip. All three ignore the active filters
@@ -527,6 +530,7 @@ type EssayAnswer struct {
 	Edited    bool
 	// Version is the optimistic-concurrency token the edit form submits.
 	Version int
+	Avatar  Avatar
 }
 
 // GradingDetail is the right pane when an essay is selected. ScoreInput is the
@@ -567,6 +571,7 @@ type RecapAttempt struct {
 	FocusLoss   int
 	Score       *Score
 	Waiting     bool
+	Avatar      Avatar
 }
 
 // RecapRow is one answer in the teacher recap.
@@ -612,6 +617,7 @@ type StudentRow struct {
 	EditHref   string
 	ResetHref  string
 	DeleteHref string
+	Avatar     Avatar
 }
 
 // StudentList is /teacher/students.
@@ -636,6 +642,7 @@ type StudentForm struct {
 	Action     string
 	CancelHref string
 	IsNew      bool
+	Avatar     Avatar
 }
 
 // AnonymousRow is one anonymous participant identity.
@@ -700,6 +707,7 @@ type TeacherRow struct {
 	ApprovedAt  *LocalTime
 	ApproveHref string
 	CanApprove  bool
+	Avatar      Avatar
 }
 
 // TeachersPage is /teacher/teachers.

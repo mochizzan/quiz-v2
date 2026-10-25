@@ -77,7 +77,8 @@ func (s *Service) Students(ctx context.Context, in RosterInput) (viewmodel.Stude
 		rowArgs = append(rowArgs, PageSize, offset)
 
 		rows, err := tx.QueryContext(ctx, `
-			SELECT a.id, a.full_name, a.email, s.id, s.grade_level, m.name,
+			SELECT a.id, a.full_name, a.email, a.avatar_name,
+			       s.id, s.grade_level, m.name,
 			       (SELECT COUNT(*)
 			          FROM quiz_attempts qa
 			          JOIN registrations r ON r.id = qa.registration_id
@@ -98,17 +99,19 @@ func (s *Service) Students(ctx context.Context, in RosterInput) (viewmodel.Stude
 		items := []viewmodel.StudentRow{}
 		for rows.Next() {
 			var (
-				row   viewmodel.StudentRow
-				grade int
-				major sql.NullString
-				accID int64
-				stID  int64
+				row    viewmodel.StudentRow
+				grade  int
+				major  sql.NullString
+				avatar sql.NullString
+				accID  int64
+				stID   int64
 			)
-			if err := rows.Scan(&accID, &row.FullName, &row.Email, &stID, &grade, &major, &row.Attempts); err != nil {
+			if err := rows.Scan(&accID, &row.FullName, &row.Email, &avatar, &stID, &grade, &major, &row.Attempts); err != nil {
 				return err
 			}
 			row.ID = stID
 			row.GradeLevel = grade
+			row.Avatar = viewmodel.NewAvatar(avatar.String, row.FullName, "app-avatar--sm")
 			if major.Valid && major.String != "" {
 				row.ClassLabel = viewmodel.ClassLabel(grade, major.String)
 			} else {
@@ -347,9 +350,10 @@ func (s *Service) StudentForm(ctx context.Context, id int64) (viewmodel.StudentF
 			email   string
 			grade   int
 			majorID int64
+			avatar  sql.NullString
 		)
 		err := tx.QueryRowContext(ctx, `
-			SELECT a.full_name, a.email, s.grade_level, s.major_id
+			SELECT a.full_name, a.email, a.avatar_name, s.grade_level, s.major_id
 			FROM students s
 			JOIN accounts a ON a.id = s.account_id
 			WHERE s.id = ?
@@ -357,7 +361,7 @@ func (s *Service) StudentForm(ctx context.Context, id int64) (viewmodel.StudentF
 			  AND a.deleted_at = ?
 			  AND a.role = 'student'`,
 			id, store.LiveAt, store.LiveAt,
-		).Scan(&form.FullName, &email, &grade, &majorID)
+		).Scan(&form.FullName, &email, &avatar, &grade, &majorID)
 		if errors.Is(err, sql.ErrNoRows) {
 			return ErrNotFound
 		}
@@ -373,6 +377,7 @@ func (s *Service) StudentForm(ctx context.Context, id int64) (viewmodel.StudentF
 		form.GradeLevel = grade
 		form.MajorID = majorID
 		form.Majors = majors
+		form.Avatar = viewmodel.NewAvatar(avatar.String, form.FullName, "")
 		form.Action = studentPath(id)
 		form.CancelHref = "/teacher/students"
 		form.IsNew = false

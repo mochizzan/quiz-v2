@@ -1,9 +1,12 @@
 package httpserver
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
+	"io"
 	"log/slog"
 	"net/url"
 	"strings"
@@ -14,6 +17,7 @@ import (
 
 	"quiz-v2/internal/apperr"
 	"quiz-v2/internal/authn"
+	"quiz-v2/internal/authoring"
 	"quiz-v2/internal/config"
 	"quiz-v2/internal/secure"
 	"quiz-v2/internal/store"
@@ -21,13 +25,25 @@ import (
 )
 
 // Body caps are pinned by OPS-218: one mebibyte for a form post, four kibibytes
-// for a beacon, ten mebibytes for a multipart upload. They are checked before
-// parsing so an oversized body never reaches validation.
+// for a beacon, sixteen mebibytes for a multipart upload. They are checked
+// before parsing so an oversized body never reaches validation. The check is
+// the declared Content-Length, not a counted body: the server runs with
+// StreamRequestBody, so an oversized body is rejected without being buffered
+// (AVT-020).
+//
+// maxAvatarRequest is the photo route's own cap in bytes: 200 MB (AVT-019).
+// It is not part of the ordinary upload cap because a photo outlives every
+// other body in the app by two orders of magnitude and is bounded by its own
+// streaming, counted, 1-byte-probe check (AVT-041).
 const (
-	maxFormBody    = 1 << 20
-	maxBeaconBody  = 4 << 10
-	maxUploadBody  = 10 << 20
-	beaconRouteKey = "POST /attempt/:id/beacon"
+	maxFormBody      = 1 << 20
+	maxBeaconBody    = 4 << 10
+	maxUploadBody    = 16 << 20
+	maxAvatarRequest = 200_000_000
+	beaconRouteKey   = "POST /attempt/:id/beacon"
+	avatarRouteKey   = "POST /profile/photo"
+	avatarPartsCap   = 16
+	csrfTokenCap     = 4 << 10
 )
 
 // server is the per-process HTTP dependency set. It is built once and shared by
@@ -50,6 +66,14 @@ type server struct {
 	// OPS-231). It is process-local, like the limiter, and entries disappear
 	// when their last connection ends.
 	streams *streamSlots
+
+	// Photos is the codec seam for a profile photo. It is nil in a build that
+	// wires no processor; the upload handler answers 500 rather than guessing
+	// (AVT-055).
+	Photos PhotoProcessor
+	// Avatars is the on-disk store the upload commits into and the serve route
+	// reads from. It is nil in a build that wires no store.
+	Avatars AvatarStore
 }
 
 // SessionResolver is the part of authn.Store the pipeline needs. It is an
@@ -100,10 +124,15 @@ func (s *server) beginShutdown() {
 // request context. A false second result means the pipeline already wrote the
 // response — a redirect, an error page, or a 404 — and the handler must not run.
 //
-// Order is load-bearing: body cap, session, CSRF, must-change guard, class.
-// CSRF precedes the guard so a cross-site POST from a must-change session fails
-// 403 instead of being redirected (IDN-071); the guard precedes the class so a
-// must-change session never reaches another domain's handler.
+// Order is load-bearing: body cap, form parse, session, CSRF, must-change guard,
+// class. CSRF precedes the guard so a cross-site POST from a must-change session
+// fails 403 instead of being redirected (IDN-071); the guard precedes the class so
+// a must-change session never reaches another domain's handler.
+//
+// A Stream route (AVT-024) stops early: the pipeline checks the declared cap and
+// resolves the session, then hands the untouched body to the handler, which owns
+// the form parse, the CSRF check from the first part, and a post-token must-change
+// re-check. prepare must not consume a body the codec is about to read.
 func (s *server) prepare(c fiber.Ctx, route PageRoute) (*Ctx, bool) {
 	x := &Ctx{
 		DB:     s.db,
@@ -126,24 +155,49 @@ func (s *server) prepare(c fiber.Ctx, route PageRoute) (*Ctx, bool) {
 	c.Request().URI().QueryArgs().VisitAll(func(k, v []byte) {
 		x.Query.Add(string(k), string(v))
 	})
-	if route.Method == fiber.MethodPost {
-		parseForm(c, x.Form)
-	}
 	if ip := authn.ClientIP(c.RemoteAddr().String()); ip != nil {
 		x.IP = ip.String()
+	}
+
+	// A streamed upload keeps one connection open for the length of the codec
+	// run. Closing it afterwards (AVT-044) stops a keep-alive connection whose
+	// request body was deliberately left unread from stranding the next request
+	// on that connection.
+	if streamRoutes[routeKey(route.Method, route.Path)] {
+		c.Response().Header.SetConnectionClose()
 	}
 
 	if !s.checkBodyCap(c, x, route) {
 		return nil, false
 	}
+	// A Stream route's form belongs to its handler: reading it here would
+	// consume the single part the codec must stream.
+	if route.Method == fiber.MethodPost && !route.Stream {
+		switch parseForm(c, x.Form) {
+		case formOK:
+		case formTooLarge:
+			s.respondError(c, apperr.Field("_form", msgBodyTooLarge).WithRule("AUT-034"))
+			return nil, false
+		default:
+			s.respondError(c, apperr.Field("_form", authoring.MsgFormInvalid))
+			return nil, false
+		}
+	}
 	if !s.resolveSession(c, x) {
 		return nil, false
 	}
-	if !s.checkCSRF(c, x, route) {
-		return nil, false
-	}
-	if !s.checkMustChange(c, x, route) {
-		return nil, false
+	// CSRF and the must-change guard are skipped only for a Stream route, which
+	// is always a POST: its token lives in the body the handler must not let the
+	// pipeline consume (AVT-024, IDN-020a). A GET Stream route cannot exist —
+	// streamRoutes holds POST /profile/photo only, and validation rejects any
+	// other Stream flag — so this branch can never swallow a token issuance.
+	if !route.Stream {
+		if !s.checkCSRF(c, x, route) {
+			return nil, false
+		}
+		if !s.checkMustChange(c, x, route) {
+			return nil, false
+		}
 	}
 	x.Flash = s.takeFlash(c)
 	if !s.checkClass(c, x, route) {
@@ -175,6 +229,12 @@ func (s *server) resolveSession(c fiber.Ctx, x *Ctx) bool {
 	}
 	x.Session = sess
 	x.User = sess.CurrentUser()
+	// AVT-080: the chrome's badge is mapped once per request from the session's
+	// stored name. AvatarURL validates the name before composing the URL, so a
+	// bad database value renders initials instead of a broken link.
+	if x.User != nil {
+		x.User.AvatarURL = viewmodel.AvatarURL(sess.AvatarName)
+	}
 	// A failed slide must not fail the request: the session is still valid for
 	// the remainder of its window and the next request retries (IDN-042).
 	if err := s.sessions.Slide(c.Context(), sess.ID); err != nil {
@@ -201,17 +261,7 @@ func (s *server) checkCSRF(c fiber.Ctx, x *Ctx, route PageRoute) bool {
 		return true
 	}
 	if route.Method == fiber.MethodPost {
-		cookie := c.Cookies(cookieCSRF)
-		if !s.signer.MatchCSRF(cookie, x.Form.Get("csrf_token")) {
-			// Reissue: the error page's "reload" advice must actually work.
-			if token, err := s.signer.CSRF(); err == nil {
-				x.setCookie(cookieCSRF, token, 0, "/")
-			}
-			s.respondError(c, apperr.Forbiddenf("").WithRule("INV-28"))
-			return false
-		}
-		x.CSRF = cookie
-		return true
+		return s.verifyFormCSRF(c, x, x.Form.Get("csrf_token"))
 	}
 	cookie := c.Cookies(cookieCSRF)
 	if !s.signer.VerifyCSRF(cookie) {
@@ -222,6 +272,25 @@ func (s *server) checkCSRF(c fiber.Ctx, x *Ctx, route PageRoute) bool {
 		}
 		cookie = token
 		x.setCookie(cookieCSRF, cookie, 0, "/")
+	}
+	x.CSRF = cookie
+	return true
+}
+
+// verifyFormCSRF compares the session's CSRF cookie with a token taken from a
+// request body. The comparison is shared by checkCSRF and the streamed photo
+// upload, which reads its token itself from the first multipart part (AVT-030):
+// both must fail the same way, reissuing the cookie so a reload works and
+// answering 403 without touching the rest of the body.
+func (s *server) verifyFormCSRF(c fiber.Ctx, x *Ctx, token string) bool {
+	cookie := c.Cookies(cookieCSRF)
+	if !s.signer.MatchCSRF(cookie, token) {
+		// Reissue: the error page's "reload" advice must actually work.
+		if fresh, err := s.signer.CSRF(); err == nil {
+			x.setCookie(cookieCSRF, fresh, 0, "/")
+		}
+		s.respondError(c, apperr.Forbiddenf("").WithRule("INV-28"))
+		return false
 	}
 	x.CSRF = cookie
 	return true
@@ -318,29 +387,76 @@ func homeFor(sess *authn.Session) string {
 	return "/student"
 }
 
-// checkBodyCap rejects an oversized body before parsing (OPS-218). Multipart
-// uploads get the ten-mebibyte cap; everything else gets one mebibyte and the
-// beacon four kibibytes.
+// msgBodyTooLarge is AUT-034's transport-overflow copy for the authoring
+// multipart POSTs. It is deliberately distinct from the generic form-invalid
+// copy: an oversized *body* is a transport failure the user cannot fix by
+// editing a field, and AUT-034 pins both the string and the 422 status.
+const msgBodyTooLarge = "Badan permintaan terlalu besar."
+
+// checkBodyCap rejects an oversized or unframed request body before anything
+// parses it (OPS-218, AVT-020). It reads only the declared Content-Length, never
+// the body: with StreamRequestBody on, c.Body() would drain a 200 MB upload into
+// memory just to measure it.
+//
+// The route families differ, and the difference is pinned by the design's cap
+// table (AVT-022):
+//
+//	POST /profile/photo  200,000,000  no length → 413, chunked → 413, over → 413
+//	authoring multipart   16 MiB       no length → empty form, chunked → 422 AUT-034, over → 422 AUT-034
+//	ordinary form POST     1 MiB       no length → empty form, chunked → 422 generic, over → 422 generic
+//	beacon POST            4 KiB       chunked/over → empty 400
+//
+// Only the avatar row uses the 413 page: this change adds one failure outcome
+// rather than reclassifying every form.
 func (s *server) checkBodyCap(c fiber.Ctx, x *Ctx, route PageRoute) bool {
 	if route.Method != fiber.MethodPost {
 		return true
 	}
-	limit := maxFormBody
 	key := routeKey(route.Method, route.Path)
+	declared := c.Request().Header.ContentLength()
+
+	if key == avatarRouteKey {
+		// AVT-020/AVT-022. A declared length of 0 with no stream is the
+		// request carrying neither Content-Length nor Transfer-Encoding: the
+		// form requires a body, so it is the same 413 as any other missing
+		// framing. An explicit Content-Length: 0 reaches the handler with a
+		// non-nil empty stream and takes the photo-empty flash instead; the
+		// distinction is the stream, not the parsed integer, because fasthttp
+		// normalises the length-less case to a declared 0 (AVT-022).
+		if declared < 0 || declared > maxAvatarRequest ||
+			(declared == 0 && c.Request().BodyStream() == nil) {
+			// Connection: close was already set by prepare for this route; the
+			// client may still be sending and the server must not drain the
+			// rest to reuse the socket.
+			s.respondError(c, apperr.TooLargef().WithRule("AVT-020"))
+			return false
+		}
+		return true
+	}
+
+	limit := maxFormBody
+	multipart := strings.HasPrefix(string(c.Request().Header.ContentType()), "multipart/")
 	switch {
 	case key == beaconRouteKey:
 		limit = maxBeaconBody
-	case strings.HasPrefix(string(c.Request().Header.ContentType()), "multipart/"):
+	case multipart:
 		limit = maxUploadBody
 	}
-	if len(c.Body()) > limit {
+
+	// declared == -1 is chunked: there is no size to check against, so the body
+	// is rejected before parsing rather than read to find out (AVT-022). A
+	// length-less POST normalises to 0 and falls through as an empty form; only
+	// the avatar route treats that as an error.
+	if declared == -1 || declared > limit {
 		if key == beaconRouteKey {
 			c.Status(fiber.StatusBadRequest)
 			return false
 		}
-		s.respondError(c, apperr.Validationf(map[string]string{
-			"form": "Isian terlalu besar.",
-		}).WithRule("OPS-218"))
+		if multipart {
+			s.respondError(c, apperr.Field("_form", msgBodyTooLarge).WithRule("AUT-034"))
+			return false
+		}
+		s.respondError(c, apperr.Field("_form", authoring.MsgFormInvalid).WithRule("OPS-218"))
 		return false
 	}
 	return true
@@ -419,23 +535,101 @@ func (s *server) setFlashCookie(c fiber.Ctx, key string) {
 	})
 }
 
-// parseForm copies submitted fields into a neutral map. Multipart is parsed
-// through Fiber's form parser so the upload routes read the same shape.
-func parseForm(c fiber.Ctx, dst url.Values) {
+// formStatus reports how a form body ended up unusable. The two failure kinds
+// are separate user-visible outcomes: an over-cap body is a transport failure
+// (AUT-034) and a body that parses badly inside its cap is a form failure.
+type formStatus int
+
+const (
+	formOK formStatus = iota
+	// formTooLarge: the bounded reader reached its cap+1 probe byte.
+	formTooLarge
+	// formInvalid: the body was inside its cap but did not parse.
+	formInvalid
+)
+
+// parseForm copies submitted fields into a neutral map. It never reports a body
+// larger than its cap: the caller answers the right 422 for the failure kind.
+//
+// The urlencoded path deliberately stops using PostArgs(): PostArgs calls
+// bodyBytes(), which reads a streamed body to EOF, so a lying Content-Length
+// would be measured after the fact. Instead the body is copied through the
+// bounded reader (AVT-022, OPS-218) and parsed with url.ParseQuery. Multipart
+// goes through Fiber's form parser, which is bounded by BodyLimit — exactly the
+// authoring cap — and reports a body that crosses it. Any other content type
+// (the JSON beacon) carries no form and is left unread for its own bounded
+// handler.
+func parseForm(c fiber.Ctx, dst url.Values) formStatus {
 	ct := string(c.Request().Header.ContentType())
-	if strings.HasPrefix(ct, "multipart/") {
-		if form, err := c.MultipartForm(); err == nil && form != nil {
-			for k, vs := range form.Value {
-				for _, v := range vs {
-					dst.Add(k, v)
-				}
+	switch {
+	case strings.HasPrefix(ct, "multipart/"):
+		form, err := c.MultipartForm()
+		if err != nil || form == nil {
+			// After checkBodyCap a body inside the cap cannot be over the
+			// parser's limit, so any failure here is transport garbage: a
+			// missing boundary or a truncated body, which keeps the generic
+			// form-invalid page (AVT-031, AVT-093).
+			return formInvalid
+		}
+		for k, vs := range form.Value {
+			for _, v := range vs {
+				dst.Add(k, v)
 			}
 		}
-		return
+		return formOK
+	case ct == "application/x-www-form-urlencoded":
+		body, err := readBoundedBody(c, maxFormBody+1)
+		if err != nil {
+			if errors.Is(err, errBodyRead) {
+				return formTooLarge
+			}
+			return formInvalid
+		}
+		values, err := url.ParseQuery(string(body))
+		if err != nil {
+			return formInvalid
+		}
+		for k, vs := range values {
+			for _, v := range vs {
+				dst.Add(k, v)
+			}
+		}
+		return formOK
 	}
-	c.Request().PostArgs().VisitAll(func(k, v []byte) {
-		dst.Add(string(k), string(v))
-	})
+	return formOK
+}
+
+// errBodyRead is the bounded reader's over-cap sentinel: the body reached the
+// probe byte, so it is at least as large as the cap it was measured against.
+var errBodyRead = errors.New("httpserver: request body exceeds its cap")
+
+// readBoundedBody copies at most limit bytes of the request body. A body that
+// fills the whole limit is over cap and returns errBodyRead, so a caller passes
+// its cap+1 and learns "too large" one byte before the cap is reached.
+//
+// It reads the stream when the request is streamed and the already-buffered
+// copy otherwise; in the streamed case nothing can bypass the cap, because a
+// lying Content-Length only truncates the stream earlier (AVT-022).
+func readBoundedBody(c fiber.Ctx, limit int) ([]byte, error) {
+	stream := c.Request().BodyStream()
+	if stream == nil {
+		// No stream: fasthttp buffered the body within BodyLimit, or there is
+		// no body at all. The copy is bounded before it starts.
+		body := c.Request().Body()
+		if len(body) >= limit {
+			return nil, errBodyRead
+		}
+		return body, nil
+	}
+	var buf bytes.Buffer
+	n, err := io.Copy(&buf, io.LimitReader(stream, int64(limit)))
+	if err != nil {
+		return nil, err
+	}
+	if n >= int64(limit) {
+		return nil, errBodyRead
+	}
+	return buf.Bytes(), nil
 }
 
 // requestID returns a short random correlation id for logging. It is never

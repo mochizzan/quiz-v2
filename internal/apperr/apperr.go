@@ -14,7 +14,7 @@ import (
 	"net/http"
 )
 
-// Kind is the failure class. There are exactly four user-visible outcomes plus
+// Kind is the failure class. There are exactly five user-visible outcomes plus
 // the internal one; there is no 401, 405, or 409 in this system.
 type Kind uint8
 
@@ -29,6 +29,9 @@ const (
 	Validation
 	// RateLimited answers 429 with Retry-After and no form (OPS-205).
 	RateLimited
+	// TooLarge answers 413 when a request body exceeds its route cap, before
+	// the body is parsed or staged (AVT-020).
+	TooLarge
 	// Internal is any database, invariant, or render failure (OPS-206).
 	Internal
 )
@@ -44,6 +47,8 @@ func (k Kind) String() string {
 		return "validation"
 	case RateLimited:
 		return "rate_limited"
+	case TooLarge:
+		return "too_large"
 	default:
 		return "internal"
 	}
@@ -60,6 +65,8 @@ func (k Kind) Status() int {
 		return http.StatusUnprocessableEntity
 	case RateLimited:
 		return http.StatusTooManyRequests
+	case TooLarge:
+		return http.StatusRequestEntityTooLarge
 	default:
 		return http.StatusInternalServerError
 	}
@@ -145,6 +152,10 @@ func RateLimitedf(retryAfter int) *Error {
 	return &Error{kind: RateLimited, message: MsgRateLimited, retryAfter: retryAfter}
 }
 
+// TooLargef returns the single 413 outcome. Callers do not pick copy: the page
+// is identical for every over-cap request.
+func TooLargef() *Error { return &Error{kind: TooLarge, message: MsgTooLarge} }
+
 // Internalf wraps an unexpected failure. cause is logged, never rendered.
 func Internalf(cause error) *Error {
 	return &Error{kind: Internal, message: MsgServerError, cause: cause}
@@ -177,6 +188,7 @@ const (
 	MsgNotFound    = "Alamat yang Anda tuju tidak tersedia atau sudah dipindahkan."
 	MsgCSRF        = "Sesi formulir tidak valid. Muat ulang halaman."
 	MsgRateLimited = "Terlalu banyak percobaan. Coba lagi nanti."
+	MsgTooLarge    = "Berkas terlalu besar. Maksimal 200 MB."
 	MsgServerError = "Permintaan Anda belum dapat diproses. Coba muat ulang beberapa saat lagi."
 )
 

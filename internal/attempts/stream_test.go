@@ -93,6 +93,7 @@ func TestStreamInitialEvents(t *testing.T) {
 	got := snap.Participants[0]
 	if got.RegistrationID != reg || got.AttemptID == nil || *got.AttemptID != attempt ||
 		got.Name != "Ayu Lestari" || got.Initials != "AL" || got.ClassLabel != "X RPL" ||
+		got.Avatar != "" ||
 		got.Answered != 1 || got.Total != 1 || got.State != "in_progress" ||
 		got.FocusLoss != 1 || !strings.HasSuffix(got.LastSeen, "Z") {
 		t.Errorf("participant = %+v", got)
@@ -164,7 +165,8 @@ func TestStreamLiveTick(t *testing.T) {
 		!strings.HasSuffix(payload.LastSeen, "Z") {
 		t.Errorf("update payload = %+v", payload)
 	}
-	if strings.Contains(update.data, `"name"`) || strings.Contains(update.data, `"class_label"`) {
+	if strings.Contains(update.data, `"name"`) || strings.Contains(update.data, `"class_label"`) ||
+		strings.Contains(update.data, `"avatar"`) {
 		t.Errorf("update leaked identity labels: %s", update.data)
 	}
 
@@ -275,6 +277,19 @@ func TestDiffMonitorSnapshot(t *testing.T) {
 		}
 	})
 
+	// AVT-084: a photo change has no incremental event, so it must be an
+	// identity change too.
+	t.Run("avatar change needs a snapshot", func(t *testing.T) {
+		photo := viewmodel.Avatar{URL: "/avatars/0123456789abcdef0123456789abcdef.webp"}
+		snapshot, added, updated := diffMonitorSnapshot(
+			snap(row(501)),
+			snap(row(501, func(r *participantSnapshot) { r.Avatar = photo })),
+		)
+		if !snapshot || len(added) != 0 || len(updated) != 0 {
+			t.Errorf("avatar diff = (%v, %+v, %+v)", snapshot, added, updated)
+		}
+	})
+
 	t.Run("update subset", func(t *testing.T) {
 		next := row(501, func(r *participantSnapshot) {
 			r.AttemptID = &otherAttempt
@@ -330,12 +345,17 @@ func TestStreamPayloads(t *testing.T) {
 			AttemptID:      &attempt,
 			Name:           "Ayu Lestari",
 			Initials:       "AL",
-			ClassLabel:     "XII IPA",
-			State:          viewmodel.ParticipationInProgress,
-			Answered:       7,
-			Total:          30,
-			FocusLoss:      1,
-			LastSeen:       seen,
+			Avatar: viewmodel.Avatar{
+				URL:      "/avatars/0123456789abcdef0123456789abcdef.webp",
+				Initials: "AL",
+				Class:    "monitor-avatar",
+			},
+			ClassLabel: "XII IPA",
+			State:      viewmodel.ParticipationInProgress,
+			Answered:   7,
+			Total:      30,
+			FocusLoss:  1,
+			LastSeen:   seen,
 		}},
 		Progress:    viewmodel.MonitorProgress{Registered: 1, InProgress: 1, Answered: 7, Total: 30},
 		GeneratedAt: seen,
@@ -359,11 +379,16 @@ func TestStreamPayloads(t *testing.T) {
 	}
 	participant := participants[0].(map[string]any)
 	assertKeys(t, participant, []string{
-		"registration_id", "attempt_id", "name", "initials", "class_label",
+		"registration_id", "attempt_id", "name", "initials", "avatar", "class_label",
 		"answered", "total", "state", "focus_loss", "last_seen",
 	})
 	if participant["last_seen"] != "2026-10-23T02:42:10Z" {
 		t.Errorf("last_seen = %v, want 2026-10-23T02:42:10Z", participant["last_seen"])
+	}
+	// AVT-084: the full-row payload carries the photo URL, same value as
+	// Avatar.URL, and no more than that.
+	if participant["avatar"] != "/avatars/0123456789abcdef0123456789abcdef.webp" {
+		t.Errorf("avatar = %v, want the avatar route", participant["avatar"])
 	}
 	if got["generated_at"] != "2026-10-23T02:42:10Z" {
 		t.Errorf("generated_at = %v", got["generated_at"])
@@ -399,6 +424,10 @@ func TestStreamPayloads(t *testing.T) {
 	}
 	if !strings.Contains(string(raw), `"attempt_id":null`) {
 		t.Errorf("not-started participant = %s, want null attempt_id", raw)
+	}
+	// A photo-less row still carries the key, with an empty URL (AVT-084).
+	if !strings.Contains(string(raw), `"avatar":""`) {
+		t.Errorf("not-started participant = %s, want an empty avatar", raw)
 	}
 }
 

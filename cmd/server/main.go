@@ -8,10 +8,13 @@ import (
 	"log"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"time"
 
+	"quiz-v2/internal/avatar"
 	"quiz-v2/internal/config"
 	"quiz-v2/internal/httpserver"
+	"quiz-v2/internal/identity"
 	"quiz-v2/internal/store"
 )
 
@@ -93,7 +96,25 @@ func main() {
 	}
 
 	pinger := pingerFunc(func(ctx context.Context) error { return store.Ping(ctx, db) })
-	app, err := httpserver.NewWithDeps(cfg, httpserver.Deps{DB: db, Pinger: pinger})
+
+	// The photo codec is a bounded pool of eight in-flight conversions; it is
+	// closed when the process exits so a running convert is not orphaned
+	// (AVT-040). The avatar store is the single writer of
+	// UPLOADS_DIR/avatars and accounts.avatar_name (design §4.2).
+	processor, err := avatar.New(filepath.Join(cfg.UploadsDir, "avatars"))
+	if err != nil {
+		logger.Printf("fatal: avatar processor: %v", err)
+		os.Exit(1)
+	}
+	defer processor.Close()
+	avatars := identity.NewAvatarStore(db, cfg.UploadsDir).WithLogger(slog.Default())
+
+	app, err := httpserver.NewWithDeps(cfg, httpserver.Deps{
+		DB:      db,
+		Pinger:  pinger,
+		Photos:  httpserver.PhotoProcessorOf(processor),
+		Avatars: avatars,
+	})
 	if err != nil {
 		logger.Printf("fatal: build app: %v", err)
 		os.Exit(1)

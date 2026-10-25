@@ -80,6 +80,8 @@ func errorTemplate(k apperr.Kind) string {
 		return "pages/error/422.html"
 	case apperr.RateLimited:
 		return "pages/error/429.html"
+	case apperr.TooLarge:
+		return "pages/error/413.html"
 	default:
 		return "pages/error/500.html"
 	}
@@ -91,6 +93,10 @@ func errorTemplate(k apperr.Kind) string {
 func (s *server) errorPage(c fiber.Ctx, err *apperr.Error) viewmodel.PageData {
 	code := err.Status()
 	title := "Terjadi kesalahan"
+	// HomeHref is per kind: the generic failure returns to the sign-in screen,
+	// while a 413 belongs to an uploader who is already signed in and must not
+	// be sent back to a login screen (AVT-066).
+	home := "/login"
 	switch err.Kind() {
 	case apperr.NotFound:
 		title = "Halaman tidak ditemukan"
@@ -100,6 +106,9 @@ func (s *server) errorPage(c fiber.Ctx, err *apperr.Error) viewmodel.PageData {
 		title = "Isian tidak valid"
 	case apperr.RateLimited:
 		title = "Terlalu banyak percobaan"
+	case apperr.TooLarge:
+		title = "Berkas terlalu besar"
+		home = "/"
 	}
 	return viewmodel.PageData{
 		Base: viewmodel.Base{
@@ -110,7 +119,7 @@ func (s *server) errorPage(c fiber.Ctx, err *apperr.Error) viewmodel.PageData {
 			Code:     code,
 			Title:    title,
 			Message:  err.Message(),
-			HomeHref: "/login",
+			HomeHref: home,
 		},
 	}
 }

@@ -5,7 +5,7 @@
 **Scope:** accounts, teacher/student registration, approval, login/logout, sessions, CSRF, password reset and change, profile, teacher management of students, teacher directory and approval, and the authorization matrix every other domain consumes.
 **Lens:** security and adversarial. Every rule below assumes an attacker who can read the public pages, replay cookies, submit forms cross-site, enumerate identifiers, race two requests, and choose their own input.
 **Sources (authority order):** `migrations/*.up.sql` + `internal/model/*.go` + schema spec (shape); frontend data contract (screens, forms, copy); `2026-10-20-quiz-system-design.md` §3/§12/§14 (rules not superseded); `docs/DESIGN.md` (visual only); contract `2026-10-23-business-logic-00-contract.md` (rulings R-01–R-25, invariants INV-01–INV-30, §7 shape).
-**Rule prefix:** `IDN-###`. Commands: `IDN-C01` … `IDN-C22`. Domain invariants: `IDN-I01` …
+**Rule prefix:** `IDN-###`. Commands: `IDN-C01` … `IDN-C26`. Domain invariants: `IDN-I01` … `IDN-I18`.
 **Contract note:** Contract §7 fixes §11 as traceability and §12 as the open-question/schema-delta register; this file follows that shape. The authoring brief calls the register "§11", so §11.5 records ruling objections and points into §12 for the register entries.
 
 ---
@@ -26,7 +26,7 @@
 | Quiz lifecycle, review modes, scores | AUT/ATT | not this domain |
 
 **IDN-005.** Non-goals: email delivery or verification, password recovery for teachers, SSO, MFA, "remember me", device/session management UI, account merging, teacher deactivation, role changes after creation, audit tables, and admin roles (R-22, R-05).
-**IDN-006.** The database is fixed (R-01). No rule here may depend on a column that does not exist. Changes that would need one are isolated in §12, and none are required for v1.
+**IDN-006.** The database is fixed (R-01). No rule here may depend on a column that does not exist. Changes that would need one are isolated in §12; the profile photo contributes exactly one, the `accounts.avatar_name` delta in §12.1 (IDN-180), and every other rule is expressible on the current 15 tables.
 **IDN-007.** Every command in §5 is a page command: it either renders a template or returns `303`. There is no JSON auth API, no Basic auth, and no `401`. The only non-page endpoint in this domain is the health check, which OPS owns.
 **IDN-008.** Copy is Indonesian; the exact strings are in §5 and reuse every R-19 key verbatim. A message not listed here is not invented by a handler.
 
@@ -91,8 +91,10 @@ Every route registered by `registerPage` (and every non-page route) declares exa
 | `POST /teacher/teachers/:id/approve` | `teacher` | IDN-C22 | target live teacher with `status='pending'` |
 | `GET /teacher/profile` | `teacher` | IDN-C23 | own account only; no `:id` exists |
 | `POST /teacher/profile` | `teacher` | IDN-C24 | own account only |
+| `POST /profile/photo` | `any-auth` | IDN-C25 | own account only; CSRF token is the first multipart part |
+| `POST /profile/photo/remove` | `any-auth` | IDN-C26 | own account only; idempotent |
 
-**IDN-016.** Routes owned by other domains use the same classes: AUT and ATT teacher routes are `owner-teacher` (owner check by AUT/ATT, 404 for non-owner); PAR's `/student*` are `student`; PAR's `/join*`, `/invite/*`, `/quiz/:id*` are `anonymous-or-public`; OPS's `/healthz`, `/error/*`, `/uploads/:name` are `public`. IDN does not implement those ownership checks; it supplies `CurrentUser` and the class.
+**IDN-016.** Routes owned by other domains use the same classes: AUT and ATT teacher routes are `owner-teacher` (owner check by AUT/ATT, 404 for non-owner); PAR's `/student*` are `student`; PAR's `/join*`, `/invite/*`, `/quiz/:id*` are `anonymous-or-public`; OPS's `/healthz`, `/error/*`, and `/uploads/:name` are `public`. `GET /avatars/:name` is also `public`, but it is a cross-owned asset read: the live-owner check is IDN's rule (IDN-I18) and the serving mechanics are OPS/AVT's (AVT-070). IDN does not implement those ownership checks; it supplies `CurrentUser` and the class.
 **IDN-017.** `POST /attempt/:id/beacon` is the sole CSRF-exempt route in the system (R-16, R-20, INV-28). Its authorization and same-origin check belong to ATT. No IDN route is exempt.
 
 ### 2.4 Status-code policy (the complete matrix)
@@ -105,6 +107,7 @@ Every route registered by `registerPage` (and every non-page route) declares exa
 | Login with correct credentials on a pending teacher | `403` | 403 page, `pending_teacher`, optional pending link |
 | Token invalid, expired, used, or for a missing student (reset flow) | `422` | reset form, `FieldErrors["token"]`, copy `invalid_token`/`token_used` |
 | Rate limit exceeded | `429` | 429 page + `Retry-After` seconds, copy `rate_limited` |
+| Avatar request over 200 MB, chunked, or length-less | `413` | 413 page, `Connection: close`, copy `too_large` |
 | Missing, soft-deleted, wrong role, not school-scoped | `404` | 404 page |
 | Database error | `500` | 500 page |
 | Unauthenticated on a protected GET | `303` | `/login` (no `next`); no flash on plain root, `session_expired` flash otherwise |
@@ -123,6 +126,8 @@ Every route registered by `registerPage` (and every non-page route) declares exa
 5. **Must-change guard** — a valid session with `must_change_password=1` may reach only `GET/POST /change-password` and `POST /logout`; every other path gets `303 /change-password` + `must_change` flash (IDN-070).
 6. **Route class** — apply §2.2 to the registered route. Unknown path/method falls to the OPS 404.
 7. **Handler** — validation, rate limit, transaction, render/redirect.
+
+**IDN-020a.** `POST /profile/photo` is the one ordering exception (AVT-024): its CSRF token is a multipart part, so the pipeline skips CSRF verification and the must-change guard for that `Stream` route, and the handler verifies the token before reading any file byte, then applies the must-change guard (IDN-C25). Session resolution and the class check still precede it, so an anonymous or wrong-role request never reads the body. Every other POST follows the order above.
 
 **IDN-021.** Steps 1–4 run before any handler-side rate-limit or bcrypt work. A request that fails CSRF consumes no password compare and no rate-limit budget.
 **IDN-022.** Session resolution performs at most one indexed lookup (`uq_sessions_token`) and one PK lookup on `accounts`. It performs no writes when the cookie is absent, malformed, unknown, or expired; only a valid live session slides.
@@ -156,7 +161,7 @@ ACTIVE(teacher) --never--> PENDING/DELETED (R-05: teacher delete forbidden)
 
 **IDN-030.** `accounts.status='pending'` is meaningful only for teachers; `chk_accounts_student_active` guarantees every student row is active. A student insert that omits `status` fails loudly (schema spec §9.7 #10).
 **IDN-031.** `must_change_password` starts `0` for both self-registration flows. It is `1` only for the external bootstrap teacher and any future admin-set temporary password (R-04). The teacher-issued student reset sets it to `0` (IDN-C09).
-**IDN-032.** There is no reject, deactivate, suspend, restore, role-change, or delete-teacher command. A pending teacher can be left pending forever; that is not an error state. A teacher cannot be edited at all: name and email are fixed at registration (R-05). The only teacher write after creation is approval and own-password change.
+**IDN-032.** There is no reject, deactivate, suspend, restore, role-change, or delete-teacher command. A pending teacher can be left pending forever; that is not an error state. No teacher edits another teacher. The only teacher writes after creation are approval, own-password change, and the teacher's own profile name/email/photo (IDN-C23–C26).
 
 ### 3.2 `must_change_password` lifecycle
 | From | Event | To | Guard/effect |
@@ -572,6 +577,25 @@ restart and hides a misconfiguration.
 - **Postconditions:** names are current everywhere on the next render (IDN-153). **Status:** `303 /teacher/profile` + `saved`; `422` re-renders the form with the submitted pair; `500`. A session revoked between resolution and the write is `303 /login` + `session_expired` (IDN-112).
 - **Concurrency/idempotency:** last-writer-wins, same as IDN-C15; two teachers editing different accounts never block each other.
 
+### IDN-C25 — `POST /profile/photo`
+- **Route:** `POST /profile/photo`. **Actor:** any signed-in account. **Authorization:** `any-auth`, session account only; there is no `:id`, so nobody uploads for another person. A visitor gets the pipeline's `303 /login`; a must-change session is redirected after the token check (AVT-033, AVT-065).
+- **Pipeline exception:** the CSRF token is the first multipart part, so the pipeline skips form parsing, CSRF, and the must-change guard for this one `Stream` route (IDN-020a). The handler verifies the token before reading any file byte and then applies the guard (AVT-024, AVT-030).
+- **Input:** `csrf_token` then exactly one `photo` file part; unknown fields are ignored up to 16 parts. The client filename, extension, and `Content-Type` are never trusted; only the bytes matter. The request cap is 200,000,000 bytes for the whole multipart body, checked from `Content-Length` before parsing (AVT-020/AVT-022).
+- **Processing:** sniff JPEG/PNG/WebP/HEIC, apply EXIF orientation, centre-crop, scale to 512×512, composite alpha onto white, and re-encode as WebP (AVT-050–AVT-059). Stored bytes are always a fresh `[a-f0-9]{32}.webp` under `UPLOADS_DIR/avatars/`, never the client's file.
+- **Storage order:** write and fsync the new file → rename to its final name → commit `accounts.avatar_name` → unlink the old file (AVT-010, §4.2 of the avatar design). A failed commit removes the new file and leaves the old name untouched. A failed unlink leaves an unreferenced orphan whose URL is already `404`; no row points at it.
+- **Status:** `303 /profile` (student) or `303 /teacher/profile` (teacher) + `photo-saved`; `303` to the same page + `photo-empty`, `photo-type`, `photo-big`, `photo-unreadable`, `photo-failed`, or `photo-busy`; `403` for a missing, misplaced, or invalid CSRF token with a fresh CSRF cookie; `413` for an over-cap or length-less request with `Connection: close`; `422` for malformed multipart. The 413 copy is `Berkas terlalu besar. Maksimal 200 MB.` (AVT-066).
+- **Effects:** the account's current photo changes immediately for every surface that joins `accounts`; the session row carries no photo, so the next request's account join supplies the new name (AVT-080). Initials remain the fallback when the column is `NULL`.
+- **Concurrency/idempotency:** two uploads from two tabs both write distinct files and the last commit wins; the losing file is unreferenced and collectable, never served (AVT-106). Re-uploading the same image produces a new name and a new URL, which is the cache-busting rule.
+- **Security:** no body bytes, client filename, or image metadata are logged; only the account id and measured caps are (AVT-102). A full pool answers `photo-busy` before the file part is read (AVT-040). The upload runs on the 10-minute route deadline, not the 10-second command budget (AVT-025).
+
+### IDN-C26 — `POST /profile/photo/remove`
+- **Route:** `POST /profile/photo/remove`. **Actor:** any signed-in account. **Authorization:** `any-auth`, session account only; no `:id`. **CSRF:** required by the ordinary pipeline; a 1 MiB declared cap.
+- **Input:** no fields beyond `csrf_token`. It is a separate urlencoded form, never competing with a selected file in one multipart body (AVT-061).
+- **Transaction:** clear `accounts.avatar_name` (`NULL`) for the session account where it is still live, then unlink the old name. The row is committed before the unlink; a failed unlink leaves an unreferenced orphan and is logged, not surfaced as a failure (AVT-010, AVT-071).
+- **Status:** `303` back to the profile + `photo-removed`; `303` + `photo-remove-failed` on a database failure; `403` CSRF; `500`. Removing an account with no photo succeeds idempotently with `photo-removed`.
+- **Effects:** every surface falls back to the initials badge on the next render; the old URL is `404` as soon as the row commits (AVT-070). No other account, student row, attempt, or grade is touched.
+- **Concurrency/idempotency:** an upload and a remove racing each other are last-commit-wins on one column; whichever file becomes unreferenced is an orphan, never a dangling row. Repeating the remove is a success, not a `404`.
+
 ---
 ## 6. Queries and read models
 ### 6.1 Student roster (`GET /teacher/students`)
@@ -661,6 +685,8 @@ On `GET /teacher/students`: verify signature/purpose/teacher id; SHA-256 the emb
 **IDN-I14.** The role home is derived from the account role, never from a request parameter; no `next`/`return_to` exists (IDN-025).
 **IDN-I15.** The pending token authorizes only the pending-status page; it is never a session and never survives the 24-hour window.
 **IDN-I16.** All timestamps written by this domain are UTC and all comparisons use the DB clock; display is WIB (INV-20).
+**IDN-I17.** A profile photo belongs to exactly one account and only that signed-in account uploads or removes it; no teacher route edits or removes a student's photo. A photo is optional and never gates authentication, registration, an attempt, or a grade.
+**IDN-I18.** `accounts.avatar_name` stores only a server-generated `[a-f0-9]{32}.webp` name or `NULL`; the stored file is always a re-encoded, metadata-free WebP. A name without a live active owner, or a file that is missing, non-regular, empty, or over 5,000,000 bytes, serves `404`, never a partial image or a `500`.
 
 ---
 ## 8. Edge cases and failure modes
@@ -702,6 +728,8 @@ On `GET /teacher/students`: verify signature/purpose/teacher id; SHA-256 the emb
 | reset consume | `SELECT password_reset_tokens … FOR UPDATE` | `422 token_used` |
 | reset issue | `SELECT students … FOR UPDATE`; supersede + insert | second issue supersedes the first; one live token |
 | profile edit | `UPDATE accounts` (unique key) | `422 email_taken` on a colliding address |
+| avatar upload | worker slot; new file rename; single-column `UPDATE accounts` | last commit wins; the losing file is unreferenced and collected later |
+| avatar remove | single-column `UPDATE … SET avatar_name=NULL` | repeat succeeds; a racing upload/remove is last-commit-wins |
 | student edit | `SELECT student+account FOR UPDATE` | last commit wins; a deleted target → `404` |
 | student delete | root `SELECT … FOR UPDATE`, one timestamp for all children | second delete `404`; cascade atomic |
 | teacher approve | single conditional `UPDATE … WHERE status='pending'` | 0 rows → idempotent `already_approved` |
@@ -712,7 +740,7 @@ On `GET /teacher/students`: verify signature/purpose/teacher id; SHA-256 the emb
 **IDN-143.** Duplicate-key (`1062`) and deadlock (`1213`) are the only expected engine errors. `1062` maps to a field error; `1213` retries the whole transaction once with the same inputs; any other error → 500 + rollback. No retry may re-run a consumed token or a delete that already committed.
 **IDN-144.** Rate-limit counters are incremented under one mutex in the same critical section as the window check, so N concurrent requests cannot all observe "under limit". The key includes the normalized email for login, so casing variants share a bucket.
 **IDN-145.** Two-tab semantics are part of the contract: session and CSRF are shared; a rotation in one tab invalidates the other tab's pending form (fail closed); a change-password in one tab revokes the other tab's session; profile/edit last-writer-wins is acceptable because there is no mergeable field.
-**IDN-146.** Idempotency summary: `GET` safe; `POST /logout`, `/teacher/teachers/:id/approve` idempotent; `/teacher/students/:id` effectively idempotent (same values); `/login` and `/register/*` guarded by unique keys/rotation; `/reset-password` single-use; `/teacher/students/:id/delete` second call `404`; `/teacher/students/:id/reset-token` intentionally non-idempotent.
+**IDN-146.** Idempotency summary: `GET` safe; `POST /logout`, `/teacher/teachers/:id/approve`, and `/profile/photo/remove` idempotent; `/teacher/students/:id` effectively idempotent (same values); `/login` and `/register/*` guarded by unique keys/rotation; `/reset-password` single-use; `/teacher/students/:id/delete` second call `404`; `/teacher/students/:id/reset-token` intentionally non-idempotent; `/profile/photo` always mints a new name, so a retry replaces rather than duplicates and the final state is the last upload.
 **IDN-147.** No command holds a lock across bcrypt for longer than necessary: login does not lock the account (it only reads the hash), while change-password locks and then compares so the comparison is against the row it will update. A login racing a password change either compares the old hash and creates a session that the change then revokes (if the change commits after) or compares the new hash (if after) — both outcomes are consistent.
 
 ---
@@ -724,7 +752,7 @@ On `GET /teacher/students`: verify signature/purpose/teacher id; SHA-256 the emb
 **IDN-153.** **Names are current.** `full_name`/`email` are read live from `accounts`; a profile or teacher edit changes every historical display on the next render. ATT must join the account, not copy the name into an attempt. Quiz titles are the opposite (locked at publish, AUT), and the difference is intentional (R-25).
 **IDN-154.** **Student deletion is complete.** After IDN-C19 commits, PAR/ATT can assume no live registration, attempt, answer, selection, or focus event exists for that student. Roster counts, monitor rows, results, recaps, and history must exclude the student; a direct URL to an old attempt is `404`, not an empty page. PAR's cancellation and ATT's `attempt.start` must not "resurrect" a registration for a deleted student.
 **IDN-155.** **Eligibility inputs.** `students.grade_level` and `students.major_id` are current and teacher-managed. PAR checks them at registration/attempt start; IDN never deletes a registration when a teacher changes them, so a student who registered while eligible may finish (R-12). A class label shown in ATT results is derived from the current profile, not frozen.
-**IDN-156.** **Teacher immutability.** AUT can rely on `quizzes.owner_account_id` always naming a live teacher account: teachers are never deleted or deactivated, and there is no route that changes a teacher's role or email. A quiz never becomes ownerless (R-05, R-14).
+**IDN-156.** **Teacher lifecycle stability.** AUT can rely on `quizzes.owner_account_id` always naming a live teacher account: teachers are never deleted, deactivated, or role-changed, and no route edits another teacher. The only name/email write is the teacher's own `/teacher/profile` (IDN-C24); it cannot change the account id, role, or status, so ownership is unaffected (R-05, R-14).
 **IDN-157.** **Anonymous separation.** IDN's session never applies to an anonymous participant, and PAR's identity cookie never authenticates an account route. A browser may hold both cookies simultaneously; each domain reads only its own.
 **IDN-158.** **Pending isolation.** A pending teacher has no session and therefore no access to AUT/PAR/ATT teacher routes. Approval is the only unlock; there is no "pending read-only" mode.
 
@@ -765,19 +793,21 @@ On `GET /teacher/students`: verify signature/purpose/teacher id; SHA-256 the emb
 | `POST /teacher/teachers/:id/approve` | IDN-C22 | INV-03, INV-04; I03 | AC-58–AC-60 |
 | `GET /teacher/profile` | IDN-C23 | INV-03; I09 | AC-79 |
 | `POST /teacher/profile` | IDN-C24 | INV-01; I09, I13 | AC-80 |
+| `POST /profile/photo` | IDN-C25 | INV-28; I17, I18 | AC-81 |
+| `POST /profile/photo/remove` | IDN-C26 | INV-28; I17, I18 | AC-82 |
 | every POST | middleware | INV-28; I05 | AC-61–AC-64 |
 | every route | middleware | INV-21; I01 | AC-65–AC-70 |
 | every list | §6 | I12 | AC-71–AC-72 |
 | student deletion | §10 | INV-18; I10 | AC-73–AC-74 |
 
 **IDN-171.** Cross-cutting rules and their acceptance: session sliding/expiry AC-65–67; revocation AC-68; enumeration AC-06/AC-09/AC-13/AC-36/AC-41; rate limiting AC-63/64; stale token AC-25/26/35; cross-role AC-69/70; open redirect AC-02.
-**IDN-172.** No route in §2.3 is without a command; no command is without a route. `GET /error/403`, `GET /error/404`, `GET /error/500`, `GET /healthz`, and `/uploads/:name` are OPS/AUT routes and are not counted here.
+**IDN-172.** No route in §2.3 is without a command; no command is without a route. `GET /error/403`, `GET /error/404`, `GET /error/413`, `GET /error/422`, `GET /error/429`, `GET /error/500`, `GET /healthz`, `/uploads/:name`, and `/avatars/:name` are OPS/AUT asset routes and are not counted here.
 
 ### 11.5 Objections to binding rulings
 Implemented as ruled, with the objection recorded here as contract §1 requires; detail and recommendations are in §12.3.
 
 - **R-04** (reset sets `must_change_password=0`) conflicts with the schema spec's "1 for resets and bootstrap". Implemented as R-04 (0); the schema note's wording is read as "temporary admin-set passwords" (schema §6.2 is descriptive, not a constraint).
-- **R-05** (teacher name/email immutable, no teacher profile) is **superseded by IDN-C23/C24**: a teacher edits their own name and email at `/teacher/profile`. The original objection — a registration typo uncorrectable in v1 — is closed. Role, status, approval, and the student-only `/profile` are unchanged.
+- **R-05** (teacher name/email immutable, no teacher profile) is **superseded by IDN-C23/C24**: a teacher edits their own name, email, and profile photo at `/teacher/profile`. The original objection — a registration typo uncorrectable in v1 — is closed. Role, status, approval, and the student-only `/profile` are unchanged.
 - **R-03 vs R-24** (no bootstrap-existence leak vs "the pending page says approval is not available") are reconciled with a static sentence that is true regardless of whether a bootstrap exists (IDN-106).
 - **Old §12** pins login/register at 5 attempts/15 min **per IP**. Implemented as 5/15 per `(email, IP)` plus a 30/15 per-IP ceiling to keep a class behind one NAT usable; recorded as a deliberate refinement, not a silent change.
 - **R-22** (no email verification) is implemented; the risk is account-email ownership, accepted for a single school.
@@ -785,10 +815,11 @@ Implemented as ruled, with the objection recorded here as contract §1 requires;
 ---
 ## 12. Open questions and schema deltas
 ### 12.1 True schema deltas
-**IDN-180.** **None required.** Every rule above is expressible with the current 15 tables and their constraints. The candidates below were considered and rejected as deltas; the app-only resolution is named.
+**IDN-180.** **One delta is required**, and it is owned by the avatar design rather than redefined here: migration `0010_profile_photo.up.sql` appends `accounts.avatar_name VARCHAR(37) ascii_bin NULL` and the `(avatar_name, deleted_at)` unique key (avatar design §4.1, AVT-010–AVT-012). IDN-C25/C26 are its only writers. Every other rule above is expressible with the current 15 tables and their constraints. The candidates below were considered and rejected as deltas; the app-only resolution is named.
 
 | Candidate delta | Why it is not needed | App-only resolution |
 |---|---|---|
+| `accounts.avatar_name` + serving key | required: a photo needs one stable name per account and one indexed serving lookup | migration `0010`; AVT-010–AVT-012, IDN-C25/C26 |
 | `rate_limits` table | single process, ≤500 users; a table adds a write per attempt | in-memory fixed window (IDN-062) |
 | `auth_events`/login-audit table | no screen reads it; logs suffice | structured logs (IDN-074) |
 | `pending_teacher_tokens` table | 24h, single-purpose, signed payload is enough | signed cookie/URL token (IDN-088) |
@@ -812,7 +843,7 @@ Implemented as ruled, with the objection recorded here as contract §1 requires;
 **IDN-186.** Flash: closed `?flash=` keys. The set is compile-time; unknown keys render nothing.
 **IDN-187.** One live reset token per student: app-enforced under the student row lock, because no index can express it.
 **IDN-188.** Reset sets `must_change_password=0` (R-04).
-**IDN-189.** A 403 needs a page: add `templates/pages/error/403.html` (error layout, `ErrorPage` model). It is not a route; it uses the existing error layout and OPS's error family. `GET /error/403` is **not** added; the status is returned directly.
+**IDN-189.** A 403 needs a page: `templates/pages/error/403.html` (error layout, `ErrorPage` model). `GET /error/403` is the OPS-owned preview route that renders it with status 200; a real 403 renders the same template with status 403 (OPS-217). It is not an auth command.
 **IDN-190.** The reset form's field is `new_password`, not the current template's `password` (contract §18 is rank 2 and the field-name contract is closed). This is a template fix, not a schema change.
 **IDN-191.** Role guards need route metadata. `PageRoute` gains an authorization class (or an equivalent table keyed by `method+" "+path`); a route without a class fails startup. This is Go surface, not schema.
 **IDN-192.** The 403 page's `HomeHref` is the account's role home when authenticated, `/auth/pending` when a valid pending token exists (pending-login refusal), otherwise `/login`.
@@ -912,3 +943,5 @@ Each statement is executable as a server-side test with `app.Test` and a test da
 **AC-74.** After a student is deleted, PAR/ATT reads (history, roster, results, recap, monitor, beacon) treat the student as absent; no page renders their name or a zeroed attempt.
 **AC-75.** Auth responses carry `Cache-Control: no-store`; pending and reset pages carry `Referrer-Policy: no-referrer`. **AC-76.** No auth page, flash, URL, or log contains a password, a raw session token, a raw reset token (except the one-time panel/pending URL), or a bcrypt hash.
 **AC-77.** An invalid `SESSION_SIGNING_KEY` (empty, short, or the published development default) prevents startup; tests inject a valid key and CSRF still verifies. **AC-78.** Route metadata coverage: every registered route has an authorization class; a test fails if one is missing, and `POST /attempt/:id/beacon` is the only route marked CSRF-exempt.
+**AC-81.** `POST /profile/photo` for either role stores a fresh 512×512 WebP name, redirects with `photo-saved`, and the next profile render shows one `<img>` with initials gone; a missing, misplaced, or wrong-session token is `403` and writes no file; an over-cap declared body, a chunked upload, or a request with neither `Content-Length` nor `Transfer-Encoding` is `413` with `Connection: close`; a multipart body whose file part is missing, zero-byte, or the browser's empty placeholder is `303 photo-empty` (an explicit `Content-Length: 0` takes the same flash).
+**AC-82.** `POST /profile/photo/remove` clears the column, unlinks the file, redirects with `photo-removed`, and a second call returns the same success; after a replace, the old `/avatars/:name` is `404` while the new one is `200 image/webp` with `private, immutable` and an `ETag`.

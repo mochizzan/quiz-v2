@@ -8,9 +8,12 @@
   </a>
 
   <div class="page-head">
-    <div>
-      <h1 class="h1">Ubah siswa</h1>
-      <p class="page-sub">{{.Data.FullName}} · {{.Data.Email}}</p>
+    <div class="d-flex align-items-center gap-3">
+      {{if not .Data.IsNew}}{{template "partials/avatar.html" .Data.Avatar}}{{end}}
+      <div>
+        <h1 class="h1">Ubah siswa</h1>
+        <p class="page-sub">{{.Data.FullName}} · {{.Data.Email}}</p>
+      </div>
     </div>
   </div>
 

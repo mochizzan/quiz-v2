@@ -195,7 +195,12 @@
           {{range .Data.TopScores}}
           <tr>
             <td>{{.Quiz.Title}}</td>
-            <td class="cell-title">{{.StudentName}}</td>
+            <td class="cell-title">
+              <span class="d-inline-flex align-items-center gap-2">
+                {{template "partials/avatar.html" .Avatar}}
+                <span>{{.StudentName}}</span>
+              </span>
+            </td>
             <td class="cell-sub">{{.ClassLabel}}</td>
             <td class="num">{{template "partials/score.html" .Score}}</td>
             <td class="text-end"><a class="link-quiet" href="{{.Href}}">Lihat hasil</a></td>

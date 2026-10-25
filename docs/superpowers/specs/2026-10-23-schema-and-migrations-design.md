@@ -246,7 +246,6 @@ Reference table; read constantly, written rarely.
 | `name` | `VARCHAR(50)` | NOT NULL | — |
 | `code` | `VARCHAR(10)` ascii_bin | NOT NULL | — |
 | `deleted_by_account_id` | `INT UNSIGNED` | NULL | — |
-| kit | | | |
 
 - `UNIQUE uq_majors_name (name, deleted_at)`
 - `UNIQUE uq_majors_code (code, deleted_at)`
@@ -273,9 +272,10 @@ reason email uniqueness holds across roles.
 | `must_change_password` | `TINYINT(1) UNSIGNED` | NOT NULL | 0 | 1 for resets and bootstrap |
 | `last_login_at` | `DATETIME` | NULL | — | written once per login, not per request |
 | `deleted_by_account_id` | `INT UNSIGNED` | NULL | — | delete provenance |
-| kit | | | | |
+| `avatar_name` | `VARCHAR(37)` ascii_bin | NULL | — | generated WebP name; `NULL` renders initials |
 
 - `UNIQUE uq_accounts_email (email, deleted_at)` — the whole point of this table
+- `UNIQUE uq_accounts_avatar (avatar_name, deleted_at)` — avatar serving; `NULL` means no photo
 - `FK fk_accounts_approver (approved_by_account_id) → accounts.id`
 - `FK fk_accounts_deleter (deleted_by_account_id) → accounts.id`
 - `CHECK chk_accounts_student_active (role = 'teacher' OR status = 'active')`
@@ -304,7 +304,6 @@ Profile rows for `role = 'student'` accounts.
 | `account_id` | `INT UNSIGNED` | NOT NULL | — |
 | `grade_level` | `TINYINT UNSIGNED` | NOT NULL | — |
 | `major_id` | `INT UNSIGNED` | NOT NULL | — |
-| kit | | | |
 
 - `UNIQUE uq_students_account (account_id, deleted_at)`
 - `FK fk_students_account (account_id) → accounts.id`, `FK fk_students_major (major_id) → majors.id`
@@ -323,7 +322,6 @@ One row **per person**, not per quiz. Three registrations hang off one row.
 | `cookie_token_hash` | `BINARY(32)` | NOT NULL | — | SHA-256 of the identifying cookie |
 | `last_seen_at` | `DATETIME` | NULL | — | refreshed on join |
 | `deleted_by_account_id` | `INT UNSIGNED` | NULL | — | |
-| kit | | | | |
 
 - `UNIQUE uq_anon_cookie (cookie_token_hash, deleted_at)`
 - `FK fk_anon_major (major_id) → majors.id`, `FK fk_anon_deleter (deleted_by_account_id) → accounts.id`
@@ -349,7 +347,6 @@ anonymous identity.
 | `quiz_id` | `INT UNSIGNED` | NOT NULL | — |
 | `student_id` | `INT UNSIGNED` | NULL | — |
 | `anonymous_participant_id` | `INT UNSIGNED` | NULL | — |
-| kit | | | |
 
 - `CHECK chk_reg_participant ((student_id IS NULL) <> (anonymous_participant_id IS NULL))`
 - `UNIQUE uq_reg_student (quiz_id, student_id, deleted_at)`
@@ -390,7 +387,6 @@ anonymous identity.
 | `published_at` | `DATETIME` | NULL | — | set on draft→open |
 | `closed_at` | `DATETIME` | NULL | — | set on open→closed |
 | `deleted_by_account_id` | `INT UNSIGNED` | NULL | — | |
-| kit | | | | |
 
 - `UNIQUE uq_quizzes_code (code, deleted_at)`, `UNIQUE uq_quizzes_invite (invite_token, deleted_at)`
 - `FK fk_quizzes_owner (owner_account_id) → accounts.id`,
@@ -441,7 +437,6 @@ anonymous identity.
 | `image_sha256` | `BINARY(32)` | NULL | — | dedupe/drift detection |
 | `image_alt` | `VARCHAR(255)` | NULL | — | rendered by four screens |
 | `deleted_by_account_id` | `INT UNSIGNED` | NULL | — | |
-| kit | | | | |
 
 - `UNIQUE uq_questions_position (quiz_id, position, deleted_at)`
 - `FK fk_questions_quiz (quiz_id) → quizzes.id`, `FK fk_questions_editor (updated_by_account_id) → accounts.id`,
@@ -467,7 +462,6 @@ anonymous identity.
 | `position` | `SMALLINT UNSIGNED` | NOT NULL | — |
 | `body` | `VARCHAR(500)` | NOT NULL | — |
 | `is_correct` | `TINYINT(1) UNSIGNED` | NOT NULL | 0 |
-| kit | | | |
 
 - `UNIQUE uq_options_position (question_id, position, deleted_at)`
 - `FK fk_options_question (question_id) → questions.id`
@@ -482,7 +476,6 @@ anonymous identity.
 | `submitted_at` | `DATETIME` | NULL | — | NULL = in progress |
 | `final_score` | `DECIMAL(5,4)` | NULL | — | NULL until every answer is graded |
 | `shuffle_seed` | `INT UNSIGNED` | NOT NULL | — | per-attempt randomisation |
-| kit | | | | |
 
 - `UNIQUE uq_attempt_number (registration_id, attempt_no, deleted_at)`
 - `FK fk_attempt_registration (registration_id) → registrations.id`
@@ -516,7 +509,6 @@ anonymous identity.
 | `graded_by_account_id` | `INT UNSIGNED` | NULL | — | |
 | `graded_at` | `DATETIME` | NULL | — | first-grade instant; preserved on edit |
 | `grading_version` | `SMALLINT UNSIGNED` | NOT NULL | 0 | edit form's optimistic-concurrency token |
-| kit | | | | |
 
 - `UNIQUE uq_answers_slot (attempt_id, question_id, deleted_at)`
 - `FK fk_answers_attempt (attempt_id) → quiz_attempts.id`,
@@ -547,7 +539,6 @@ Selected options for objective answers. No rows for essays.
 |---|---|---|---|
 | `attempt_answer_id` | `INT UNSIGNED` | NOT NULL | — |
 | `option_id` | `INT UNSIGNED` | NOT NULL | — |
-| kit | | | |
 
 - `UNIQUE uq_selection (attempt_answer_id, option_id, deleted_at)`
 - `FK fk_selection_answer (attempt_answer_id) → attempt_answers.id`,
@@ -565,7 +556,6 @@ Selected options for objective answers. No rows for essays.
 | `attempt_id` | `INT UNSIGNED` | NOT NULL | — |
 | `kind` | `VARCHAR(20)` ascii_bin | NOT NULL | — |
 | `occurred_at` | `DATETIME` | NOT NULL | `CURRENT_TIMESTAMP` |
-| kit | | | |
 
 - `FK fk_focus_attempt (attempt_id) → quiz_attempts.id`
 - `CHECK chk_focus_kind (kind IN ('blur','hidden','fullscreen_exit'))`
@@ -584,7 +574,6 @@ Selected options for objective answers. No rows for essays.
 | `expires_at` | `DATETIME` | NOT NULL | — |
 | `ip` | `VARBINARY(16)` | NULL | — |
 | `user_agent` | `VARCHAR(255)` | NULL | — |
-| kit | | | |
 
 - `UNIQUE uq_sessions_token (token_hash, deleted_at)`
 - `FK fk_sessions_account (account_id) → accounts.id`
@@ -607,7 +596,6 @@ Selected options for objective answers. No rows for essays.
 | `token_hash` | `BINARY(32)` | NOT NULL | — | |
 | `expires_at` | `DATETIME` | NOT NULL | — | 24 h |
 | `used_at` | `DATETIME` | NULL | — | single use |
-| kit | | | | |
 
 - `UNIQUE uq_reset_token (token_hash, deleted_at)`
 - `FK fk_reset_student (student_id) → students.id`,
@@ -620,7 +608,6 @@ Selected options for objective answers. No rows for essays.
 | Column | Type | Null | Default |
 |---|---|---|---|
 | `name` | `VARCHAR(191)` ascii_bin | NOT NULL | — |
-| kit | | | |
 
 - `UNIQUE uq_migrations_name (name, deleted_at)`
 
@@ -697,6 +684,7 @@ table, which is correct at this scale.
 | Session lookup | exact token, every request | `uq_sessions_token` |
 | Session sweep | expired rows | `ix_sessions_expiry (expires_at)` |
 | Anonymous identity | exact cookie hash | `uq_anon_cookie` |
+| Avatar serving | exact name + live row | `uq_accounts_avatar` |
 
 Explicitly **not** indexed: `deleted_at` alone, `students.major_id` alone (covered by the
 composite), `questions.type`, any `TEXT` column. Adding an index is a deliberate act with
@@ -723,13 +711,15 @@ migrations/
   0007_seed_majors.up.sql
   0008_review_mode_v2.up.sql
   0009_grading_version.up.sql
+  0010_profile_photo.up.sql
 ```
 
 Rules:
 
 - **Forward-only.** No `.down.sql`. Rollback is a backup restore (§9.6).
 - **Every statement idempotent.** `CREATE TABLE IF NOT EXISTS`, `CREATE INDEX IF NOT
-  EXISTS`, `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`. MariaDB commits DDL implicitly, so
+  EXISTS`, `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`, `ALTER TABLE ... ADD UNIQUE KEY
+  IF NOT EXISTS`. MariaDB commits DDL implicitly, so
   a file-level transaction is a comforting fiction and a file *can* be half-applied.
   Idempotency is what makes that recoverable: re-running finishes the job, and re-running
   an applied file is a silent no-op.
@@ -744,11 +734,13 @@ Rules:
 
 `0001` accounts → `0002` reference (majors, students) → `0003` authoring → `0004`
 participation → `0005` telemetry → `0006` auth tokens → seed → `0008`
-review-mode remap → `0009` grading version. Each file only references tables created by an earlier file, so
+review-mode remap → `0009` grading version → `0010` profile photo. Each file only
+references tables created by an earlier file, so
 a from-empty replay never needs deferred FKs. `0008` is a data migration on
 `quizzes.review_mode`; it depends on `0003` and is safe to replay after a partial
-apply. `0009` appends a column to `attempt_answers` (`0005`) and is likewise
-idempotent.
+apply. `0009` appends a column to `attempt_answers` (`0005`) and `0010` appends
+`avatar_name` plus its serving key to `accounts` (`0001`); both are idempotent and
+safe to replay after a partial apply.
 
 `accounts` precedes `majors` because `majors.deleted_by_account_id` is a real FK
 (decision 26), and a reference table cannot be created before its deleter table.
@@ -836,7 +828,7 @@ A schema test suite (written with the implementation, not part of this document)
    `deleted_at` with the exact types and defaults in §5.2.
 2. Every table has a primary key on `id`.
 3. Every declared FK exists in `information_schema.REFERENTIAL_CONSTRAINTS`.
-4. A from-empty replay applies `0001`–`0009` and a second run is a no-op.
+4. A from-empty replay applies `0001`–`0010` and a second run is a no-op.
 5. A duplicate live email fails; soft-deleting the account then re-registering succeeds —
    and one email cannot exist in both roles, because there is only one table.
 6. A registration with both participant columns, or neither, fails.

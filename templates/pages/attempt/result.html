@@ -106,10 +106,13 @@
 
     <header class="attempt-top">
       <div class="row-between">
-        <div class="min-w-0">
-          <span class="eyebrow">Hasil percobaan {{.Data.Header.AttemptNo}} dari {{.Data.Header.MaxAttempts}}</span>
-          <h1 class="h2 mb-0">{{.Data.Header.QuizTitle}}</h1>
-          <span class="cell-sub">{{.Data.Header.StudentName}}{{if .Data.Header.ClassLabel}} · {{.Data.Header.ClassLabel}}{{end}}</span>
+        <div class="d-flex align-items-center gap-3 min-w-0">
+          {{template "partials/avatar.html" .Data.Header.Avatar}}
+          <div class="min-w-0">
+            <span class="eyebrow">Hasil percobaan {{.Data.Header.AttemptNo}} dari {{.Data.Header.MaxAttempts}}</span>
+            <h1 class="h2 mb-0">{{.Data.Header.QuizTitle}}</h1>
+            <span class="cell-sub">{{.Data.Header.StudentName}}{{if .Data.Header.ClassLabel}} · {{.Data.Header.ClassLabel}}{{end}}</span>
+          </div>
         </div>
         {{if .Data.HistoryHref}}
         <a class="link-quiet d-inline-flex align-items-center gap-2" href="{{.Data.HistoryHref}}">

@@ -45,7 +45,7 @@ func teacherRows(ctx context.Context, q store.Querier, status viewmodel.AccountS
 		order = "a.created_at ASC, a.id ASC"
 	}
 	rows, err := q.QueryContext(ctx, `
-		SELECT a.id, a.full_name, a.email, a.status,
+		SELECT a.id, a.full_name, a.email, a.status, a.avatar_name,
 		       approver.full_name, a.approved_at
 		FROM accounts a
 		LEFT JOIN accounts approver ON approver.id = a.approved_by_account_id
@@ -63,13 +63,15 @@ func teacherRows(ctx context.Context, q store.Querier, status viewmodel.AccountS
 		var (
 			row       viewmodel.TeacherRow
 			rawStatus string
+			avatar    sql.NullString
 			approver  sql.NullString
 			approved  sql.NullTime
 		)
-		if err := rows.Scan(&row.ID, &row.FullName, &row.Email, &rawStatus, &approver, &approved); err != nil {
+		if err := rows.Scan(&row.ID, &row.FullName, &row.Email, &rawStatus, &avatar, &approver, &approved); err != nil {
 			return nil, err
 		}
 		row.Initials = viewmodel.Initials(row.FullName)
+		row.Avatar = viewmodel.NewAvatar(avatar.String, row.FullName, "app-avatar--sm")
 		row.Status = viewmodel.AccountStatus(rawStatus)
 		if approver.Valid {
 			row.ApprovedBy = approver.String

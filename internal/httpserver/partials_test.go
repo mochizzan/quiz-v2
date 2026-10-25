@@ -18,7 +18,7 @@ import (
 // pinnedPartials is the exact shipped partial set. Adding a partial is a
 // deliberate change: update this list with the file.
 var pinnedPartials = []string{
-	"auth-style", "banners", "breadcrumb", "dialogs",
+	"auth-style", "avatar", "banners", "breadcrumb", "dialogs",
 	"drawer-student", "drawer-teacher", "empty-state", "flash", "foot",
 	"head", "icons", "navbar-student", "navbar-style", "navbar-teacher",
 	"no-js-banner", "pagination", "progress-bar", "quiz-card", "score",
@@ -361,6 +361,28 @@ func TestEveryPartialSubContracts(t *testing.T) {
 			if !strings.Contains(body, want) {
 				t.Errorf("empty-state.html missing %q", want)
 			}
+		}
+	})
+
+	t.Run("avatar", func(t *testing.T) {
+		body := readPartial(t, "avatar")
+		for _, want := range []string{
+			`{{define "partials/avatar.html"}}`,
+			`<span class="app-avatar{{with .Class}} {{.}}{{end}}{{if .URL}} app-avatar--photo{{end}}" aria-hidden="true">`,
+			`{{- if .URL}}<img src="{{.URL}}" alt="" width="32" height="32" loading="lazy" decoding="async">{{else}}{{.Initials}}{{end -}}`,
+		} {
+			if !strings.Contains(body, want) {
+				t.Errorf("avatar.html missing %q", want)
+			}
+		}
+		// One slot, one renderer (AVT-081/AVT-082): the photo and the initials
+		// are the same if/else branch, there is no second badge, and the
+		// fallback is server-rendered only — never an onerror handler.
+		if n := strings.Count(body, "<img "); n != 1 {
+			t.Errorf("avatar.html must ship exactly one <img>, found %d", n)
+		}
+		if strings.Contains(body, "onerror") {
+			t.Error("avatar.html must not carry a client-side onerror fallback (AVT-082)")
 		}
 	})
 

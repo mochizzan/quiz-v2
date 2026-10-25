@@ -37,6 +37,14 @@ type Deps struct {
 	DB     *store.DB
 	Pinger Pinger
 	Logger *slog.Logger
+	// Photos is the profile-photo codec. It is nil in a build that wires no
+	// processor (and in every test: the codecs are cgo), and the upload route
+	// answers 500 rather than guessing at a conversion (AVT-055).
+	Photos PhotoProcessor
+	// Avatars overrides the on-disk photo store. nil means "build identity's
+	// store over the configured upload root for each request", which is what
+	// production does.
+	Avatars AvatarStore
 }
 
 // New builds the app with no database and a healthy stub pinger. It is the
@@ -66,15 +74,33 @@ func NewWithDeps(cfg config.Config, deps Deps) (*fiber.App, error) {
 	if err != nil {
 		return nil, err
 	}
+	srv.Photos = deps.Photos
+	srv.Avatars = deps.Avatars
 	pinger := deps.Pinger
 	if pinger == nil {
 		pinger = pingerFunc(func(context.Context) error { return nil })
 	}
 
 	app := fiber.New(fiber.Config{
-		// The largest body any route accepts is a 10 MiB image upload; the
-		// per-route caps in prepare are stricter (OPS-218).
+		// BodyLimit is the authoring multipart parser's cap (16 MiB), not the
+		// avatar cap: raising it to 200 MB would raise every route's parser
+		// limit without enforcing the photo limit. The photo route checks its
+		// own declared cap and bounds its own stream (AVT-023, AUT-034).
 		BodyLimit: maxUploadBody,
+		// StreamRequestBody makes every body a stream: fasthttp pre-reads at
+		// most 8 KiB and the rest arrives on demand, so a 200 MB upload is
+		// never buffered into memory just to be measured (AVT-020).
+		StreamRequestBody: true,
+		// DisablePreParseMultipartForm is mandatory: without it fasthttp
+		// writes multipart temp files during its own pre-parse, before the
+		// photo handler can require the CSRF token as the first part
+		// (AVT-030).
+		DisablePreParseMultipartForm: true,
+		// ReadTimeout is the transfer budget for a 200 MB upload on a slow
+		// link; IdleTimeout keeps idle keep-alives bounded. The conversion
+		// budget is the route's own Deadline, not this (AVT-025, AVT-038).
+		ReadTimeout: 10 * time.Minute,
+		IdleTimeout: 60 * time.Second,
 	})
 
 	// A graceful stop must end open SSE responses: they select on the server's
@@ -123,6 +149,11 @@ func NewWithDeps(cfg config.Config, deps Deps) (*fiber.App, error) {
 	// registered here rather than through registerPage because it is an asset
 	// route, not a screen, so it does not affect the 74-screen pin (contract §6).
 	app.Get("/uploads/:name", srv.serveUpload)
+
+	// GET /avatars/:name serves profile photos the same way: an asset route
+	// registered directly, outside the contract-route pin while still carrying
+	// an authorization class (AVT-062, OPS-220).
+	app.Get("/avatars/:name", srv.serveAvatar)
 
 	// Catch-all, registered LAST so it only sees requests no route claimed.
 	// There is no 405 page: a known path with the wrong method lands here

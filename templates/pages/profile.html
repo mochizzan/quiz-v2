@@ -19,11 +19,37 @@
     <div class="col-12 xl:col-8">
 
       <div class="card p-7 d-flex align-items-center gap-5 mb-7">
-        <span class="app-avatar" aria-hidden="true">{{with .User}}{{.Initials}}{{end}}</span>
+        {{with .User}}{{template "partials/avatar.html" .Avatar}}{{else}}<span class="app-avatar" aria-hidden="true"></span>{{end}}
         <div class="min-w-0">
           <span class="d-block fw-semibold">{{.Data.FullName}}</span>
           <span class="page-sub d-block">{{with .User}}{{.ClassLabel}}{{end}} · {{.Data.Email}}</span>
         </div>
+      </div>
+
+      {{/* The photo card owns its own multipart form with the token first
+           (AVT-090/AVT-091); the name/email form below stays urlencoded and
+           untouched. Removing the photo is a second, urlencoded form so it
+           never competes with a selected file in one body (AVT-092). */}}
+      <div class="card p-7 mb-7">
+        <h2 class="section-title">Foto profil</h2>
+        <p class="page-sub">Foto Anda tampil saat guru melihat daftar siswa.</p>
+        <form method="post" action="/profile/photo" enctype="multipart/form-data">
+          <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+          <label class="form-label" for="profile-photo">Pilih foto</label>
+          <input class="form-control" type="file" id="profile-photo" name="photo" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif" aria-describedby="profile-photo-help">
+          <p class="field-help" id="profile-photo-help">Foto dipotong persegi dan diperkecil otomatis. Maksimal 200 MB.</p>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-outline theme-primary">Unggah foto</button>
+          </div>
+        </form>
+        {{with .User}}{{if .AvatarURL}}
+        <form method="post" action="/profile/photo/remove">
+          <input type="hidden" name="csrf_token" value="{{$.CSRF}}">
+          <div class="form-actions">
+            <button type="submit" class="btn btn-outline theme-danger">Hapus foto</button>
+          </div>
+        </form>
+        {{end}}{{end}}
       </div>
 
       <form class="card form-card" method="post" action="/profile" data-validate>

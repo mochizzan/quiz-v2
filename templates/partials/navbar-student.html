@@ -11,7 +11,7 @@
     <a class="btn btn-solid theme-primary d-none md:d-inline-flex" href="/join"><svg width="17" height="17" aria-hidden="true"><use href="#i-bolt"></use></svg>Gabung kuis</a>
     {{with .User}}
     <a class="app-profile" href="/profile"{{if eq $.Active "profil"}} aria-current="page"{{end}} aria-label="Profil akun">
-      <span class="app-avatar" aria-hidden="true">{{.Initials}}</span>
+      {{template "partials/avatar.html" .Avatar}}
       <span class="app-profile-label">Profil</span>
       <span class="app-profile-meta">
         <span class="app-profile-name">{{.FullName}}</span>

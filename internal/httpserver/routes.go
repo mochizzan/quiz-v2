@@ -50,9 +50,21 @@ type PageRoute struct {
 	Handler func(fiber.Ctx) error
 	// HandlerCtx is the escape hatch for non-page endpoints that need the
 	// resolved request context: database, session, identity cookie, limiter,
-	// and path params. The beacon uses it. It wins over Handler when both are
-	// set.
+	// and path params. The beacon and the photo upload use it. It wins over
+	// Handler when both are set.
 	HandlerCtx func(*Ctx) error
+
+	// Stream marks a route whose request body is long-lived: one multi-hundred-
+	// megabyte multipart part that must stay open while the codec runs (AVT-023).
+	// prepare() skips the ordinary form parse and the CSRF cookie dance for a
+	// Stream route and lets its handler own the body; the handler still enforces
+	// CSRF itself from the first body part. AVT-016.
+	Stream bool
+	// Deadline overrides the POST command deadline for a route whose handler
+	// legitimately outlives it. A slow single-part upload is not an overrun
+	// (AVT-038), so the photo route declares ten minutes here; every other POST
+	// keeps OPS-100's commandDeadline.
+	Deadline time.Duration
 }
 
 // PageData is the template data every page receives.
@@ -112,7 +124,11 @@ const commandDeadline = 10 * time.Second
 // runs first, then the route's own handler.
 func (s *server) serveRoute(c fiber.Ctx, route PageRoute) error {
 	if route.Method == fiber.MethodPost {
-		ctx, cancel := context.WithTimeout(c.Context(), commandDeadline)
+		deadline := commandDeadline
+		if route.Deadline > 0 {
+			deadline = route.Deadline
+		}
+		ctx, cancel := context.WithTimeout(c.Context(), deadline)
 		defer cancel()
 		c.SetContext(ctx)
 	}

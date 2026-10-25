@@ -15,6 +15,7 @@ func TestKindStatus(t *testing.T) {
 		apperr.Forbidden:   http.StatusForbidden,
 		apperr.Validation:  http.StatusUnprocessableEntity,
 		apperr.RateLimited: http.StatusTooManyRequests,
+		apperr.TooLarge:    http.StatusRequestEntityTooLarge,
 		apperr.Internal:    http.StatusInternalServerError,
 	}
 	for kind, want := range cases {
@@ -37,8 +38,17 @@ func TestConstructorsCarryKindAndCopy(t *testing.T) {
 	if e := apperr.Field("email", "bad"); e.Kind() != apperr.Validation || e.Fields()["email"] != "bad" {
 		t.Errorf("Field = %v/%v", e.Kind(), e.Fields())
 	}
+	if e := apperr.TooLargef(); e.Kind() != apperr.TooLarge || e.Message() != apperr.MsgTooLarge {
+		t.Errorf("TooLargef = %v/%q", e.Kind(), e.Message())
+	}
 	if e := apperr.Internalf(errors.New("boom")); !strings.Contains(e.Error(), "internal") {
 		t.Errorf("Internalf error = %q", e.Error())
+	}
+}
+
+func TestTooLargeString(t *testing.T) {
+	if got := apperr.TooLarge.String(); got != "too_large" {
+		t.Errorf("TooLarge.String() = %q, want too_large", got)
 	}
 }
 

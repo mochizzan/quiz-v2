@@ -1,6 +1,7 @@
 package httpserver
 
 import (
+	"quiz-v2/internal/apperr"
 	"quiz-v2/internal/viewmodel"
 )
 
@@ -73,6 +74,23 @@ func init() {
 				Title:               "Terlalu banyak permintaan",
 				Message:             "Anda telah membuat terlalu banyak permintaan. Silakan coba lagi nanti.",
 				HomeHref:            "/login",
+				ShowSecondaryAction: false,
+			}), nil
+		},
+	})
+	// AVT-063: the 413 preview renders the same template, copy, and home link
+	// as a real over-cap rejection, so the page is exercised without a 200 MB
+	// request. apperr.MsgTooLarge is the single source of that body copy.
+	registerPage(PageRoute{
+		Method:   "GET",
+		Path:     "/error/413",
+		Template: "pages/error/413.html",
+		Load: func(x *Ctx) (viewmodel.PageData, error) {
+			return x.Page("Berkas terlalu besar", "", viewmodel.ErrorPage{
+				Code:                413,
+				Title:               "Berkas terlalu besar",
+				Message:             apperr.MsgTooLarge,
+				HomeHref:            "/",
 				ShowSecondaryAction: false,
 			}), nil
 		},

@@ -54,6 +54,7 @@ func TestErrorPagesRender(t *testing.T) {
 	// without provoking the real condition.
 	for _, tc := range []struct{ path, heading string }{
 		{"/error/403", "Akses ditolak"},
+		{"/error/413", "Berkas terlalu besar"},
 		{"/error/422", "Permintaan tidak valid"},
 		{"/error/429", "Terlalu banyak permintaan"},
 	} {

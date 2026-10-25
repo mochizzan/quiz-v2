@@ -206,6 +206,10 @@ function run(root, streamHref) {
   // moves the row in ATT-183 order. Those cases need the server's render.
   // A snapshot may legitimately repeat a completed row, so only an update event
   // on a completed row forces the reload (it is the late-grade signal).
+  // AVT-084: the update subset carries no avatar, so only a snapshot can
+  // compare one; a photo that differs from the row's rendered <img> (or its
+  // absence) needs the server render too, because the avatar cell is never
+  // patched on the client.
   const needsServer = (row, participant, fromSnapshot) => {
     const hadAttempt = (row.dataset.attemptId || "") !== "";
     const hasAttempt =
@@ -213,6 +217,11 @@ function run(root, streamHref) {
     if (hadAttempt !== hasAttempt) return true;
     const state = row.dataset.state || "";
     if (state !== participant.state) return true;
+    if (fromSnapshot) {
+      const img = row.querySelector(".app-avatar img");
+      const rendered = img ? img.getAttribute("src") || "" : "";
+      if (rendered !== (participant.avatar || "")) return true;
+    }
     return !fromSnapshot && state === "completed";
   };
 

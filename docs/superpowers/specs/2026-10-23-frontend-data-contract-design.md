@@ -309,11 +309,18 @@ type Base struct {
     Query  QueryState  // filters/search/page for list screens
 }
 
+type Avatar struct {
+    URL      string // "" when the account has no photo
+    Initials string
+    Class    string // optional server-chosen CSS class, never user data
+}
+
 type CurrentUser struct {
     ID         int64
     Role       Role
     FullName   string
     Initials   string
+    AvatarURL  string // "" when the account has no photo
     Email      string
     ClassLabel string // students only, e.g. "XII IPA"
     Subject    string // removed in v1; always empty (see §23)
@@ -388,6 +395,8 @@ from the 29-route conformance fixture; the test is updated in the same change.
 | GET | `/student/history/:quizID` | Attempts for one quiz | `pages/student/history-detail.html` |
 | GET | `/profile` | Profile | `pages/profile.html` |
 | POST | `/profile` | Update name/email | — |
+| POST | `/profile/photo` | Upload own photo (both roles) | — |
+| POST | `/profile/photo/remove` | Remove own photo (both roles) | — |
 | GET | `/quiz/:id` | Quiz intro / registration state | `pages/student/quiz.html` |
 | POST | `/quiz/:id/register` | Register | — |
 | POST | `/quiz/:id/cancel` | Cancel registration | — |
@@ -440,7 +449,10 @@ from the 29-route conformance fixture; the test is updated in the same change.
 | POST | `/teacher/majors/:id/delete` | Delete unused major | — |
 | GET | `/teacher/teachers` | Teachers + approvals | `pages/teacher/teachers.html` |
 | POST | `/teacher/teachers/:id/approve` | Approve pending teacher | — |
+| GET | `/teacher/profile` | Teacher profile | `pages/teacher/profile.html` |
+| POST | `/teacher/profile` | Update own name/email | — |
 | GET | `/error/404` | Not found | `pages/error/404.html` |
+| GET | `/error/413` | Request too large | `pages/error/413.html` |
 | GET | `/error/500` | Server error | `pages/error/500.html` |
 
 ### 8.4 Navigation
@@ -605,11 +617,15 @@ Scores respect `show_score`; hidden scores render `—`.
 
 ### 10.3 Profile
 
-Read-only: full name, email, grade level, major, class label.
-Editable: full name, email.
+Read-only: grade level, major, class label.
+Editable: full name, email, profile photo (upload or remove).
 Grade and major are read-only with "Hubungi guru untuk mengubah kelas atau
 jurusan."
 Actions: change password, logout.
+
+The same photo card appears on `/teacher/profile`. Both photo POST targets are
+role-neutral and always act on the signed-in account; the file is cropped square
+and re-encoded as WebP, and the form advertises a 200 MB maximum.
 
 ### 10.4 Quiz intro and registration
 
@@ -945,6 +961,7 @@ type ParticipantRow struct {
     AttemptID  *int64 // nil until the participant starts
     Name       string
     Initials   string
+    Avatar     Avatar
     ClassLabel string
     Answered   int
     Total      int
@@ -1132,11 +1149,16 @@ action path, not the body.
 
 | Event | Payload |
 |---|---|
-| `snapshot` | `MonitorPage` without `StreamURL` |
-| `participant.updated` | `{attempt_id|null, answered, total, state, focus_loss, last_seen}`; `state` is a `ParticipationState` |
-| `participant.added` | full `ParticipantRow` |
+| `snapshot` | `MonitorPage` without `StreamURL`; each participant carries `avatar` |
+| `participant.updated` | `{attempt_id|null, answered, total, state, focus_loss, last_seen}`; `state` is a `ParticipationState`; identity fields, including `avatar`, are deliberately absent |
+| `participant.added` | full `ParticipantRow`, including `avatar` |
 | `quiz.closed` | `{quiz_id}`; the client stops and shows the not-on-air state |
 | `heartbeat` | `{at}` every 30s |
+
+`avatar` is a flat string, the same value as `Avatar.URL` (`/avatars/<32-hex>.webp`,
+or `""` when there is no photo); it is not a nested object. Because
+`participant.updated` omits identity fields, an avatar change is delivered as a
+fresh `snapshot`, and the client reloads on the mismatch (AVT-084).
 
 The browser uses `EventSource`. `static/js/app.js` is currently forbidden from
 network calls by a conformance test; that rule is narrowed to allow
@@ -1151,8 +1173,9 @@ beacon path.
 {"kind":"focus_loss|progress","question_id":12,"position":3,"at":"2026-10-23T09:42:00Z"}
 ```
 
-Server-side rules: CSRF-exempt (the only exempt route besides the stream), rate
-limited, and idempotent for progress. Focus loss increments the attempt count
+Server-side rules: CSRF-exempt (the only POST that does not use the double-submit
+token; the avatar upload checks that token inside its multipart handler instead),
+rate limited, and idempotent for progress. Focus loss increments the attempt count
 and appends an event; progress stores the current position for the monitor.
 
 In the UI-only phase neither the stream nor the beacon is served. The monitor

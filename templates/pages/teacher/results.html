@@ -169,8 +169,13 @@
           {{range $row := .Rows.Items}}
           <tr>
             <td>
-              <span class="d-block cell-title">{{.StudentName}}</span>
-              {{with .ClassLabel}}<span class="d-block cell-sub">{{.}}</span>{{end}}
+              <span class="d-flex align-items-center gap-2">
+                {{template "partials/avatar.html" .Avatar}}
+                <span class="min-w-0">
+                  <span class="d-block cell-title">{{.StudentName}}</span>
+                  {{with .ClassLabel}}<span class="d-block cell-sub">{{.}}</span>{{end}}
+                </span>
+              </span>
             </td>
             <td class="num">{{.AttemptNo}} dari {{.MaxAttempts}}</td>
             <td class="num">{{with .SubmittedAt}}{{.DateTime}}{{else}}<span class="cell-sub">Belum dikirim</span>{{end}}</td>

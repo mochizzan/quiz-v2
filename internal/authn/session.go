@@ -38,6 +38,7 @@ type Session struct {
 	Role               viewmodel.Role
 	FullName           string
 	Email              string
+	AvatarName         string
 	MustChangePassword bool
 	GradeLevel         int
 	MajorName          string
@@ -114,10 +115,11 @@ func (s *Store) Resolve(ctx context.Context, token string) (*Session, error) {
 		grade      sql.NullInt64
 		major      sql.NullString
 		studentID  sql.NullInt64
+		avatar     sql.NullString
 	)
 	err := s.db.QueryRowContext(ctx, `
 		SELECT s.id, s.account_id, s.expires_at, a.role, a.full_name, a.email,
-		       a.must_change_password, st.id, st.grade_level, m.name
+		       a.avatar_name, a.must_change_password, st.id, st.grade_level, m.name
 		FROM sessions s
 		JOIN accounts a ON a.id = s.account_id
 		LEFT JOIN students st ON st.account_id = a.id AND st.deleted_at = ?
@@ -129,7 +131,7 @@ func (s *Store) Resolve(ctx context.Context, token string) (*Session, error) {
 		  AND a.status = 'active'`,
 		store.LiveAt, store.LiveAt, secure.HashToken(token), store.LiveAt, store.LiveAt,
 	).Scan(&sess.ID, &sess.AccountID, &sess.ExpiresAt, &role, &sess.FullName, &sess.Email,
-		&mustChange, &studentID, &grade, &major)
+		&avatar, &mustChange, &studentID, &grade, &major)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
@@ -137,6 +139,7 @@ func (s *Store) Resolve(ctx context.Context, token string) (*Session, error) {
 		return nil, err
 	}
 	sess.Role = viewmodel.Role(role)
+	sess.AvatarName = avatar.String
 	sess.MustChangePassword = mustChange == 1
 	if sess.Role == viewmodel.RoleStudent {
 		if !studentID.Valid {

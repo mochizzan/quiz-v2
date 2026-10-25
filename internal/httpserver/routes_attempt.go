@@ -30,7 +30,16 @@ func attemptBeacon(x *Ctx) error {
 		x.c.Status(fiber.StatusNoContent)
 		return nil
 	}
-	kind, ok := attempts.ParseBeacon(x.c.ContentType(), x.c.Body())
+	// The beacon's body is copied through its own cap+1 probe before anything
+	// parses it: a lying Content-Length is stopped at 4 KiB and the answer is
+	// the same empty 400 as a malformed body, never a drained stream (OPS-172,
+	// OPS-218). c.Body() would read a streamed request to EOF.
+	body, bodyErr := readBoundedBody(x.c, maxBeaconBody+1)
+	if bodyErr != nil {
+		x.c.Status(fiber.StatusBadRequest)
+		return nil
+	}
+	kind, ok := attempts.ParseBeacon(x.c.ContentType(), body)
 	if !ok {
 		x.c.Status(fiber.StatusBadRequest)
 		return nil

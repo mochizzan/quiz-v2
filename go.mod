@@ -5,9 +5,11 @@ go 1.26.4
 require (
 	github.com/go-sql-driver/mysql v1.10.1
 	github.com/gofiber/fiber/v3 v3.6.1
+	github.com/kolesa-team/go-webp v1.0.5
+	github.com/strukturag/libheif v1.23.6
 	github.com/xuri/excelize/v2 v2.11.0
 	golang.org/x/crypto v0.58.0
-	golang.org/x/image v0.38.0
+	golang.org/x/image v0.47.0
 	golang.org/x/net v0.61.0
 )
 

@@ -103,10 +103,12 @@ existence does not leak.
 
 Students, anonymous participants, majors, and the teacher directory are
 school-wide: any active teacher may view/manage them, and any active teacher may
-approve a pending teacher. Teachers are never edited, deactivated, or deleted;
-their name and email are fixed at registration. There is no teacher profile
-screen; teachers may change only their password. Contract §10.3 is student-only.
-Flagged for review: a teacher typo in name/email cannot be corrected in v1.
+approve a pending teacher. Teachers are never deactivated, deleted, role-changed,
+or edited by another teacher. A teacher edits only their own name, email, and
+optional photo at `/teacher/profile` (`GET/POST`; IDN-C23/C24) and the two
+profile-photo routes (IDN-C25/C26). Contract §10.3's `/profile` remains
+student-only. This supersedes the original "teachers are fixed at registration /
+no teacher profile screen" ruling and closes the typo-correction gap it flagged.
 
 ### R-06 — Registration and attempt quota
 
@@ -303,13 +305,14 @@ orphans are tolerated. No file is shared between questions.
 
 ### R-19 — HTTP, errors, copy
 
-Every POST ends in 303 PRG. Validation failure re-renders the same template
-with 422, the submitted non-password values, and `FieldErrors` (Indonesian).
-Missing, soft-deleted, or unauthorized resources return 404. State conflicts
-redirect back with an error flash; there is no 409 page. Rate limit returns 429
-with `Retry-After`. CSRF failure returns 403. Database failure returns the 500
-page. Join errors use the contract §5.3 copy exactly. Passwords are never
-repopulated.
+Every successful or state-conflicting POST ends in 303 PRG. Validation failure
+re-renders the same template with 422, the submitted non-password values, and
+`FieldErrors` (Indonesian). Missing, soft-deleted, or unauthorized resources
+return 404. State conflicts redirect back with an error flash; there is no 409
+page. Rate limit returns 429 with `Retry-After`. CSRF failure returns 403. An
+avatar request over its 200 MB cap, chunked, or with no declared length returns
+413 and closes the connection. Database failure returns the 500 page. Join errors
+use the contract §5.3 copy exactly. Passwords are never repopulated.
 
 Global copy:
 
@@ -324,6 +327,7 @@ Global copy:
 | invalid token | Token tidak valid atau sudah kedaluwarsa. |
 | token used | Token sudah digunakan. |
 | csrf | Sesi formulir tidak valid. Muat ulang halaman. |
+| too large | Berkas terlalu besar. Maksimal 200 MB. |
 | rate limited | Terlalu banyak percobaan. Coba lagi nanti. |
 | session expired | Sesi Anda berakhir. Silakan masuk lagi. |
 | pending teacher | Menunggu persetujuan guru lain. |
@@ -364,12 +368,18 @@ and `show_score = true`; hidden scores are excluded, not shown as zero. Top
 scorer ties break by earliest `submitted_at`. Most/least joined count distinct
 live registrations. Empty and filtered-empty states are distinct.
 
-### R-22 — Profiles and email
+### R-22 — Profiles, photos, and email
 
-`/profile` is student-only: `full_name` and `email` editable; grade and major
-read-only. Email is trimmed, lowercased, and unique case-insensitively across
-all live accounts. No email verification exists. Changing an email does not
-revoke sessions. Teachers have no profile edit; they change only their password.
+`/profile` is student-only: `full_name`, `email`, and an optional profile photo are
+editable; grade and major are read-only. Teachers edit their own name, email, and
+photo at `/teacher/profile` (this supersedes the original "no teacher profile"
+sentence; IDN-C23–C26). Email is trimmed, lowercased, and unique case-insensitively
+across all live accounts. No email verification exists. Changing an email does not
+revoke sessions. A photo is uploaded only by its own account — no teacher edits or
+removes a student's photo — is compressed server-side to a 512×512 WebP, is never
+required, and falls back to the initials badge. The avatar design
+(`2026-10-25-profile-photos-design.md`, `AVT-*`) owns the upload, compression,
+serving, and failure rules.
 
 ### R-23 — Pending-teacher token
 
@@ -388,7 +398,8 @@ prerequisite, not a user action.
 
 ### R-25 — No application logic may assume a schema delta
 
-The known gaps are resolved without schema changes:
+The known gaps are resolved without schema changes, except the one deliberate
+addition recorded below:
 
 | Gap | Resolution |
 |---|---|
@@ -404,8 +415,12 @@ The known gaps are resolved without schema changes:
 | `must_change_password` reset semantics | bootstrap-only (R-04) |
 | private code stored as NULL | generate only for public (R-11) |
 
-Anything not in this table that needs a column is a §11 schema delta, not a
-silent workaround.
+The one deliberate addition is the profile-photo column: migration `0010` appends
+`accounts.avatar_name` plus its serving key, specified by the avatar design §4.1
+(AVT-010–AVT-012) and written only by IDN-C25/C26. It is not a workaround for an
+existing gap; it is a new, explicit schema delta owned by the avatar spec. Anything
+else not in this table that needs a column is a schema delta recorded in the
+owning domain spec and the schema design, not a silent workaround.
 
 ---
 
@@ -475,16 +490,17 @@ decimal with a comma.
 
 ## 6. Route ownership
 
-The authoritative route list is the contract §8 plus the current `registerPage`
-registry. `/healthz` is operational. `/uploads/:name` is authoring's read route.
+The authoritative route list is this §6 plus the current `registerPage` registry.
+`/healthz` is operational. `/uploads/:name` is authoring's read route.
+`/avatars/:name` is identity's read route; OPS owns the shared serving mechanics.
 
 | Owner | Routes |
 |---|---|
-| IDN | `GET /`, `GET/POST /login`, `GET/POST /register/teacher`, `GET/POST /register/student`, `GET/POST /reset-password`, `GET/POST /change-password`, `GET /auth/pending`, `POST /logout`, `GET/POST /profile`, `GET /teacher/students`, `GET/POST /teacher/students/:id`, `POST /teacher/students/:id/delete`, `POST /teacher/students/:id/reset-token`, `GET /teacher/teachers`, `POST /teacher/teachers/:id/approve` |
+| IDN | `GET /`, `GET/POST /login`, `GET/POST /register/teacher`, `GET/POST /register/student`, `GET/POST /reset-password`, `GET/POST /change-password`, `GET /auth/pending`, `POST /logout`, `GET/POST /profile`, `POST /profile/photo`, `POST /profile/photo/remove`, `GET/POST /teacher/profile`, `GET /teacher/students`, `GET/POST /teacher/students/:id`, `POST /teacher/students/:id/delete`, `POST /teacher/students/:id/reset-token`, `GET /teacher/teachers`, `POST /teacher/teachers/:id/approve`, `GET /avatars/:name` |
 | AUT | `GET/POST /teacher/quizzes`, `GET /teacher/quizzes/new`, `GET/POST /teacher/quizzes/:id`, `POST /teacher/quizzes/:id/publish`, `POST /teacher/quizzes/:id/close`, `POST /teacher/quizzes/:id/delete`, `GET /teacher/quizzes/:id/questions/new`, `POST /teacher/quizzes/:id/questions`, `GET/POST /teacher/quizzes/:id/questions/:qid`, `POST /teacher/quizzes/:id/questions/:qid/delete`, `POST /teacher/quizzes/:id/questions/reorder`, `GET /uploads/:name` |
 | PAR | `GET/POST /join`, `GET /invite/:token`, `GET/POST /join/identify`, `GET /quiz/:id`, `POST /quiz/:id/register`, `POST /quiz/:id/cancel`, `POST /quiz/:id/attempts`, `GET /student`, `GET /student/history`, `GET /student/history/:quizID`, `GET /teacher/anonymous`, `GET/POST /teacher/anonymous/:id`, `POST /teacher/anonymous/:id/delete`, `GET /teacher/majors`, `POST /teacher/majors`, `POST /teacher/majors/:id`, `POST /teacher/majors/:id/delete` |
 | ATT | `GET /attempt/:id`, `POST /attempt/:id/answer`, `GET /attempt/:id/review`, `POST /attempt/:id/submit`, `GET /attempt/:id/result`, `POST /attempt/:id/beacon`, `GET /teacher`, `GET /teacher/quizzes/:id/results`, `GET /teacher/quizzes/:id/monitor`, `GET /teacher/quizzes/:id/stream`, `GET /teacher/grading`, `GET/POST /teacher/grading/:answerID`, `GET /teacher/recap/:attemptID` |
-| OPS | `GET /healthz`, `GET /error/404`, `GET /error/500`; cross-cutting rules, no business command |
+| OPS | `GET /healthz`, `GET /error/403`, `GET /error/404`, `GET /error/413`, `GET /error/422`, `GET /error/429`, `GET /error/500`; cross-cutting rules, no business command |
 
 `POST /quiz/:id/attempts` is PAR's command but hands off to ATT's attempt-start
 rule. `GET /student/history*` is PAR's read model using ATT's score contract.

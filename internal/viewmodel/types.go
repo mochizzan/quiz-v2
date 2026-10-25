@@ -3,6 +3,8 @@ package viewmodel
 import (
 	"net/url"
 	"strconv"
+
+	"quiz-v2/internal/avatarid"
 )
 
 // PageData is the one value every template receives. Base carries chrome and
@@ -25,6 +27,34 @@ type Base struct {
 	Errors FieldErrors
 }
 
+// Avatar is the one value templates need to render a person: the photo URL
+// when the account has one, the initials fallback, and an optional
+// server-chosen extra CSS class (AVT-080). Class is never user data. Rows and
+// pages carry an Avatar field filled by the query that already joins
+// accounts; the zero value renders the initials badge, which is the
+// permanent fallback (AVT-003).
+type Avatar struct {
+	URL      string
+	Initials string
+	Class    string
+}
+
+// NewAvatar pairs a stored avatar name with the display name's initials and a
+// server-chosen CSS class. A name the grammar rejects yields no URL at all.
+func NewAvatar(name, fullName, class string) Avatar {
+	return Avatar{URL: AvatarURL(name), Initials: Initials(fullName), Class: class}
+}
+
+// AvatarURL maps a stored avatar name to its public URL. An empty or
+// malformed name returns "", so a bad database value can never become a bad
+// URL (AVT-080).
+func AvatarURL(name string) string {
+	if !avatarid.Valid(name) {
+		return ""
+	}
+	return "/avatars/" + name
+}
+
 // CurrentUser is the signed-in identity shown in the chrome. Anonymous
 // participants never receive a CurrentUser.
 type CurrentUser struct {
@@ -35,6 +65,7 @@ type CurrentUser struct {
 	GradeLevel int
 	MajorName  string
 	Initials   string
+	AvatarURL  string // "" when the account has no photo
 }
 
 // ClassLabel renders the user's class, when one is known.
@@ -47,6 +78,13 @@ func (u CurrentUser) IsTeacher() bool { return u.Role == RoleTeacher }
 
 // IsStudent reports the student role.
 func (u CurrentUser) IsStudent() bool { return u.Role == RoleStudent }
+
+// Avatar renders this user's badge: the photo when the session carries one,
+// the initials otherwise, and no extra class — the chrome keeps the default
+// 32 px circle (AVT-080).
+func (u CurrentUser) Avatar() Avatar {
+	return Avatar{URL: u.AvatarURL, Initials: u.Initials}
+}
 
 // Flash is a one-shot status message rendered above page content. Kind is one
 // of success, info, warning or danger.
@@ -64,6 +102,24 @@ func FlashFor(key string) *Flash {
 		return &Flash{Kind: "success", Title: "Berhasil masuk."}
 	case "saved":
 		return &Flash{Kind: "success", Title: "Perubahan tersimpan."}
+	case "photo-empty":
+		return &Flash{Kind: "error", Title: "Pilih foto terlebih dahulu."}
+	case "photo-type":
+		return &Flash{Kind: "error", Title: "Format foto harus JPG, PNG, WebP, atau HEIC."}
+	case "photo-big":
+		return &Flash{Kind: "error", Title: "Foto terlalu besar untuk diproses."}
+	case "photo-unreadable":
+		return &Flash{Kind: "error", Title: "Foto tidak dapat dibaca. Coba file lain."}
+	case "photo-failed":
+		return &Flash{Kind: "error", Title: "Foto gagal disimpan. Coba lagi."}
+	case "photo-busy":
+		return &Flash{Kind: "error", Title: "Server sedang sibuk. Coba lagi sebentar."}
+	case "photo-remove-failed":
+		return &Flash{Kind: "error", Title: "Foto gagal dihapus. Coba lagi."}
+	case "photo-saved":
+		return &Flash{Kind: "success", Title: "Foto profil diperbarui."}
+	case "photo-removed":
+		return &Flash{Kind: "success", Title: "Foto profil dihapus."}
 	case "registered":
 		return &Flash{Kind: "success", Title: "Anda terdaftar di kuis ini."}
 	case "already_registered":
@@ -450,6 +506,7 @@ type QuizTopScore struct {
 	ClassLabel  string
 	Score       Score
 	Href        string
+	Avatar      Avatar
 }
 
 // QuizParticipation is one most/least-joined quiz.
@@ -496,6 +553,7 @@ type AttemptHeader struct {
 	StartedAt   LocalTime
 	AttemptNo   int
 	MaxAttempts int
+	Avatar      Avatar
 }
 
 // AttemptProgress is the answered/total rail.
