@@ -108,7 +108,12 @@
         <tbody>
           {{range .Data.Students.Items}}
           <tr>
-            <td class="cell-title">{{.FullName}}</td>
+            <td class="cell-title">
+              <span class="d-inline-flex align-items-center gap-2">
+                {{template "partials/avatar.html" .Avatar}}
+                <span>{{.FullName}}</span>
+              </span>
+            </td>
             <td>{{.ClassLabel}}</td>
             <td class="cell-sub">{{.Email}}</td>
             <td class="num">{{.Attempts}}</td>

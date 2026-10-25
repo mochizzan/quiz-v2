@@ -1,0 +1,3 @@
+{{define "partials/avatar.html"}}<span class="app-avatar{{with .Class}} {{.}}{{end}}{{if .URL}} app-avatar--photo{{end}}" aria-hidden="true">
+  {{- if .URL}}<img src="{{.URL}}" alt="" width="32" height="32" loading="lazy" decoding="async">{{else}}{{.Initials}}{{end -}}
+</span>{{end}}

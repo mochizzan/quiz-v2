@@ -8,7 +8,7 @@ Repo: `D:\Project\Mother\quiz-v2`. Build: `go build ./...`, `go test ./...`.
 
 ## 0. Invariants
 
-- **74 registered routes stay 74.** No new route path. `conformance_test.go`
+- **The route count is unchanged by this feature.** No new route path. `conformance_test.go`
   pins the surface; a scoped grading queue reuses `GET /teacher/grading?quiz=<id>`,
   which the domain already parses (`gradingQueueInput`, `routes_teacher_grading.go:24-32`).
 - **Palette**: only the 24 hexes in `docs/DESIGN.md` §2.1. No new hex, ever.

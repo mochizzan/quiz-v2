@@ -124,9 +124,9 @@ func liveLedgerNames(t *testing.T, db *store.DB) []string {
 	return names
 }
 
-// TestApplyTwiceOnEmptyDatabase is schema verification A-01: the nine files
+// TestApplyTwiceOnEmptyDatabase is schema verification A-01: the ten files
 // run against an empty database twice, the second run changes nothing, and
-// the ledger afterwards holds exactly nine live rows with unique names.
+// the ledger afterwards holds exactly ten live rows with unique names.
 func TestApplyTwiceOnEmptyDatabase(t *testing.T) {
 	db := testDB(t)
 	emptyLedger(t, db)
@@ -137,8 +137,8 @@ func TestApplyTwiceOnEmptyDatabase(t *testing.T) {
 	if err != nil {
 		t.Fatalf("first apply: %v", err)
 	}
-	if len(first) != 9 {
-		t.Fatalf("first apply = %d migrations, want 9: %v", len(first), first)
+	if len(first) != 10 {
+		t.Fatalf("first apply = %d migrations, want 10: %v", len(first), first)
 	}
 
 	second, err := Apply(ctx, db)
@@ -150,8 +150,8 @@ func TestApplyTwiceOnEmptyDatabase(t *testing.T) {
 	}
 
 	names := liveLedgerNames(t, db)
-	if len(names) != 9 {
-		t.Fatalf("ledger holds %d live rows, want 9: %v", len(names), names)
+	if len(names) != 10 {
+		t.Fatalf("ledger holds %d live rows, want 10: %v", len(names), names)
 	}
 	seen := map[string]bool{}
 	for _, name := range names {
@@ -178,7 +178,7 @@ func TestBrokenFileLeavesNoLedgerRow(t *testing.T) {
 	if err != nil {
 		t.Fatalf("embeddedMigrations: %v", err)
 	}
-	// The broken file rides last so the nine good ones really do apply.
+	// The broken file rides last so the ten good ones really do apply.
 	files = append(files, broken)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
@@ -192,8 +192,8 @@ func TestBrokenFileLeavesNoLedgerRow(t *testing.T) {
 	if err == nil {
 		t.Fatal("applyAll succeeded on a broken file, want an error")
 	}
-	if len(applied) != 9 {
-		t.Fatalf("applied %d before the failure, want the 9 good files: %v", len(applied), applied)
+	if len(applied) != 10 {
+		t.Fatalf("applied %d before the failure, want the 10 good files: %v", len(applied), applied)
 	}
 
 	for _, name := range liveLedgerNames(t, db) {
@@ -201,13 +201,13 @@ func TestBrokenFileLeavesNoLedgerRow(t *testing.T) {
 			t.Errorf("ledger contains %q after its run failed", name)
 		}
 	}
-	if got := len(liveLedgerNames(t, db)); got != 9 {
-		t.Fatalf("ledger holds %d live rows after the failure, want 9", got)
+	if got := len(liveLedgerNames(t, db)); got != 10 {
+		t.Fatalf("ledger holds %d live rows after the failure, want 10", got)
 	}
 
 	// Recovery is fix-forward (§9.6): removing the broken file and re-running
 	// finishes the set with no ledger surgery.
-	if _, err := applyAll(ctx, conn, files[:9]); err != nil {
+	if _, err := applyAll(ctx, conn, files[:10]); err != nil {
 		t.Fatalf("re-run after the failure: %v", err)
 	}
 }

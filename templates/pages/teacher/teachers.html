@@ -104,7 +104,7 @@
           <tr>
             <td>
               <span class="d-inline-flex align-items-center gap-2">
-                <span class="badge bg-2 fg-body">{{.Initials}}</span>
+                {{template "partials/avatar.html" .Avatar}}
                 <span class="cell-title">{{.FullName}}</span>
               </span>
             </td>

@@ -54,10 +54,13 @@
   </a>
 
   <div class="page-head">
-    <div>
-      <span class="eyebrow">Rekap percobaan</span>
-      <h1 class="h1 mb-0">{{.Attempt.StudentName}}</h1>
-      <p class="page-sub">{{.Attempt.ClassLabel}} · {{.Attempt.QuizTitle}}</p>
+    <div class="d-flex align-items-center gap-3">
+      {{template "partials/avatar.html" .Attempt.Avatar}}
+      <div>
+        <span class="eyebrow">Rekap percobaan</span>
+        <h1 class="h1 mb-0">{{.Attempt.StudentName}}</h1>
+        <p class="page-sub">{{.Attempt.ClassLabel}} · {{.Attempt.QuizTitle}}</p>
+      </div>
     </div>
   </div>
 

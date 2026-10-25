@@ -79,7 +79,7 @@ CREATE TABLE IF NOT EXISTS seats (
 	}
 }
 
-// The nine real files must all split cleanly today; a later file that grows
+// The ten real files must all split cleanly today; a later file that grows
 // a DELIMITER block or an embedded semicolon fails this test before it can
 // half-apply.
 func TestStatementsRealMigrationsSplit(t *testing.T) {
@@ -87,8 +87,8 @@ func TestStatementsRealMigrationsSplit(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Files() error = %v", err)
 	}
-	if len(names) != 9 {
-		t.Fatalf("Files() = %v, want the 9 schema migrations", names)
+	if len(names) != 10 {
+		t.Fatalf("Files() = %v, want the 10 schema migrations", names)
 	}
 	for _, name := range names {
 		source, err := migrations.SQL.ReadFile(name + ".up.sql")

@@ -97,6 +97,12 @@ type attemptView struct {
 	anonID    uint32
 	name      string
 	class     string
+
+	// avatarName is the joined accounts.avatar_name ("" when the registration
+	// has no account row or the account has no photo), so every header this
+	// view builds carries the participant's avatar without a second query
+	// (AVT-083).
+	avatarName string
 }
 
 // selectionView is one live option row.
@@ -197,6 +203,7 @@ func readAttemptHeader(ctx context.Context, tx *sql.Tx, attemptID uint32, owner 
 		displayName sql.NullString
 		grade       sql.NullInt64
 		majorName   sql.NullString
+		avatarName  sql.NullString
 	)
 	err := tx.QueryRowContext(ctx, `
 		SELECT att.id, r.quiz_id, att.attempt_no, att.shuffle_seed, att.registration_id,
@@ -205,7 +212,8 @@ func readAttemptHeader(ctx context.Context, tx *sql.Tx, attemptID uint32, owner 
 		       z.review_mode, z.randomize_questions, z.randomize_options,
 		       r.student_id, r.anonymous_participant_id,
 		       a.full_name, ap.display_name,
-		       COALESCE(COALESCE(s.grade_level, ap.grade_level), 0), mj.name
+		       COALESCE(COALESCE(s.grade_level, ap.grade_level), 0), mj.name,
+		       a.avatar_name
 		FROM quiz_attempts att
 		JOIN registrations r ON r.id = att.registration_id AND r.deleted_at = ?
 		JOIN quizzes z ON z.id = r.quiz_id AND z.deleted_at = ?
@@ -224,6 +232,7 @@ func readAttemptHeader(ctx context.Context, tx *sql.Tx, attemptID uint32, owner 
 		&rStudentID, &rAnonID,
 		&fullName, &displayName,
 		&grade, &majorName,
+		&avatarName,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return attemptView{}, ErrNotFound
@@ -233,6 +242,7 @@ func readAttemptHeader(ctx context.Context, tx *sql.Tx, attemptID uint32, owner 
 	}
 	v.submitted = v.submittedAt.Valid
 	v.effectiveMax = EffectiveMaxAttempts(v.allowRetake, v.maxAttempts)
+	v.avatarName = avatarName.String
 
 	// Ownership (ATT-024, ATT-021): the resolved actor must be exactly the
 	// registration's participant.
@@ -269,7 +279,9 @@ func readAttemptHeader(ctx context.Context, tx *sql.Tx, attemptID uint32, owner 
 	return v, nil
 }
 
-// attemptHeaderOf renders the shared Att-117 header block.
+// attemptHeaderOf renders the shared Att-117 header block. The avatar pairs
+// the already-joined avatar_name with this view's own display name and class;
+// the default (empty) class keeps the 32 px badge (AVT-083).
 func (a attemptView) attemptHeaderOf() viewmodel.AttemptHeader {
 	return viewmodel.AttemptHeader{
 		ID:          int64(a.attemptID),
@@ -280,6 +292,7 @@ func (a attemptView) attemptHeaderOf() viewmodel.AttemptHeader {
 		StartedAt:   viewmodel.NewLocalTime(a.createdAt),
 		AttemptNo:   a.attemptNo,
 		MaxAttempts: a.effectiveMax,
+		Avatar:      viewmodel.NewAvatar(a.avatarName, a.name, ""),
 	}
 }
 

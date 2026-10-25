@@ -84,7 +84,8 @@ func loadTopScores(ctx context.Context, tx *sql.Tx, accountID int64) ([]viewmode
 	rows, err := tx.QueryContext(ctx, `
 		SELECT z.id, z.title, att.final_score,
 		       COALESCE(a.full_name, ap.display_name),
-		       COALESCE(COALESCE(s.grade_level, ap.grade_level), 0), mj.name
+		       COALESCE(COALESCE(s.grade_level, ap.grade_level), 0), mj.name,
+		       a.avatar_name
 		FROM quiz_attempts att
 		JOIN registrations r ON r.id = att.registration_id AND r.deleted_at = ?
 		JOIN quizzes z ON z.id = r.quiz_id AND z.deleted_at = ?
@@ -114,8 +115,9 @@ func loadTopScores(ctx context.Context, tx *sql.Tx, accountID int64) ([]viewmode
 			name   sql.NullString
 			grade  sql.NullInt64
 			major  sql.NullString
+			avatar sql.NullString
 		)
-		if err := rows.Scan(&quizID, &title, &final, &name, &grade, &major); err != nil {
+		if err := rows.Scan(&quizID, &title, &final, &name, &grade, &major, &avatar); err != nil {
 			return nil, internal(err)
 		}
 		if seen[quizID] || len(out) == dashboardTopCap {
@@ -131,6 +133,9 @@ func loadTopScores(ctx context.Context, tx *sql.Tx, accountID int64) ([]viewmode
 			ClassLabel:  viewmodel.ClassLabel(int(grade.Int64), major.String),
 			Score:       viewmodel.Score{Percent: DisplayPercent(ScoreUnits(final.Float64))},
 			Href:        resultsPath(quizID),
+			// Anonymous rows have no account, so the name-only avatar keeps
+			// them on the initials fallback (AVT-083).
+			Avatar: viewmodel.NewAvatar(avatar.String, name.String, "app-avatar--sm"),
 		})
 	}
 	if err := rows.Err(); err != nil {
@@ -340,6 +345,7 @@ func (s *Service) Results(ctx context.Context, in ResultsInput) (viewmodel.QuizR
 				FocusLoss:   row.focus,
 				RecapHref:   viewmodel.RecapHref(row.attemptID),
 				Waiting:     !row.final.Valid,
+				Avatar:      viewmodel.NewAvatar(row.avatarName, row.name, "app-avatar--sm"),
 			}
 			if row.final.Valid {
 				view.Score = scorePtr(viewmodel.Score{Percent: DisplayPercent(ScoreUnits(row.final.Float64))})
@@ -414,18 +420,22 @@ type resultAttemptRow struct {
 	grade       int
 	major       string
 	focus       int
+	avatarName  string
 }
 
 // loadResultAttempts loads every live attempt of the quiz (submitted and in
 // progress) because the header counts need both; the caller drops the
 // in-progress rows (ATT-176). The focus count is a correlated aggregate in the
 // same query, never a second query per row (ATT-249). Search runs in the
-// caller so the quiz-wide metrics stay unfiltered (ATT-173).
+// caller so the quiz-wide metrics stay unfiltered (ATT-173). The
+// accounts.avatar_name column rides the join the name already comes from
+// (AVT-083).
 func loadResultAttempts(ctx context.Context, tx *sql.Tx, quizID int64) ([]resultAttemptRow, error) {
 	rows, err := tx.QueryContext(ctx, `
 		SELECT att.id, att.attempt_no, att.submitted_at, att.final_score,
 		       COALESCE(a.full_name, ap.display_name),
 		       COALESCE(COALESCE(s.grade_level, ap.grade_level), 0), mj.name,
+		       a.avatar_name,
 		       (SELECT COUNT(*) FROM focus_loss_events f
 		         WHERE f.attempt_id = att.id AND f.deleted_at = ?) AS focus_loss
 		FROM quiz_attempts att
@@ -447,12 +457,13 @@ func loadResultAttempts(ctx context.Context, tx *sql.Tx, quizID int64) ([]result
 	out := make([]resultAttemptRow, 0)
 	for rows.Next() {
 		var (
-			row  resultAttemptRow
-			name sql.NullString
-			mj   sql.NullString
+			row    resultAttemptRow
+			name   sql.NullString
+			mj     sql.NullString
+			avatar sql.NullString
 		)
 		if err := rows.Scan(&row.attemptID, &row.attemptNo, &row.submittedAt, &row.final,
-			&name, &row.grade, &mj, &row.focus); err != nil {
+			&name, &row.grade, &mj, &avatar, &row.focus); err != nil {
 			return nil, internal(err)
 		}
 		if !name.Valid {
@@ -460,6 +471,7 @@ func loadResultAttempts(ctx context.Context, tx *sql.Tx, quizID int64) ([]result
 		}
 		row.name = name.String
 		row.major = mj.String
+		row.avatarName = avatar.String
 		out = append(out, row)
 	}
 	if err := rows.Err(); err != nil {
@@ -557,6 +569,9 @@ type participantSnapshot struct {
 	StartedAt      time.Time
 	Score          *viewmodel.Score
 	Anonymous      bool
+	// Avatar is the row badge with the monitor's own 36 px class baked in
+	// (AVT-080/AVT-083); the SSE payload carries only its URL (AVT-084).
+	Avatar viewmodel.Avatar
 }
 
 type monitorSnapshotData struct {
@@ -602,6 +617,7 @@ func (s *Service) MonitorPage(ctx context.Context, in MonitorInput) (viewmodel.M
 					Score:          row.Score,
 					UpdatedAt:      &lastSeen,
 					Anonymous:      row.Anonymous,
+					Avatar:         row.Avatar,
 				}
 				if !row.StartedAt.IsZero() {
 					started := viewmodel.NewLocalTime(row.StartedAt)
@@ -665,16 +681,18 @@ func loadMonitorSnapshot(ctx context.Context, tx *sql.Tx, quizID, accountID int6
 	}
 
 	type registrationRow struct {
-		id        int64
-		name      string
-		grade     int
-		major     string
-		anonymous bool
-		createdAt time.Time
+		id         int64
+		name       string
+		grade      int
+		major      string
+		anonymous  bool
+		createdAt  time.Time
+		avatarName string
 	}
 	regs, err := tx.QueryContext(ctx, `
 		SELECT r.id, COALESCE(a.full_name, ap.display_name),
 		       COALESCE(COALESCE(s.grade_level, ap.grade_level), 0), mj.name,
+		       a.avatar_name,
 		       r.anonymous_participant_id IS NOT NULL, r.created_at
 		FROM registrations r
 		LEFT JOIN students s ON s.id = r.student_id AND s.deleted_at = ?
@@ -693,11 +711,12 @@ func loadMonitorSnapshot(ctx context.Context, tx *sql.Tx, quizID, accountID int6
 	registrations := make([]registrationRow, 0)
 	for regs.Next() {
 		var (
-			row  registrationRow
-			name sql.NullString
-			mj   sql.NullString
+			row    registrationRow
+			name   sql.NullString
+			mj     sql.NullString
+			avatar sql.NullString
 		)
-		if err := regs.Scan(&row.id, &name, &row.grade, &mj, &row.anonymous, &row.createdAt); err != nil {
+		if err := regs.Scan(&row.id, &name, &row.grade, &mj, &avatar, &row.anonymous, &row.createdAt); err != nil {
 			return monitorSnapshotData{}, internal(err)
 		}
 		if !name.Valid {
@@ -705,6 +724,7 @@ func loadMonitorSnapshot(ctx context.Context, tx *sql.Tx, quizID, accountID int6
 		}
 		row.name = name.String
 		row.major = mj.String
+		row.avatarName = avatar.String
 		registrations = append(registrations, row)
 	}
 	if err := regs.Err(); err != nil {
@@ -845,6 +865,9 @@ func loadMonitorSnapshot(ctx context.Context, tx *sql.Tx, quizID, accountID int6
 			Total:          snap.QuestionCount,
 			LastSeen:       reg.createdAt,
 			Anonymous:      reg.anonymous,
+			// Anonymous registrations have no account, so the avatar stays on
+			// the initials fallback (AVT-004/AVT-083).
+			Avatar: viewmodel.NewAvatar(reg.avatarName, reg.name, "monitor-avatar"),
 		}
 		if att := attempts[reg.id]; att != nil {
 			id := att.id
@@ -941,6 +964,7 @@ type gradingItem struct {
 	gradedAt    sql.NullTime
 	updatedAt   time.Time
 	href        string
+	avatarName  string
 }
 
 // gradingState is the queue tab. Only the exact value "graded" leaves the
@@ -1079,6 +1103,7 @@ func buildGradingQueue(ctx context.Context, tx *sql.Tx, in GradingQueueInput) (v
 			QuestionExcerpt: excerpt(item.prompt),
 			WaitingSince:    submitted,
 			Href:            item.href,
+			Avatar:          viewmodel.NewAvatar(item.avatarName, item.studentName, "app-avatar--sm"),
 		}
 		if graded {
 			units := ScoreUnits(item.score.Float64)
@@ -1225,6 +1250,7 @@ func loadGradingItems(ctx context.Context, tx *sql.Tx, accountID int64, graded b
 		SELECT aa.id, aa.attempt_id, aa.question_id,
 		       COALESCE(a.full_name, ap.display_name),
 		       COALESCE(COALESCE(s.grade_level, ap.grade_level), 0), mj.name,
+		       a.avatar_name,
 		       z.id, z.title, qq.prompt, aa.feedback, att.submitted_at,
 		       aa.score, aa.graded_at, aa.updated_at`+gradingJoin+
 		gradingPredicate(graded)+`
@@ -1239,12 +1265,13 @@ func loadGradingItems(ctx context.Context, tx *sql.Tx, accountID int64, graded b
 	out := make([]gradingItem, 0)
 	for rows.Next() {
 		var (
-			item gradingItem
-			name sql.NullString
-			mj   sql.NullString
+			item  gradingItem
+			name  sql.NullString
+			mj    sql.NullString
+			photo sql.NullString
 		)
 		if err := rows.Scan(&item.answerID, &item.attemptID, &item.questionID,
-			&name, &item.grade, &mj, &item.quizID, &item.quizTitle,
+			&name, &item.grade, &mj, &photo, &item.quizID, &item.quizTitle,
 			&item.prompt, &item.feedback, &item.submittedAt,
 			&item.score, &item.gradedAt, &item.updatedAt); err != nil {
 			return nil, internal(err)
@@ -1253,6 +1280,7 @@ func loadGradingItems(ctx context.Context, tx *sql.Tx, accountID int64, graded b
 			return nil, integrity("answer %d has no readable name (ATT-282)", item.answerID)
 		}
 		item.studentName = name.String
+		item.avatarName = photo.String
 		item.classLabel = viewmodel.ClassLabel(item.grade, mj.String)
 		out = append(out, item)
 	}
@@ -1346,6 +1374,7 @@ func loadGradingDetail(ctx context.Context, tx *sql.Tx, accountID, answerID int6
 		randomO     bool
 		regLive     int64
 		name        sql.NullString
+		avatarName  sql.NullString
 		grade       sql.NullInt64
 		major       sql.NullString
 		gradedAt    sql.NullTime
@@ -1360,6 +1389,7 @@ func loadGradingDetail(ctx context.Context, tx *sql.Tx, accountID, answerID int6
 		       r.deleted_at = ?,
 		       COALESCE(a.full_name, ap.display_name),
 		       COALESCE(COALESCE(s.grade_level, ap.grade_level), 0), mj.name,
+		       a.avatar_name,
 		       aa.graded_at, aa.updated_at, aa.grading_version
 		FROM attempt_answers aa
 		JOIN quiz_attempts att ON att.id = aa.attempt_id AND att.deleted_at = ?
@@ -1376,7 +1406,7 @@ func loadGradingDetail(ctx context.Context, tx *sql.Tx, accountID, answerID int6
 		answerID, store.LiveAt,
 	).Scan(&attemptID, &questionID, &attemptNo, &seed, &submittedAt, &createdAt,
 		&quizID, &quizTitle, &allowRetake, &maxAttempts, &randomQ, &randomO,
-		&regLive, &name, &grade, &major, &gradedAt, &updatedAt, &version)
+		&regLive, &name, &grade, &major, &avatarName, &gradedAt, &updatedAt, &version)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -1417,6 +1447,7 @@ func loadGradingDetail(ctx context.Context, tx *sql.Tx, accountID, answerID int6
 	cur := slots[current]
 	classLabel := viewmodel.ClassLabel(int(grade.Int64), major.String)
 	submittedLocal := viewmodel.NewLocalTime(submittedAt)
+	studentAvatar := viewmodel.NewAvatar(avatarName.String, name.String, "")
 
 	detail := &viewmodel.GradingDetail{
 		Answer: viewmodel.EssayAnswer{
@@ -1424,6 +1455,7 @@ func loadGradingDetail(ctx context.Context, tx *sql.Tx, accountID, answerID int6
 			QuestionID:    questionID,
 			StudentName:   name.String,
 			ClassLabel:    classLabel,
+			Avatar:        studentAvatar,
 			QuizTitle:     quizTitle,
 			QuestionBody:  cur.prompt,
 			QuestionImage: questionImage(cur.imagePath, cur.imageAlt, cur.imageBytes),
@@ -1438,6 +1470,7 @@ func loadGradingDetail(ctx context.Context, tx *sql.Tx, accountID, answerID int6
 			QuizTitle:   quizTitle,
 			StudentName: name.String,
 			ClassLabel:  classLabel,
+			Avatar:      studentAvatar,
 			StartedAt:   viewmodel.NewLocalTime(createdAt),
 			AttemptNo:   attemptNo,
 			MaxAttempts: EffectiveMaxAttempts(allowRetake, maxAttempts),
@@ -1899,6 +1932,7 @@ func (s *Service) Recap(ctx context.Context, in RecapInput) (viewmodel.Recap, er
 				ID:          int64(h.attempt.attemptID),
 				StudentName: h.name,
 				ClassLabel:  h.class,
+				Avatar:      viewmodel.NewAvatar(h.attempt.avatarName, h.name, ""),
 				QuizTitle:   h.attempt.quizTitle,
 				QuizID:      int64(h.attempt.quizID),
 				AttemptNo:   h.attempt.attemptNo,
@@ -1955,11 +1989,12 @@ type recapHeader struct {
 // registration is the ATT-281 integrity signal.
 func loadRecapHeader(ctx context.Context, tx *sql.Tx, accountID, attemptID int64) (recapHeader, error) {
 	var (
-		h        recapHeader
-		regLive  int64
-		fullName sql.NullString
-		grade    sql.NullInt64
-		major    sql.NullString
+		h          recapHeader
+		regLive    int64
+		fullName   sql.NullString
+		avatarName sql.NullString
+		grade      sql.NullInt64
+		major      sql.NullString
 	)
 	a := &h.attempt
 	err := tx.QueryRowContext(ctx, `
@@ -1970,6 +2005,7 @@ func loadRecapHeader(ctx context.Context, tx *sql.Tx, accountID, attemptID int64
 		       r.deleted_at = ?,
 		       COALESCE(a.full_name, ap.display_name),
 		       COALESCE(COALESCE(s.grade_level, ap.grade_level), 0), mj.name,
+		       a.avatar_name,
 		       (SELECT COUNT(*) FROM focus_loss_events f
 		         WHERE f.attempt_id = att.id AND f.deleted_at = ?) AS focus_loss
 		FROM quiz_attempts att
@@ -1987,7 +2023,7 @@ func loadRecapHeader(ctx context.Context, tx *sql.Tx, accountID, attemptID int64
 		&a.submittedAt, &a.final, &a.createdAt,
 		&a.quizTitle, &a.state, &a.allowRetake, &a.maxAttempts, &a.showScore,
 		&a.reviewMode, &a.randomizeQuestions, &a.randomizeOptions,
-		&regLive, &fullName, &grade, &major, &h.focus)
+		&regLive, &fullName, &grade, &major, &avatarName, &h.focus)
 	if errors.Is(err, sql.ErrNoRows) {
 		return recapHeader{}, ErrNotFound
 	}
@@ -2004,6 +2040,7 @@ func loadRecapHeader(ctx context.Context, tx *sql.Tx, accountID, attemptID int64
 	a.effectiveMax = EffectiveMaxAttempts(a.allowRetake, a.maxAttempts)
 	h.submittedAt = a.submittedAt
 	h.name = fullName.String
+	a.avatarName = avatarName.String
 	h.class = viewmodel.ClassLabel(int(grade.Int64), major.String)
 	return h, nil
 }

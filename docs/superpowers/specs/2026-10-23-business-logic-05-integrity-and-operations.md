@@ -7,8 +7,9 @@ cascades, transaction boundaries, concurrency and idempotency, time and retentio
 and status taxonomy, route coverage, operational prerequisites, and the schema-delta
 register.
 **Lens:** systems, concurrency, and data lifecycle. This is not a fifth command spec.
-**Sources:** `2026-10-23-business-logic-00-contract.md` (binding); the eight
-`migrations/*.up.sql`; all fifteen `internal/model` structs; the schema design §5–§10; the
+**Sources:** `2026-10-23-business-logic-00-contract.md` (binding); the ten
+`migrations/*.up.sql` (including the `0010` profile-photo migration added by the
+avatar design); all fifteen `internal/model` structs; the schema design §5–§10; the
 frontend data contract §2, §17, §21–§24; the old design §11 (superseded context only),
 §14, §16; `AGENTS.md`; `docker-compose.yml`; `internal/config`, `internal/store`,
 `internal/httpserver` (route registry, views, conformance and partials tests).
@@ -98,6 +99,8 @@ aborts the transaction, logs an integrity fault with IDs only, and returns the 5
 | missing, soft-deleted, wrong owner, wrong role, cross-tenant ID | 404 | 404 page; never 403 |
 | CSRF missing/mismatched/replayed | 403 | error layout, exact R-19 `csrf` copy |
 | validation failure | 422 | same template, submitted non-password values, `FieldErrors` |
+| avatar request over the 200 MB cap, chunked, or length-less | 413 | 413 page; connection closed, body not read |
+| beacon body over 4 KiB, chunked, or length-less | 400 | empty body (script endpoint); body not read |
 | rate limit exceeded | 429 | exact R-19 `rate limited` copy, `Retry-After` seconds |
 | database or invariant failure | 500 | 500 page; no SQL text, no stack |
 | successful POST or state conflict | 303 | PRG target, optional one-shot flash |
@@ -108,10 +111,16 @@ aborts the transaction, logs an integrity fault with IDs only, and returns the 5
 
 **OPS-012** Middleware order is normative because it decides which status wins: recover →
 request ID/access log → security headers → per-IP flood limit → session resolution →
-route rate limit → CSRF (all POST except `/attempt/:id/beacon`) → `must_change_password`
-gate → authorization → handler. A request over the route limit gets 429 even if its CSRF
-token is also bad; a request under the limit with a bad token gets 403 before any
-authorization or write.
+route rate limit → CSRF for every POST except the beacon (the avatar route's token is a
+multipart part, checked in its handler as the exception below explains) →
+`must_change_password` gate → authorization → handler. A request over the route limit gets
+429 even if its CSRF token is also bad; a request under the limit with a bad token gets 403
+before any authorization or write. The avatar upload is the single ordering exception: its
+CSRF token is a multipart part, so the pipeline's form check and `must_change_password`
+gate are skipped for a `Stream` route and run inside the handler after authorization
+(AVT-024, AVT-030). Authorization before CSRF is deliberate there, because an unauthorized
+request must not read the body at all; the token is still checked before any file byte is
+read.
 
 **OPS-013** Middleware identity is a hint, not a write authorization. Every mutating
 transaction re-reads the actor and the aggregate root with a locking/current read and
@@ -274,7 +283,7 @@ must cite them and may not weaken them.
 | OPS-INV-03 | A committed row never references a missing upload; orphan files are allowed | APP file protocol (`OPS-123`) | Broken images; 500 on serve | A-25/A-35/A-36 |
 | OPS-INV-04 | Authorization and state guards are re-read inside the write transaction | TX | TOCTOU: revoked actor writes, closed quiz accepts start | A-18/A-29 |
 | OPS-INV-05 | No app code soft-deletes a `role='teacher'` account | APP guard + test | Quizzes/results become ownerless | A-12 |
-| OPS-INV-06 | Every POST ends 303, 422, 403, 404, 429, or 500; beacon may 204 | APP middleware | Double-submit, retry ambiguity | A-06/A-08/A-09 |
+| OPS-INV-06 | Every POST ends 303, 422, 403, 404, 413 (avatar only), 429, or 500; beacon may 204 or 400 (empty/over-cap) | APP middleware | Double-submit, retry ambiguity | A-06/A-08/A-09 |
 | OPS-INV-07 | Every expiry predicate uses the same T read once per request/transaction | TX | Token/session lives seconds too long or dies early | A-03/A-17 |
 | OPS-INV-08 | A soft-deleted root has zero live descendants after commit | TX + post-commit assertion | Orphans invisible to reads but counted by aggregates | A-10/A-28 |
 | OPS-INV-09 | Every route is owner-scoped or deliberately public; no route relies on hidden UI | APP route matrix | Direct URL bypass | A-32/A-37 |
@@ -339,7 +348,8 @@ SQL spelling.
 
 **OPS-055** **Teacher deletion is forbidden, not cascaded.** No HTTP route and no code path
 may set `accounts.deleted_at` where `role='teacher'`, and none may soft-delete a teacher's
-quizzes, questions, attempts, or results. R-05 makes teachers fixed. A future operator
+quizzes, questions, attempts, or results. R-05 fixes the teacher lifecycle (no delete,
+deactivate, or role change); self-service profile edits are not a lifecycle change. A future operator
 soft delete of a teacher account (schema §5.7) hides the account and sessions only; the quiz
 owner FK remains valid and results remain attributable. The app must render an ownerless quiz
 as an integrity state, not crash; but it must never create that state itself (OPS-INV-05).
@@ -871,9 +881,10 @@ created under a row deleted by a concurrent transaction.
 coalesce to at most one write per second per attempt while still returning 204. Focus: one
 `focus_loss_events` row per accepted event, `occurred_at=T` (the client `at` is ignored), no
 dedupe, no attempt touch. Limits 30/min (progress) and 10/min (focus) per attempt; excess is
-429 with `Retry-After`, never queued. Unknown kind / malformed body / body >4 KB → 422.
-Missing or cross-origin `Origin`/`Referer` → 403. An attempt not owned by the cookie/session
-→ 404. After submit, progress is a 204 no-op; focus still records if the attempt is live.
+429 with `Retry-After`, never queued. Unknown kind / malformed body → 422. A chunked or
+length-less body, or a body over 4 KiB → 400; the body is not read. Missing or cross-origin
+`Origin`/`Referer` → 403. An attempt not owned by the cookie/session → 404. After submit,
+progress is a 204 no-op; focus still records if the attempt is live.
 
 **OPS-173** **SSE connect/close.** A connect validates owner + `state='open'`, subscribes,
 then re-checks state; if it closed in between, send `quiz.closed` and return. Send one
@@ -1006,9 +1017,9 @@ There is no 409 page, no 201, no 405 page, and no redirect-on-validation-error.
 
 **OPS-201** **PRG.** Every successful or state-conflicting POST answers 303 with a relative
 `Location` (`/path` only; never a scheme/host, never a user-supplied URL). The target is the
-owning screen from contract §8. Validation (422), CSRF (403), not-found/ownership (404), rate
-limit (429), and server failure (500) are the only non-303 POST outcomes; an upload GET may
-answer 304.
+owning screen from contract §8. Validation (422), CSRF (403), not-found/ownership (404), request
+too large (413, avatar upload only), rate limit (429), and server failure (500) are the only
+non-303 POST outcomes; an asset GET (upload or avatar) may answer 304.
 
 **OPS-202** **Validation (422).** Re-render the same template with status 422, the submitted
 non-password values, and a `FieldErrors` map keyed by the exact field names in frontend §18.
@@ -1018,8 +1029,11 @@ must carry one.
 
 **OPS-203** **CSRF (403).** Missing, mismatched, unsigned, or expired token → 403 with the
 exact copy `Sesi formulir tidak valid. Muat ulang halaman.`, rendered through the error layout
-(no new route). Issue a fresh CSRF cookie so the reload works. The beacon is the only exempt
-POST; a beacon without a same-origin `Origin`/`Referer` gets the same 403.
+(no new route). Issue a fresh CSRF cookie so the reload works. The beacon is the only
+POST exempt from CSRF entirely; a beacon without a same-origin `Origin`/`Referer` gets
+the same 403. `POST /profile/photo` is not exempt: it skips only the pipeline's form
+check because the token is the first multipart part, and it answers this same 403
+before reading any file byte (AVT-030).
 
 **OPS-204** **404.** One response for missing, soft-deleted, wrong-owner, wrong-role, and
 cross-tenant IDs. It never names the resource, its owner, or whether it exists. A teacher
@@ -1079,6 +1093,8 @@ must-revalidate`, `X-Content-Type-Options: nosniff`, and `Content-Disposition: i
 `If-None-Match` equal → 304. A row with a missing file → 404 + `upload_missing` log. No
 directory listing, no range, no transform, no auth beyond the unguessable capability name
 (R-17). The response is never cached publicly and never served by the `/static` middleware.
+Avatar serving follows AVT-070/AVT-072: generic names, active-owner check, long-lived private
+cache, and the same no-listing/no-transform rule.
 
 **OPS-213** **SSE failures.** Before the stream starts, use the normal status (404 for
 not-owned/not-open, 429 for the connection cap). After `200 text/event-stream` and the first
@@ -1102,19 +1118,30 @@ owned by `IDN`/`AUT`/`PAR`/`ATT`; OPS pins only the new conflict/ops strings use
 sudah dinilai.`, `Jurusan masih digunakan oleh siswa, peserta, atau kuis.`, `Nilai harus antara
 0 dan 100 dengan satu angka desimal.`). A sibling may rename a key only by citing it here.
 
-**OPS-217** **Error page parity.** Direct `GET /error/404` and `GET /error/500` return 200
-with the corresponding page (they are preview routes). A real missing resource returns the
-same 404 template with status 404; a real failure returns the 500 template with status 500.
-The body copy is identical so the two paths cannot drift.
+**OPS-217** **Error page parity.** Direct `GET /error/403`, `/error/404`, `/error/413`,
+`/error/422`, `/error/429`, and `/error/500` return 200 with the corresponding page (they
+are preview routes). A real missing resource returns the same 404 template with status
+404; a real over-cap avatar upload returns the same 413 template with status 413; a real
+failure returns the 500 template with status 500. The body copy is identical so the
+preview and real paths cannot drift.
 
 **OPS-218** **Security headers and request caps.** On every HTML response:
 `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: same-origin`,
 and `Cache-Control: no-store` on authenticated HTML. Static assets keep the one-day cache;
-uploads use OPS-212. No header may include a token, account id, or email. Request bodies are
-capped **before parsing**: 1 MiB for every form POST (`IDN-128`) and 4 KiB for beacon POSTs
-(`OPS-172`); an over-cap form body is rejected as 422 with a generic validation error and no
-transaction is opened. The upload route uses OPS-123's 10 MiB stream cap instead. A missing or
-lying `Content-Length` never bypasses the cap.
+uploads use OPS-212; avatars use AVT-072. No header may include a token, account id, or email.
+Request bodies are capped **before parsing and from the declared `Content-Length`**:
+1 MiB for every ordinary form POST (`IDN-128`), 16 MiB for an authoring multipart POST
+(AUT-034), 4 KiB for beacon POSTs (`OPS-172`), and 200,000,000 bytes for the entire
+multipart avatar request. A chunked body is rejected before parsing: `413` with
+`Connection: close` on the avatar route, `422` with `Badan permintaan terlalu besar.`
+on the authoring multipart routes (AUT-034), `422` with the generic form-invalid copy on
+ordinary forms, and `400` on the beacon. A request with no `Content-Length` and no
+`Transfer-Encoding` is an empty body: `413` on the avatar route, the empty-body `400`
+on the beacon, and an empty form elsewhere. No route calls `c.Body()` to measure or parse a body. Each reader is
+independently bounded at its cap + 1 byte, so a lying `Content-Length` is stopped at
+the cap rather than trusted. The streaming path lets fasthttp pre-read up to 8 KiB
+before the handler (`Expect: 100-continue` also receives its `100 Continue` first),
+but nothing reaches staging before the check.
 
 **OPS-219** **Log shape.** One structured line per request: request id, method, route pattern
 (not raw path), status, duration, actor id or `anon`, quiz/attempt id when relevant. One line
@@ -1126,11 +1153,12 @@ stdout; retention/rotation is an operator concern.
 
 ## 10. Route coverage matrix
 
-**OPS-220** The audited surface is 74 method+path pairs: the 72 pinned by
-`conformance_test.go` plus `GET /healthz` and `GET /uploads/:name`. `GET /` is a redirect, not
-a screen. Rows group both methods of one path; the method count in each row still adds to 74.
-Owner abbreviations are the contract prefixes. “Anchor” names the owning domain's command for
-that route; OPS does not restate its workflow.
+**OPS-220** The audited surface is 83 method+path pairs: the 80 pinned by
+`conformance_test.go` plus `GET /healthz`, `GET /uploads/:name`, and
+`GET /avatars/:name`. `GET /` is a redirect, not a screen. Rows group both methods of
+one path; the method count in each row still adds to 83. Owner abbreviations are the
+contract prefixes. “Anchor” names the owning domain's command for that route; OPS does
+not restate its workflow.
 
 | Route(s) | Owner | Anchor / note | OPS rules | AC |
 |---|---|---|---|---|
@@ -1146,6 +1174,9 @@ that route; OPS does not restate its workflow.
 | `GET, POST /join/identify` | PAR | anonymous identity upsert + registration | OPS-128, OPS-175 | A-46 |
 | `POST /logout` | IDN | stamp current session | OPS-125, OPS-171 | A-18 |
 | `GET, POST /profile` | IDN | student-only name/email; unique email | OPS-141, OPS-177 | A-15 |
+| `POST /profile/photo` | IDN | own avatar upload; streamed, 200 MB cap | AVT-060, OPS-218 | A-47 |
+| `POST /profile/photo/remove` | IDN | own avatar removal; idempotent | AVT-061 | A-47 |
+| `GET, POST /teacher/profile` | IDN | teacher profile; unique email | OPS-141, OPS-177 | A-15 |
 | `GET /teacher/students` | IDN | school-wide roster, live filter | OPS-059, OPS-186 | A-32 |
 | `GET, POST /teacher/students/:id` | IDN | edit profile; grade/major change | OPS-141, OPS-150, OPS-177 | A-14, A-15 |
 | `POST /teacher/students/:id/delete` | IDN | account cascade | OPS-120, OPS-053, OPS-171 | A-28, A-44 |
@@ -1184,6 +1215,7 @@ that route; OPS does not restate its workflow.
 | `GET /teacher/quizzes/:id/monitor` | ATT | live snapshot page | OPS-173 | A-30 |
 | `GET /teacher/quizzes/:id/stream` | ATT | SSE, owner+open | OPS-173, OPS-174, OPS-213 | A-30 |
 | `GET /uploads/:name` | AUT | image read; OPS shares serving | OPS-123, OPS-212 | A-25, A-42 |
+| `GET /avatars/:name` | IDN→OPS | active-owner avatar read; OPS shares serving | AVT-070, OPS-059, OPS-212 | A-47 |
 | `GET /teacher/grading` | ATT | queue, waiting duration | OPS-185, OPS-186 | A-22 |
 | `GET /teacher/grading/:answerID` | ATT | one essay, owner-only | OPS-013, OPS-059 | A-37 |
 | `POST /teacher/grading/:answerID` | ATT | write-once grade + final | OPS-113, OPS-142, OPS-132 | A-22 |
@@ -1196,7 +1228,11 @@ that route; OPS does not restate its workflow.
 | `POST /teacher/majors` | PAR | create; code derivation | OPS-124, OPS-150 | A-14 |
 | `POST /teacher/majors/:id` | PAR | rename, no propagation | OPS-124, OPS-150 | A-14 |
 | `POST /teacher/majors/:id/delete` | PAR | refuse while referenced | OPS-124, OPS-150 | A-14 |
+| `GET /error/403` | OPS | preview; real 403 uses same page | OPS-203, OPS-217 | A-32 |
 | `GET /error/404` | OPS | preview; real 404 uses same page | OPS-204, OPS-217 | A-32 |
+| `GET /error/413` | OPS | preview; real over-cap uses same page | OPS-217, AVT-066 | A-32, A-47 |
+| `GET /error/422` | OPS | preview; real 422 uses same page | OPS-202, OPS-217 | A-32 |
+| `GET /error/429` | OPS | preview; real 429 uses same page | OPS-205, OPS-217 | A-32 |
 | `GET /error/500` | OPS | preview; real 500 uses same page | OPS-206, OPS-217 | A-32 |
 | `GET /healthz` | OPS | liveness, not readiness | OPS-211 | A-04, A-34 |
 
@@ -1204,26 +1240,29 @@ that route; OPS does not restate its workflow.
 The cross-owned rows are deliberate and are the only places a route calls another domain:
 `POST /quiz/:id/attempts` (PAR command, ATT start), `GET /student*` (PAR reads, ATT scores),
 `GET /teacher` (ATT aggregate, PAR registrations), `GET /teacher/quizzes/:id/results`
-(ATT read, AUT quiz ownership), `GET /uploads/:name` (AUT read, OPS serving/security), and
+(ATT read, AUT quiz ownership), `GET /uploads/:name` (AUT read, OPS serving/security),
+`GET /avatars/:name` (IDN account read, OPS serving/security), and
 `GET /invite/:token` + `GET, POST /join` (PAR registration, AUT quiz lookup). Each owner's
 spec must carry the command rules; this spec carries the seam only.
 
-**OPS-222** Two surface facts are audited deliberately: `/healthz` is not in the 72-route pin
-and must not be added to it (it is operational); `/uploads/:name` likewise sits outside the
-pin but is a real GET route, so `conformance_test.go` must add it only when the backend phase
-adds the handler. Until then, OPS-212 is the contract, not a claim that the route exists.
+**OPS-222** Three surface facts are audited deliberately: `/healthz` is not in the 80-pair pin
+and must not be added to it (it is operational). `/uploads/:name` and `/avatars/:name` are
+real GET routes but also sit outside the pin: `conformance_test.go` pins only the 80 contract
+routes, while `authz_conformance_test.go` covers the two asset routes and `/healthz` in
+its separate operational/asset fixture. Until a handler exists, OPS-212 and
+AVT-070 are the contract, not a claim that the route exists.
 
 ---
 
 ## 11. Operational prerequisites
 
-**OPS-230** **Migrations.** Apply `0001`–`0009` with the one-shot runner (schema §9.3),
+**OPS-230** **Migrations.** Apply `0001`–`0010` with the one-shot runner (schema §9.3),
 never as a boot hook. The runner takes `GET_LOCK('quiz.migrations', 30)` on a pinned
 connection, applies files lexicographically, writes the ledger row only after every statement
 in the file succeeds, and stops on the first error. The app starts even if the DB is down (the
 advisory ping only warns), but it cannot serve data until the schema and seed exist. Verify
 with `SELECT name FROM schema_migrations WHERE deleted_at = '1970-01-01 00:00:00' ORDER BY name`
-returning the nine names. No migration is edited after being applied.
+returning the ten names. No migration is edited after being applied.
 
 **OPS-231** **Rate limiter storage.** In-process, mutex-protected, bounded map with a sliding
 window per key; evict idle keys every 5 minutes and cap the table (10,000 keys). Scopes: login
@@ -1288,9 +1327,11 @@ replace, not only the first one. This is an ATT/frontend interface note, recorde
 **OPS-237** **Uploads root.** Directory exists at boot, writable by the app UID (10001 in the
 image), mode `0750`, files `0640`, same filesystem for atomic rename, outside the `/static`
 tree, never symlinked. Docker: create `/app/uploads`, chown to the app user, mount a named
-volume at `UPLOADS_DIR`; never bake user images into the image. On startup remove only
-`*.tmp` files older than 24 h; never remove a `.jpg/.png/.webp` by age. Backups include the
-directory; a restore of the DB without the files produces `upload_missing` 404s.
+volume at `UPLOADS_DIR`; never bake user images into the image. Avatars live under
+`UPLOADS_DIR/avatars/` with the same ownership and mode (`0750`, files `0640`). On startup
+remove only `*.tmp` files older than 24 h; never remove a `.jpg/.png/.webp` by age. Backups
+include the directory; a restore of the DB without the files produces `upload_missing` and
+`avatar_missing` 404s.
 
 **OPS-238** **Bootstrap teacher.** Run the runner's `bootstrap-teacher` step once with the
 three env values. It inserts one `role='teacher'`, `status='active'`, `approved_at=now`,
@@ -1308,16 +1349,18 @@ editing the seed.
 
 **OPS-240** **Logging and observability.** JSON lines to stdout with request id, route
 pattern, status, duration, actor id/`anon`, and relevant quiz/attempt ids. Log integrity faults
-with the OPS rule ID and row ids: `upload_missing`, `upload_orphan`, `cascade_assert`,
-`position_overflow`, `score_inconsistent`, `lock_timeout`. Never log passwords, password
+with the OPS rule ID and row ids: `upload_missing`, `upload_orphan`, `avatar_missing`,
+`avatar_invalid`, `cascade_assert`, `position_overflow`, `score_inconsistent`,
+`lock_timeout`. Never log passwords, password
 hashes, cookies, CSRF values, raw session/reset/anonymous/pending tokens, essay text, emails,
 full names, or image bytes (OPS-INV-10). Panic recovery logs the stack server-side and returns
 500.
 
 **OPS-241** **Minimum alerts.** 5xx rate, p95 latency, DB pool saturation, lock-timeout count,
-`upload_missing` count, `cascade_assert` count, SSE subscriber count per quiz, rate-limit 429
-rate, and failed advisory pings. A `cascade_assert` or `upload_missing` alert is a data
-integrity page, not a performance warning.
+`upload_missing` count, `avatar_missing` count, `cascade_assert` count, SSE subscriber count
+per quiz, rate-limit 429 rate, and failed advisory pings. A `cascade_assert`,
+`upload_missing`, or `avatar_missing` alert is a data integrity page, not a performance
+warning.
 
 **OPS-242** **Backups.** Take `mariadb-dump --single-transaction` and a filesystem snapshot of
 the uploads root at the same point; restore both together. Soft-deleted rows are included.
@@ -1337,8 +1380,10 @@ fail until applied), SSE hub empty. This matches the current `main.go` behaviour
 
 **OPS-245** **Image/compose changes required by this spec.** Add `UPLOADS_DIR=/app/uploads`,
 create and chown `/app/uploads` in the runtime stage, mount a volume, add the MariaDB server
-flags and the UTC DSN to compose, and keep the healthcheck on `/healthz`. Do not copy `docs/`,
-`assets/`, or `*.md` into the image. The app user stays non-root UID 10001.
+flags and the UTC DSN to compose, and keep the healthcheck on `/healthz`. The image also
+installs `libwebp` and `libheif`, and the build uses `CGO_ENABLED=1` with their `-dev`
+packages (AVT-104). Do not copy `docs/`, `assets/`, or `*.md` into the image. The app user
+stays non-root UID 10001.
 
 **OPS-246** **Probes.** `/healthz` is liveness for the compose healthcheck; it is not a
 readiness gate for migrations or uploads. A deploy that starts with a broken uploads root or a
@@ -1347,16 +1392,20 @@ alerts cover those cases.
 
 **OPS-247** **Static and dependency posture.** Bootstrap 6, jQuery 4, and fonts stay vendored;
 no CDN, no Node build. `/static` keeps the one-day cache. MariaDB is 12.3 and Go is 1.26.4;
-the limiter and SSE hub are stdlib-only, no new dependency. `static/js/app.js` remains free of
-`fetch`/`XHR`; only the documented `EventSource` and `sendBeacon` paths are allowed in the
-backend phase.
+the limiter and SSE hub are stdlib-only. Avatar compression is the documented exception:
+`CGO_ENABLED=1` with libwebp and libheif, using the build/runtime packages in AVT-104.
+`static/js/app.js` remains free of `fetch`/`XHR`; only the documented `EventSource` and
+`sendBeacon` paths are allowed in the backend phase.
 
 **OPS-248** **Operator runbook for the three integrity faults.** (1) `upload_orphan`: list the
 root, subtract live `questions.image_path`, delete files older than 24 h, log each. (2)
 `upload_missing`: never fabricate a file; hide/repair the question through the normal editor
 (replace image) and record the affected question ids. (3) `cascade_assert`: stop writes to the
 affected root, snapshot the DB, inspect for live descendants, restore rows only through the
-tested restore procedure — never “fix” by hard-deleting children.
+tested restore procedure — never “fix” by hard-deleting children. Avatar orphans are
+unreferenced by definition: list `avatars/*.webp`, subtract live `accounts.avatar_name`, and
+delete only files older than 24 h; `avatar_missing` is a 404 with no repair path, because the
+user can upload a replacement.
 
 ---
 
@@ -1433,6 +1482,7 @@ domain while another supplies data or serving:
 | teacher dashboard roster | ATT | PAR registration contract | OPS-059 | empty state, not error |
 | results/recap quiz header | ATT | AUT quiz row | OPS-014 | 404 on non-owner |
 | image serving | AUT | OPS upload serving | OPS-212 | 404, never a listing |
+| avatar serving | IDN | OPS avatar serving | OPS-212, AVT-070 | 404, never a listing |
 
 **OPS-258** **One implementation per cross-cutting concern.** There is one transaction
 wrapper, one cascade stamping helper, one clock read, one score function, one upload writer and
@@ -1458,17 +1508,17 @@ dead and must be removed.
 
 | Surface | Count | Evidence |
 |---|---|---|
-| method+path routes | 74 = 72 pinned + `/healthz` + `/uploads/:name` | §10 table, OPS-220 |
+| method+path routes | 83 = 80 pinned + `/healthz` + `/uploads/:name` + `/avatars/:name` | §10 table, OPS-220 |
 | contract invariants | 30 (`INV-01`–`INV-30`) | §4 matrix |
 | OPS invariants | 12 (`OPS-INV-01`–`OPS-INV-12`) | §4 matrix |
 | command flows with a lock set | 25 (`OPS-105`–`OPS-129`) | §6 |
 | state machines | 12 (`OPS-020`–`OPS-031`) | §3 |
-| acceptance cases | 46 (`A-01`–`A-46`) | §15 |
+| acceptance cases | 47 (`A-01`-`A-47`) | §15 |
 
 **OPS-262** **Mechanical audit.** Before calling this spec complete, run: (1) extract
 `OPS-[0-9]{3}` definitions and references and diff the sets — every reference resolves to a
 definition and no definition is unreachable; (2) extract `A-[0-9]{2}` references and assert
-each is defined in §15; (3) count §10's method cells and assert 74 after expanding
+each is defined in §15; (3) count §10's method cells and assert 83 after expanding
 `GET, POST`; (4) assert every `INV-` row in §4 names an enforcement layer and at least one
 A-case. These four checks are the review gate; a human reading the prose is not a substitute.
 
@@ -1482,7 +1532,7 @@ code, a stored value, or an invariant named in §4.
 ## 14. Open questions and schema deltas
 
 `OPS-005` forbids requiring a schema change. The register below therefore contains only
-resolutions that fit the nine migrations, config, interface, or operations. Each item names
+resolutions that fit the ten migrations, config, interface, or operations. Each item names
 the owner that must adopt it.
 
 ### 14.1 Register
@@ -1501,7 +1551,7 @@ the owner that must adopt it.
 | D-10 | No title/name snapshots. | Title is immutable after publish because settings are draft-only; display names and major names are read live, not snapshotted. | Historical results show current names; accepted by R-25. |
 | D-11 | No upload cleanup queue. | Orphans are tolerated; startup removes only `*.tmp` older than 24 h; operator runbook deletes aged orphans. | OPS-237/248; disk growth needs the alert in OPS-241. |
 | D-12 | No optimistic version column. | Row locks plus last-write-wins; no `If-Match`/ETag; concurrent settings saves overwrite. | OPS-126/165; acceptable for one teacher per quiz. |
-| D-13 | `/uploads/:name` and `/healthz` are outside the 72-route pin. | Keep them out until the backend phase adds the upload handler; then add `/uploads/:name` to the conformance pin, never `/healthz`. | `conformance_test.go` change is a deliberate surface change. |
+| D-13 | `/uploads/:name`, `/avatars/:name`, and `/healthz` are outside the 80-route pin. | Keep all three outside it permanently. `authz_conformance_test.go` checks them in its separate operational/asset fixture, so a route can exist and be authz-covered without inflating the contract pin. | No `conformance_test.go` count change for the three; adding `/avatars/:name` changes only the separate fixture. |
 | D-14 | DB session time zone is not pinned by schema. | Server/session `time_zone='+00:00'`; DSN `parseTime=true&loc=UTC`; startup asserts both. | Compose flags, OPS-190/233/245. |
 
 ### 14.2 Open questions
@@ -1572,14 +1622,14 @@ injection is explicit where the failure is not reachable through the UI.
 
 | ID | Executable statement |
 |---|---|
-| A-01 | Run `0001`–`0009` twice on an empty database: the second run changes nothing, `schema_migrations` has exactly nine live rows with unique names, and a deliberately broken file leaves no ledger row. |
+| A-01 | Run `0001`–`0010` twice on an empty database: the second run changes nothing, `schema_migrations` has exactly ten live rows with unique names, and a deliberately broken file leaves no ledger row. |
 | A-02 | Extract `INV-01`–`INV-30` and `OPS-INV-01`–`OPS-INV-12`; each appears once as a §4 row with an enforcement layer and at least one A-case; the check fails on a missing or duplicate ID. |
 | A-03 | With the process in Asia/Jakarta and the DB session at UTC, create a quiz at 23:30 UTC: the row stores 23:30, the page renders 06:30 WIB next day, `@@session.time_zone` is `+00:00`, and no read differs by 7 h. |
 | A-04 | `GET /healthz` with the DB up returns 200, body exactly `ok`, `text/plain`, no session or CSRF requirement, within 2 s. |
 | A-05 | Missing, soft-deleted, other-owner, and wrong-role IDs all return 404 with the same error template and no resource name; an unauthenticated protected GET returns 303 `/login`; ownership never returns 403. |
 | A-06 | Every POST without `csrf_token` returns 403 with `Sesi formulir tidak valid. Muat ulang halaman.`; a form token that does not match the signed cookie, or an expired token, returns 403; a beacon without same-origin `Origin`/`Referer` returns 403; a same-origin beacon returns 204. |
 | A-07 | A successful POST returns 303 with a relative `Location`; its flash appears once on the next GET and not after refresh; replaying the POST does not duplicate the row; no POST returns 200, 201, or 302. |
-| A-08 | A status-matrix test asserts POST outcomes ∈ {303, 422, 403, 404, 429, 500}, beacon ∈ {204, 403, 404, 422, 429, 500}, HTML GET ∈ {200, 303, 404, 429, 500}, uploads may 304; `/stream` is 200 only after headers; no 405 or 409 page exists. |
+| A-08 | A status-matrix test asserts POST outcomes ∈ {303, 413, 422, 403, 404, 429, 500}, beacon ∈ {204, 400, 403, 404, 422, 429, 500}, HTML GET ∈ {200, 303, 404, 429, 500}, uploads/avatars may 304; `/stream` is 200 only after headers; no 405 or 409 page exists. |
 | A-09 | Two concurrent identical POSTs sharing a CSRF cookie (answer save, grade, approve) produce one logical write, both 303, and no duplicate live row; the loser is idempotent or a state conflict, never 500. Double delete follows A-44. |
 | A-10 | Delete a student with registrations in two quizzes plus attempts, answers, selections, sessions, reset tokens, and focus rows: every descendant `deleted_at` equals one T, zero live descendants remain, and only the account row carries `deleted_by_account_id`. |
 | A-11 | Inject a failure after the first cascade UPDATE: the transaction rolls back, no row is stamped, no file is unlinked; a retry succeeds and stamps one T for the whole cascade. |
@@ -1602,8 +1652,8 @@ injection is explicit where the failure is not reachable through the UI.
 | A-28 | Delete a student with data: sessions, tokens, registrations, attempts, answers, selections, and focus rows all carry one T; zero live descendants; roster/history counts drop; login and reset fail; teacher-owned quiz rows are untouched. |
 | A-29 | Cancel is allowed only while open and attempt-free; after cancel the intro offers Daftar again; anonymous identity delete cascades its registrations/attempts but leaves other identities; a concurrent start vs delete yields either a live attempt or a deleted registration, never a live attempt under a deleted registration. |
 | A-30 | SSE: owner + open gets a snapshot then events; non-owner/draft/closed → 404; close sends `quiz.closed` and ends; disconnect frees the subscriber; the 11th connection gets 429; a slow client is evicted and reconnects to a fresh snapshot; roster shrink sends a fresh snapshot. |
-| A-31 | Beacon progress is idempotent and coalesced to ≤1 write/s; focus inserts one row per accepted event with server T; the 31st progress event/minute → 429 with an integer `Retry-After`; after submit progress is 204; cross-origin is 403; >4 KB is 422. |
-| A-32 | Every GET page in §10 renders 200 from zero values and from populated fixtures; `/error/404` and `/error/500` previews return 200; `/` returns 303; no panic, `<no value>`, or missing partial. |
+| A-31 | Beacon progress is idempotent and coalesced to ≤1 write/s; focus inserts one row per accepted event with server T; the 31st progress event/minute → 429 with an integer `Retry-After`; after submit progress is 204; cross-origin is 403; a chunked, length-less, or >4 KiB body is 400 and is not read. |
+| A-32 | Every GET page in §10 renders 200 from zero values and from populated fixtures; `/error/403`, `/error/404`, `/error/413`, `/error/422`, `/error/429`, and `/error/500` previews return 200; `/` returns 303; no panic, `<no value>`, or missing partial. |
 | A-33 | Perform login, reset issue/consume, essay grading, and an image upload: stdout logs contain no password, hash, cookie, CSRF value, raw token, email, full name, essay text, or image bytes; every line carries a request id. |
 | A-34 | Stop MariaDB: `/healthz` returns 503 `db unavailable` within 2 s, the process stays up, and the body has no stack trace; start MariaDB: 200 `ok`; an in-flight query fails 500 rather than hanging. |
 | A-35 | Kill the process between file write and commit: the file is an orphan, the row is absent; startup does not delete it; a later save works; the OPS-248 listing finds it. |
@@ -1618,6 +1668,7 @@ injection is explicit where the failure is not reachable through the UI.
 | A-44 | Fire two concurrent deletes on one quiz/question/student: one stamps the cascade, the other returns 404 per OPS-165; files are unlinked once or not at all; no 500 and no duplicate stamps. |
 | A-45 | Grep the route table and SQL: no delete/restore route and no `DELETE FROM` on domain tables; physical delete of a referenced parent fails with FK 1451; no UI action exposes restore. |
 | A-46 | `POST /join` with a valid open public code sends a student to `/quiz/:id` without creating a registration; a visitor gets `/join/identify` with a signed cookie; `/invite` auto-registers an eligible student exactly once, no-ops for a visitor, and shows `not_open` for draft/closed; identify creates one cookie-hash identity and one registration even on double submit; a private code is `unknown_code` for a student and `anonymous_not_allowed` for a visitor; a draft code is 404; a closed code is `not_open`. |
+| A-47 | Upload a JPEG, PNG, WebP, and HEIC as both roles: each becomes a 512×512 WebP ≤5 MB, the row points at the new name, and the old file is unlinked after commit. A `Content-Length` over 200,000,000, a chunked length, or a bodyless avatar POST gets 413 with `Connection: close` before parsing (an explicit `Content-Length: 0` takes the empty-upload flash); a file part before the CSRF token is 403 with nothing written; an over-50 MP image or a >64 MiB WebP/HEIC gets `photo-big`; removal clears the column and renders initials. `GET /avatars/:name` returns `image/webp` with `private, immutable`, 304 on `If-None-Match`, and 404 for a bad name, missing file, pending/soft-deleted owner, directory, symlink, empty, or oversize file; `GET /error/413` returns 200 with the same page. |
 
 ---
 

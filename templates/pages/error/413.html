@@ -1,0 +1,26 @@
+{{define "content"}}
+{{with .Data}}
+<div class="error-page-container type-413">
+  <div class="error-header">
+    <span class="error-type">Error {{.Code}}</span>
+  </div>
+  <div class="error-content">
+    <div class="error-code-display">{{.Code}}</div>
+    <h1 class="error-title">{{.Title}}</h1>
+    <p class="error-message">{{.Message}}</p>
+
+    <div class="fixable-section">
+      <h2 class="fixable-title">Cara memperbaikinya:</h2>
+      <ol class="fixable-steps">
+        <li>Kurangi ukuran berkas Anda</li>
+        <li>Pastikan ukuran berkas kurang dari 200 MB</li>
+        <li>Coba unggah kembali</li>
+      </ol>
+    </div>
+  </div>
+  <div class="error-actions">
+    <a class="btn btn-solid theme-primary" href="{{.HomeHref}}">Kembali</a>
+  </div>
+</div>
+{{end}}
+{{end}}

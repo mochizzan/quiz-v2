@@ -148,9 +148,9 @@ func (s *Service) monitorSnapshot(ctx context.Context, in StreamInput) (monitorS
 }
 
 // diffMonitorSnapshot compares two snapshots by registration_id (ATT-195).
-// A removed row or a changed identity label needs a fresh snapshot because the
-// event vocabulary has no removed/label event. Added and updated rows keep
-// ATT-204-free monitor order.
+// A removed row or a changed identity label (name, initials, class, avatar)
+// needs a fresh snapshot because the event vocabulary has no removed/label
+// event. Added and updated rows keep ATT-204-free monitor order.
 func diffMonitorSnapshot(prev, next monitorSnapshotData) (snapshot bool, added, updated []participantSnapshot) {
 	prevByID := make(map[int64]participantSnapshot, len(prev.Rows))
 	for i := range prev.Rows {
@@ -174,7 +174,8 @@ func diffMonitorSnapshot(prev, next monitorSnapshotData) (snapshot bool, added, 
 			added = append(added, row)
 			continue
 		}
-		if old.Name != row.Name || old.Initials != row.Initials || old.ClassLabel != row.ClassLabel {
+		if old.Name != row.Name || old.Initials != row.Initials ||
+			old.ClassLabel != row.ClassLabel || old.Avatar.URL != row.Avatar.URL {
 			snapshot = true
 			continue
 		}
@@ -189,7 +190,9 @@ func diffMonitorSnapshot(prev, next monitorSnapshotData) (snapshot bool, added, 
 }
 
 // participantChanged is the ATT-194 update subset: attempt_id, answered, total,
-// state, focus_loss, last_seen. Identity labels are deliberately absent. A
+// state, focus_loss, last_seen. Identity labels and the avatar URL are
+// deliberately absent: an avatar change is an identity change, so it reaches
+// the client as a fresh snapshot (AVT-084), never as an update event. A
 // score change is also a change even though the payload never carries the
 // score: grading preserves attempt.updated_at, so this signal is the only way
 // an open monitor learns that the page-only Skor column needs a reload.
@@ -242,6 +245,7 @@ type streamParticipant struct {
 	AttemptID      *int64 `json:"attempt_id"`
 	Name           string `json:"name"`
 	Initials       string `json:"initials"`
+	Avatar         string `json:"avatar"`
 	ClassLabel     string `json:"class_label"`
 	Answered       int    `json:"answered"`
 	Total          int    `json:"total"`
@@ -304,6 +308,7 @@ func buildParticipant(row participantSnapshot) streamParticipant {
 		AttemptID:      row.AttemptID,
 		Name:           row.Name,
 		Initials:       row.Initials,
+		Avatar:         row.Avatar.URL,
 		ClassLabel:     row.ClassLabel,
 		Answered:       row.Answered,
 		Total:          row.Total,

@@ -13,9 +13,12 @@
             <h1 class="h2 mb-0 text-truncate">{{.Data.Header.QuizTitle}}</h1>
           </div>
         </div>
-        <div class="text-end">
-          <span class="fw-semibold d-block">{{.Data.Header.StudentName}}</span>
-          <span class="cell-sub">{{.Data.Header.ClassLabel}}</span>
+        <div class="text-end d-flex align-items-center justify-content-end gap-2">
+          {{template "partials/avatar.html" .Data.Header.Avatar}}
+          <div>
+            <span class="fw-semibold d-block">{{.Data.Header.StudentName}}</span>
+            <span class="cell-sub">{{.Data.Header.ClassLabel}}</span>
+          </div>
         </div>
       </div>
 

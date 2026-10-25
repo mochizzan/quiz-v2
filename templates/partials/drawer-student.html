@@ -12,7 +12,7 @@
          "Profil" row beside it (DESIGN §7: one destination, one affordance). */}}
     {{with .User}}
     <a class="drawer-account" href="/profile"{{if eq $.Active "profil"}} aria-current="page"{{end}} aria-label="Profil akun">
-      <span class="app-avatar" aria-hidden="true">{{.Initials}}</span>
+      {{template "partials/avatar.html" .Avatar}}
       <span class="drawer-account-meta">
         <span class="app-profile-name">{{.FullName}}</span>
         <span class="app-profile-sub">{{.ClassLabel}}</span>

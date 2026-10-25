@@ -276,6 +276,30 @@
   font-weight: 700;
   line-height: 1;
 }
+/* One badge, two shapes (AVT-081/AVT-085): initials by default, a photo when
+   the account has one. The span keeps its size in both variants, so the image
+   never shifts the row it sits in; --sm is the 28 px table variant, --lg the
+   profile-header size. The live monitor's 36 px .monitor-avatar ships with its
+   own page rule and is deliberately not redefined here. */
+.app-avatar--photo {
+  overflow: hidden;
+}
+.app-avatar--photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.app-avatar--sm {
+  width: 28px;
+  height: 28px;
+  font-size: 11px;
+}
+.app-avatar--lg {
+  width: 48px;
+  height: 48px;
+  font-size: 16px;
+}
 .app-profile-name {
   display: block;
   overflow: hidden;

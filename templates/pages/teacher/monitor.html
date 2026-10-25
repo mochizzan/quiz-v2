@@ -145,7 +145,7 @@
           <tr data-registration-id="{{.RegistrationID}}" data-state="{{.State}}" data-attempt-id="{{with .AttemptID}}{{.}}{{end}}" data-answered="{{.Answered}}" data-total="{{.Total}}">
             <td>
               <span class="monitor-name">
-                <span class="monitor-avatar" aria-hidden="true">{{.Initials}}</span>
+                {{template "partials/avatar.html" .Avatar}}
                 <span>
                   <span class="d-block cell-title">{{.StudentName}}</span>
                   <span class="d-block cell-sub">{{.ClassLabel}}{{if .Anonymous}} · Peserta anonim{{end}}</span>

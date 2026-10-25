@@ -48,12 +48,12 @@ func (c AuthClass) valid() bool {
 // routeKey is the registry key for one method+path pair.
 func routeKey(method, path string) string { return method + " " + path }
 
-// routeClasses is the authorization matrix for the 74 pinned routes plus the
-// two operational routes outside the pin. It is deliberately one table rather
+// routeClasses is the authorization matrix for the pinned routes plus the
+// operational routes outside the pin. It is deliberately one table rather
 // than a field on each registration: the matrix is auditable in one place and
 // cannot drift route by route (IDN-015, IDN-016, OPS-220).
 //
-// Owners: IDN, AUT, PAR, ATT, OPS — see contract §6.
+// Owners: IDN, AUT, PAR, ATT, OPS, AVT — see contract §6.
 var routeClasses = map[string]AuthClass{
 	// IDN — identity and access.
 	routeKey("GET", "/"):                                  ClassPublic,
@@ -80,6 +80,14 @@ var routeClasses = map[string]AuthClass{
 	routeKey("POST", "/teacher/teachers/:id/approve"):     ClassTeacher,
 	routeKey("GET", "/teacher/profile"):                   ClassTeacher,
 	routeKey("POST", "/teacher/profile"):                  ClassTeacher,
+
+	// AVT — profile photos. Both mutations are any-auth (a student and a
+	// teacher own the same avatar); the store is account-scoped, so class is
+	// not where ownership is decided. The asset route sits with its owner and
+	// outside the contract-route pin (AVT-062, OPS-220).
+	routeKey("POST", "/profile/photo"):        ClassAnyAuth,
+	routeKey("POST", "/profile/photo/remove"): ClassAnyAuth,
+	routeKey("GET", "/avatars/:name"):         ClassPublic,
 
 	// PAR — participation and eligibility.
 	routeKey("GET", "/join"):                          ClassAnonymousOrPublic,
@@ -139,6 +147,7 @@ var routeClasses = map[string]AuthClass{
 	// OPS — operational and error preview routes.
 	routeKey("GET", "/error/403"): ClassPublic,
 	routeKey("GET", "/error/404"): ClassPublic,
+	routeKey("GET", "/error/413"): ClassPublic,
 	routeKey("GET", "/error/422"): ClassPublic,
 	routeKey("GET", "/error/429"): ClassPublic,
 	routeKey("GET", "/error/500"): ClassPublic,
@@ -150,6 +159,17 @@ var routeClasses = map[string]AuthClass{
 // (R-16, IDN-017, INV-28).
 var csrfExempt = map[string]bool{
 	routeKey("POST", "/attempt/:id/beacon"): true,
+}
+
+// streamRoutes holds the routes whose request body is long-lived and owned by
+// their handler rather than parsed by prepare(). AVT-036 keeps this set tiny
+// and explicit: a streaming route opts out of the ordinary form parse and the
+// POST CSRF dance, so it must be named in this table rather than flagged
+// anywhere. The upload handler still enforces CSRF itself from the first body
+// part (AVT-016); the flag changes only who reads the body, never who authorises
+// the request.
+var streamRoutes = map[string]bool{
+	routeKey("POST", "/profile/photo"): true,
 }
 
 // classFor returns the declared class for a route. ok is false when the route
@@ -179,6 +199,15 @@ func validateRouteClasses(routes []PageRoute) error {
 		}
 		if r.CSRFExempt && !csrfExempt[routeKey(r.Method, r.Path)] {
 			return fmt.Errorf("httpserver: route %s may not be CSRF-exempt", routeKey(r.Method, r.Path))
+		}
+		// Streaming changes who consumes the body, so it is allowed only on a
+		// route named in streamRoutes. A Stream flag on an unlisted route would
+		// silently skip the form parse and CSRF for a normal form POST.
+		if r.Stream && !streamRoutes[routeKey(r.Method, r.Path)] {
+			return fmt.Errorf("httpserver: route %s streams its body but is not in streamRoutes", routeKey(r.Method, r.Path))
+		}
+		if !r.Stream && streamRoutes[routeKey(r.Method, r.Path)] {
+			return fmt.Errorf("httpserver: route %s is in streamRoutes but does not declare Stream", routeKey(r.Method, r.Path))
 		}
 	}
 	return nil

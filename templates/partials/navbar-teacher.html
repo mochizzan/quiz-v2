@@ -14,7 +14,7 @@
     <a class="btn btn-solid theme-primary d-none xl:d-inline-flex" href="/teacher/quizzes/new"><svg width="18" height="18" aria-hidden="true"><use href="#i-plus"></use></svg>Buat kuis</a>
     {{with .User}}
     <a class="app-profile" href="/teacher/profile"{{if eq $.Active "profil"}} aria-current="page"{{end}} aria-label="Profil akun">
-      <span class="app-avatar" aria-hidden="true">{{.Initials}}</span>
+      {{template "partials/avatar.html" .Avatar}}
       <span class="app-profile-label">Profil</span>
       <span class="app-profile-meta">
         <span class="app-profile-name">{{.FullName}}</span>

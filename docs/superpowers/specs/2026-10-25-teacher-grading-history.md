@@ -9,8 +9,8 @@ Repo: `D:\Project\Mother\quiz-v2`. Build: `go build ./...`, `go test ./...`.
 ## 0. Decisions
 
 1. **History is a tab, not a route.** `GET /teacher/grading?state=graded` lists
-   graded essays; the default state is `pending`. The route count stays 74
-   (`conformance_test.go` pins the surface).
+   graded essays; the default state is `pending`. The route count is unchanged
+   by this feature (`conformance_test.go` pins the surface).
 2. **Graded essays are editable by the owning teacher, at any time.** There is no
    same-day window and no original-grader restriction: a quiz has one owner
    account (INV-26), so the owner is the only possible editor.
