@@ -492,7 +492,7 @@ ATT-171. **`GET /teacher/quizzes/:id/results`.**
 | Input | `state`, `class`, `q`, `page` |
 | Transaction | one read-only transaction for rows, counts, and the average |
 | Effects | none |
-| Postconditions | one row per submitted live attempt; in-progress attempts are not rows (ATT-176). The header carries one back link, `Kembali ke detail kuis`, and one secondary action, `Nilai esai kuis ini`, scoped to this quiz as `/teacher/grading?quiz={id}` |
+| Postconditions | one row per submitted live attempt; in-progress attempts are not rows (ATT-176). The header carries one back link, `Kembali ke detail kuis`, and two secondary actions: `Nilai esai kuis ini`, scoped to this quiz as `/teacher/grading?quiz={id}`, and `Unduh XLSX`, scoped to this quiz as `/teacher/quizzes/{id}/export.xlsx` |
 | Errors | 404; invalid query values fall back to defaults, never 422 (R-21) |
 | Redirect | none |
 | Provenance | reads `submitted_at`, `final_score`, focus counts |
@@ -856,7 +856,7 @@ ATT-287. **IDN — sessions and CSRF.** IDN resolves the student/teacher/anonymo
 
 ATT-288. **OPS — transaction and transport.** OPS supplies REPEATABLE READ, the soft-delete sentinel, cascade stamps, the 404/422/429/500 pages, proxy buffering off for SSE, and the limiter's process model. ATT specifies the locks, statements, statuses, and copy; OPS implements them and must not add a 409, a hard delete, or an audit table. The rate limiter may be in-process for the current single binary; a multi-instance deployment needs a shared window, which OPS owns.
 
-ATT-289. **No telemetry export.** Focus events are read only by the monitor and recap. There is no analytics endpoint, export job, or third-party beacon in this domain; a future export is a new rule, not an inference from `focus_loss_events`.
+ATT-289. **No telemetry export.** Focus events are read only by the monitor and recap. There is no focus-event analytics endpoint, focus-event export job, or third-party beacon in this domain; a future focus-event export is a new rule, not an inference from `focus_loss_events`. The quiz XLSX export is separate: it exports responses and scores, not focus events (`2026-10-25-quiz-xlsx-export-design.md`).
 
 ## 11. Traceability
 
