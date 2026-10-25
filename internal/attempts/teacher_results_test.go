@@ -84,6 +84,9 @@ func TestResultsMetricsFiltersAndPagination(t *testing.T) {
 	if want := "/teacher/grading?quiz=" + idString(quiz); got.GradingHref != want {
 		t.Errorf("GradingHref = %q, want %q", got.GradingHref, want)
 	}
+	if want := "/teacher/quizzes/" + idString(quiz) + "/export.xlsx"; got.ExportHref != want {
+		t.Errorf("ExportHref = %q, want %q", got.ExportHref, want)
+	}
 	if got.BackHref != quizPath(quiz) {
 		t.Errorf("BackHref = %q, want the quiz detail", got.BackHref)
 	}

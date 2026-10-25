@@ -380,14 +380,16 @@ func TestQuizDetailSaveOrderVisibilityContract(t *testing.T) {
 	}
 }
 
-// TestResultsCarriesOneScopedGradingAction pins §3.2: the header's grading
-// action is this quiz's slice of the queue, and a zero-attempt empty state has
-// no action because the back link is already that destination.
-func TestResultsCarriesOneScopedGradingAction(t *testing.T) {
+// TestResultsCarriesScopedActions pins §3.2 as amended 2026-10-25: the header
+// carries two secondary actions, the grading queue and the XLSX export, both
+// scoped to this quiz. A zero-attempt empty state has no action because the back
+// link is already that destination.
+func TestResultsCarriesScopedActions(t *testing.T) {
 	page := viewmodel.QuizResults{
 		Quiz:        viewmodel.QuizRef{ID: 9, Title: "Ulangan Bab 3"},
 		BackHref:    "/teacher/quizzes/9",
 		GradingHref: "/teacher/grading?quiz=9",
+		ExportHref:  "/teacher/quizzes/9/export.xlsx",
 		ReviewMode:  viewmodel.ReviewQuestionsNoVerdict,
 		Rows:        viewmodel.NewList([]viewmodel.ResultsRow{}, 1, 10),
 		Empty: viewmodel.EmptyState{
@@ -408,8 +410,17 @@ func TestResultsCarriesOneScopedGradingAction(t *testing.T) {
 	if !strings.Contains(head, "Nilai esai kuis ini") {
 		t.Error("the scoped grading action must name its scope")
 	}
-	if got := strings.Count(head, "btn "); got != 1 {
-		t.Errorf("header actions = %d, want exactly one", got)
+	if !strings.Contains(head, `href="/teacher/quizzes/9/export.xlsx"`) {
+		t.Error("the export action must be scoped to this quiz")
+	}
+	if !strings.Contains(head, "Unduh XLSX") {
+		t.Error("the export action must be labelled Unduh XLSX")
+	}
+	if got := strings.Count(head, "btn "); got != 2 {
+		t.Errorf("header actions = %d, want exactly two secondary actions", got)
+	}
+	if strings.Contains(head, "btn-primary") {
+		t.Error("the results header must carry no primary action")
 	}
 	if strings.Contains(html, `href="/teacher/grading"`) {
 		t.Error("results still links to the whole-school grading queue")

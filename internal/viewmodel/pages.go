@@ -385,7 +385,8 @@ type ResultsRow struct {
 }
 
 // QuizResults is /teacher/quizzes/:id/results. GradingHref is this quiz's
-// scoped slice of the essay queue, never the whole-school queue.
+// scoped slice of the essay queue, never the whole-school queue. ExportHref is
+// this quiz's XLSX download.
 type QuizResults struct {
 	Quiz        QuizRef
 	Counts      ResultsCounts
@@ -396,6 +397,7 @@ type QuizResults struct {
 	Empty       EmptyState
 	BackHref    string
 	GradingHref string
+	ExportHref  string
 	ReviewMode  ReviewMode
 }
 

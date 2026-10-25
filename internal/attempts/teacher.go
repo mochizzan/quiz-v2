@@ -360,6 +360,7 @@ func (s *Service) Results(ctx context.Context, in ResultsInput) (viewmodel.QuizR
 			// The header action is this quiz's slice of the essay queue, not the
 			// whole-school /teacher/grading the shared nav points at.
 			GradingHref: "/teacher/grading?quiz=" + strconv.FormatInt(quiz.ID, 10),
+			ExportHref:  "/teacher/quizzes/" + strconv.FormatInt(quiz.ID, 10) + "/export.xlsx",
 			ReviewMode:  quiz.ReviewMode,
 		}
 		if tenths, ok := AverageTenths(finals); ok {

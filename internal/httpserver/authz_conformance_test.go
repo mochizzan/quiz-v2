@@ -15,10 +15,10 @@ import (
 // when no account exists.
 
 // TestAuthorizationClassTableCoversAuditedSurface proves the matrix has one row
-// per audited pair: the 77 pinned routes plus GET /healthz and
+// per audited pair: the 78 pinned routes plus GET /healthz and
 // GET /uploads/:name (OPS-220, IDN-015).
 func TestAuthorizationClassTableCoversAuditedSurface(t *testing.T) {
-	const audited = 79
+	const audited = 80
 	if got := httpserver.ClassedRoutes(); got != audited {
 		t.Fatalf("authorization table has %d rows, want %d", got, audited)
 	}

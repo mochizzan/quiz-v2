@@ -48,7 +48,7 @@ func (c AuthClass) valid() bool {
 // routeKey is the registry key for one method+path pair.
 func routeKey(method, path string) string { return method + " " + path }
 
-// routeClasses is the authorization matrix for the 74 pinned routes plus the
+// routeClasses is the authorization matrix for the 78 pinned routes plus the
 // two operational routes outside the pin. It is deliberately one table rather
 // than a field on each registration: the matrix is auditable in one place and
 // cannot drift route by route (IDN-015, IDN-016, OPS-220).
@@ -121,20 +121,21 @@ var routeClasses = map[string]AuthClass{
 	routeKey("GET", "/uploads/:name"):                              ClassPublic,
 
 	// ATT — attempts, grading, results.
-	routeKey("GET", "/attempt/:id"):                 ClassAnonymousOrPublic,
-	routeKey("POST", "/attempt/:id/answer"):         ClassAnonymousOrPublic,
-	routeKey("GET", "/attempt/:id/review"):          ClassAnonymousOrPublic,
-	routeKey("POST", "/attempt/:id/submit"):         ClassAnonymousOrPublic,
-	routeKey("GET", "/attempt/:id/result"):          ClassAnonymousOrPublic,
-	routeKey("POST", "/attempt/:id/beacon"):         ClassAnonymousOrPublic,
-	routeKey("GET", "/teacher"):                     ClassTeacher,
-	routeKey("GET", "/teacher/quizzes/:id/results"): ClassOwnerTeacher,
-	routeKey("GET", "/teacher/quizzes/:id/monitor"): ClassOwnerTeacher,
-	routeKey("GET", "/teacher/quizzes/:id/stream"):  ClassOwnerTeacher,
-	routeKey("GET", "/teacher/grading"):             ClassOwnerTeacher,
-	routeKey("GET", "/teacher/grading/:answerID"):   ClassOwnerTeacher,
-	routeKey("POST", "/teacher/grading/:answerID"):  ClassOwnerTeacher,
-	routeKey("GET", "/teacher/recap/:attemptID"):    ClassOwnerTeacher,
+	routeKey("GET", "/attempt/:id"):                     ClassAnonymousOrPublic,
+	routeKey("POST", "/attempt/:id/answer"):             ClassAnonymousOrPublic,
+	routeKey("GET", "/attempt/:id/review"):              ClassAnonymousOrPublic,
+	routeKey("POST", "/attempt/:id/submit"):             ClassAnonymousOrPublic,
+	routeKey("GET", "/attempt/:id/result"):              ClassAnonymousOrPublic,
+	routeKey("POST", "/attempt/:id/beacon"):             ClassAnonymousOrPublic,
+	routeKey("GET", "/teacher"):                         ClassTeacher,
+	routeKey("GET", "/teacher/quizzes/:id/results"):     ClassOwnerTeacher,
+	routeKey("GET", "/teacher/quizzes/:id/export.xlsx"): ClassOwnerTeacher,
+	routeKey("GET", "/teacher/quizzes/:id/monitor"):     ClassOwnerTeacher,
+	routeKey("GET", "/teacher/quizzes/:id/stream"):      ClassOwnerTeacher,
+	routeKey("GET", "/teacher/grading"):                 ClassOwnerTeacher,
+	routeKey("GET", "/teacher/grading/:answerID"):       ClassOwnerTeacher,
+	routeKey("POST", "/teacher/grading/:answerID"):      ClassOwnerTeacher,
+	routeKey("GET", "/teacher/recap/:attemptID"):        ClassOwnerTeacher,
 
 	// OPS — operational and error preview routes.
 	routeKey("GET", "/error/403"): ClassPublic,
