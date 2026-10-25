@@ -71,6 +71,8 @@ var routeClasses = map[string]AuthClass{
 	routeKey("POST", "/logout"):                           ClassPublic,
 	routeKey("GET", "/profile"):                           ClassStudent,
 	routeKey("POST", "/profile"):                          ClassStudent,
+	routeKey("GET", "/profile/password"):                  ClassStudent,
+	routeKey("POST", "/profile/password"):                 ClassStudent,
 	routeKey("GET", "/teacher/students"):                  ClassTeacher,
 	routeKey("GET", "/teacher/students/:id"):              ClassTeacher,
 	routeKey("POST", "/teacher/students/:id"):             ClassTeacher,
@@ -80,6 +82,8 @@ var routeClasses = map[string]AuthClass{
 	routeKey("POST", "/teacher/teachers/:id/approve"):     ClassTeacher,
 	routeKey("GET", "/teacher/profile"):                   ClassTeacher,
 	routeKey("POST", "/teacher/profile"):                  ClassTeacher,
+	routeKey("GET", "/teacher/profile/password"):          ClassTeacher,
+	routeKey("POST", "/teacher/profile/password"):         ClassTeacher,
 
 	// PAR — participation and eligibility.
 	routeKey("GET", "/join"):                          ClassAnonymousOrPublic,
