@@ -1,9 +1,12 @@
 package httpserver_test
 
 import (
+	"html/template"
 	"io"
 	"io/fs"
+	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -15,7 +18,7 @@ import (
 )
 
 // conformance_test.go is the whole-frontend gate for the typed-data build. It
-// pins the exact 72-route surface from the design contract, renders every GET
+// pins the exact 74-route surface from the design contract, renders every GET
 // page and exercises every POST action, and walks the template/CSS/JS sources
 // for the design bans. TestMain (server_test.go) chdirs to the repository root,
 // so ./templates and ./static resolve correctly.
@@ -30,6 +33,9 @@ var (
 	reTagStrip  = regexp.MustCompile(`<[^>]*>`)
 	reForm      = regexp.MustCompile(`(?is)<form\b[^>]*method="post"[^>]*>(.*?)</form>`)
 	reOnHandler = regexp.MustCompile(`\son(click|change|submit|input|focus|blur|load|error)\s*=`)
+
+	reBackLink   = regexp.MustCompile(`<a class="link-quiet[^"]*" href="([^"]+)"`)
+	reCancelLink = regexp.MustCompile(`<a[^>]*href="([^"]+)"[^>]*>Batal</a>`)
 )
 
 var v5ResponsiveRe = []*regexp.Regexp{
@@ -45,9 +51,9 @@ type route struct{ method, path string }
 
 func r(method, path string) route { return route{method: method, path: path} }
 
-// contractRoutes is the exact 72-entry surface from the design contract:
+// contractRoutes is the exact 77-entry surface from the design contract:
 // public/auth 18, student 9, attempt 6, teacher core/authoring 18, grading 4,
-// management 15, error 2.
+// management 17, error 5.
 var contractRoutes = []route{
 	// Public and auth (18).
 	r("GET", "/"),
@@ -106,7 +112,7 @@ var contractRoutes = []route{
 	r("POST", "/teacher/grading/:answerID"),
 	r("GET", "/teacher/recap/:attemptID"),
 
-	// Management (15).
+	// Management (17).
 	r("GET", "/teacher/students"),
 	r("GET", "/teacher/students/:id"),
 	r("POST", "/teacher/students/:id"),
@@ -122,9 +128,13 @@ var contractRoutes = []route{
 	r("POST", "/teacher/majors/:id/delete"),
 	r("GET", "/teacher/teachers"),
 	r("POST", "/teacher/teachers/:id/approve"),
+	r("GET", "/teacher/profile"), r("POST", "/teacher/profile"),
 
-	// Error pages (2; the 404 catch-all is additionally tested below).
+	// Error pages (5; the 404 catch-all is additionally tested below).
+	r("GET", "/error/403"),
 	r("GET", "/error/404"),
+	r("GET", "/error/422"),
+	r("GET", "/error/429"),
 	r("GET", "/error/500"),
 }
 
@@ -153,7 +163,7 @@ func walkTemplates(t *testing.T) map[string]string {
 	return files
 }
 
-// TestRouteSurface pins the exact 72 method+path pairs. Membership equality is
+// TestRouteSurface pins the exact 77 method+path pairs. Membership equality is
 // used, not slice order, because registration order is an implementation detail
 // (server.go sorts a copy).
 func TestRouteSurface(t *testing.T) {
@@ -165,8 +175,8 @@ func TestRouteSurface(t *testing.T) {
 		}
 		want[key] = true
 	}
-	if len(want) != 72 {
-		t.Fatalf("contract fixture = %d routes, want 72", len(want))
+	if len(want) != 77 {
+		t.Fatalf("contract fixture = %d routes, want 77", len(want))
 	}
 
 	seen := map[string]int{}
@@ -188,6 +198,108 @@ func TestRouteSurface(t *testing.T) {
 	}
 	if len(seen) != len(want) {
 		t.Errorf("registered surface = %d routes, want %d", len(seen), len(want))
+	}
+}
+
+// TestEveryTemplateParses parses every file under ./templates on its own. A
+// template with a truncated block (an unclosed {{define}}/{{with}}) makes
+// ViewLoader fail for every page set that includes it, so it must fail here,
+// named, rather than as a 500 on an unrelated route.
+func TestEveryTemplateParses(t *testing.T) {
+	for path, body := range walkTemplates(t) {
+		if _, err := template.New(path).Parse(body); err != nil {
+			t.Errorf("%s: %v", path, err)
+		}
+	}
+}
+
+// TestEveryRouteTemplateExists keeps every render path honest: a route that
+// names a template that is not on disk (or an ActForm POST that resolved to
+// none) fails here instead of at request time as a 500.
+func TestEveryRouteTemplateExists(t *testing.T) {
+	files := walkTemplates(t)
+	for _, p := range httpserver.RegisteredPages() {
+		if p.Template == "" {
+			if p.ActForm != nil {
+				t.Errorf("%s %s: ActForm route renders no template, so a 422 fails", p.Method, p.Path)
+			}
+			continue
+		}
+		if _, ok := files["templates/"+p.Template]; !ok {
+			t.Errorf("%s %s: template %q is not a file under ./templates", p.Method, p.Path, p.Template)
+		}
+	}
+}
+
+// TestValidationReRendersTheForm proves the 422 contract end to end: a rejected
+// POST answers the submitting page with its fields, not the generic error
+// page. POST /login needs no database (validation runs before the lookup), so
+// it is the cheapest witness — and every ActForm POST resolves its template the
+// same way (route.Template, filled by resolveTemplates).
+func TestValidationReRendersTheForm(t *testing.T) {
+	app := httpserver.New(config.Config{Addr: ":8080", SessionSigningKey: testSigningKey})
+
+	// The GET issues the double-submit CSRF cookie the form echoes.
+	get, err := app.Test(httptest.NewRequest("GET", "/login", nil))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var token string
+	for _, c := range get.Cookies() {
+		if c.Name == httpserver.CookieCSRF {
+			token = c.Value
+		}
+	}
+	if token == "" {
+		t.Fatal("GET /login issued no CSRF cookie")
+	}
+
+	// Empty credentials are a field error before any service call.
+	form := url.Values{"csrf_token": {token}, "email": {""}, "password": {""}}
+	req := httptest.NewRequest("POST", "/login", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.AddCookie(&http.Cookie{Name: httpserver.CookieCSRF, Value: token})
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusUnprocessableEntity {
+		t.Fatalf("status = %d, want 422", resp.StatusCode)
+	}
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	html := string(body)
+	// The form itself came back — same action, same field — rather than the
+	// generic error page. Before resolveTemplates this answered 500.
+	for _, want := range []string{`action="/login"`, `name="email"`, `name="password"`} {
+		if !strings.Contains(html, want) {
+			t.Errorf("422 body missing %q (the form did not re-render)", want)
+		}
+	}
+	if strings.Contains(html, "Terjadi kesalahan") {
+		t.Error("422 body is the generic error page, not the submitted form")
+	}
+}
+
+// TestNoCancelLinkDuplicatesBackLink pins DESIGN §7's "one destination, one
+// affordance" rule on form pages: the back link already cancels, so a Batal
+// anchor pointing at the same URL is a duplicate. The first implementation pass
+// left this pattern on quiz-new, question-editor, both profile pages, and the
+// student/anonymous edit forms.
+func TestNoCancelLinkDuplicatesBackLink(t *testing.T) {
+	for path, body := range walkTemplates(t) {
+		backs := map[string]bool{}
+		for _, m := range reBackLink.FindAllStringSubmatch(body, -1) {
+			backs[m[1]] = true
+		}
+		for _, m := range reCancelLink.FindAllStringSubmatch(body, -1) {
+			if backs[m[1]] {
+				t.Errorf("%s: Batal link to %q duplicates the back link", path, m[1])
+			}
+		}
 	}
 }
 
@@ -385,6 +497,30 @@ func TestAppJsHasNoNetworkCalls(t *testing.T) {
 	for _, api := range []string{"fetch(", "XMLHttpRequest", "EventSource", "WebSocket", "sendBeacon"} {
 		if strings.Contains(src, api) {
 			t.Errorf("app.js contains banned network API %q in code", api)
+		}
+	}
+}
+
+// TestNoNativeBrowserDialogs: confirm()/alert()/prompt() paint the browser's
+// own chrome, ignore the design system and cannot be styled. Destructive
+// actions ask through partials/dialogs.html (Bootstrap 6 dialog) instead;
+// everything else states its message in the page.
+func TestNoNativeBrowserDialogs(t *testing.T) {
+	native := regexp.MustCompile(`\b(?:window\.)?(?:confirm|alert|prompt)\s*\(`)
+
+	b, err := os.ReadFile(filepath.FromSlash("static/js/app.js"))
+	if err != nil {
+		t.Fatalf("read app.js: %v", err)
+	}
+	for _, hit := range native.FindAllString(stripJSComments(string(b)), -1) {
+		t.Errorf("app.js calls the browser's native %s; use partials/dialogs.html", hit)
+	}
+
+	templateComment := regexp.MustCompile(`(?s)\{\{/\*.*?\*/\}\}`)
+	for path, body := range walkTemplates(t) {
+		body = templateComment.ReplaceAllString(body, "")
+		if hit := native.FindString(body); hit != "" {
+			t.Errorf("%s calls the browser's native %s; use partials/dialogs.html", path, hit)
 		}
 	}
 }

@@ -43,7 +43,7 @@ func readQuiz(id int64, title, state string, showScore bool) quizRow {
 		AllowRetake: true,
 		MaxAttempts: 3,
 		ShowScore:   showScore,
-		ReviewMode:  "questions_only",
+		ReviewMode:  "questions_no_answers",
 	}
 }
 
@@ -505,6 +505,15 @@ func TestBuildStudentHistoryDetail(t *testing.T) {
 			if detail.CanRetry != tc.want {
 				t.Errorf("CanRetry = %v, want %v", detail.CanRetry, tc.want)
 			}
+			// The quiz page is 404 once the quiz closes (PAR-088), so the
+			// detail page only offers it while the quiz is open.
+			wantHref := ""
+			if tc.quiz.State == "open" {
+				wantHref = quizPath(uint32(tc.quiz.ID))
+			}
+			if detail.RetryHref != wantHref {
+				t.Errorf("RetryHref = %q, want %q for state %q", detail.RetryHref, wantHref, tc.quiz.State)
+			}
 		})
 	}
 
@@ -612,7 +621,7 @@ func seedReadQuiz(t *testing.T, db *store.DB, in readQuizSeed) int64 {
 		(owner_account_id, title, visibility, state, code, invite_token,
 		 target_grade, target_major_id, allow_retake, max_attempts, show_score,
 		 review_mode, published_at, closed_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'questions_only', ?, ?)`,
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'questions_no_answers', ?, ?)`,
 		in.owner, in.title, in.visibility, in.state, in.code, in.invite,
 		in.targetGrade, in.targetMajor, in.allowRetake, in.maxAttempts, in.showScore,
 		in.published, in.closed)

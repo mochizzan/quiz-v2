@@ -19,8 +19,9 @@ COPY --from=build --chown=app:app /out/server /app/server
 COPY --from=build --chown=app:app /out/migrate /app/migrate
 COPY --chown=app:app templates /app/templates
 COPY --chown=app:app static /app/static
-# The upload root must exist and belong to the runtime user before the named
-# volume is mounted; main proves it is writable and refuses to start otherwise.
+# The upload root must exist and belong to the runtime user before the host
+# directory is mounted over it; main proves it is writable and refuses to start
+# otherwise.
 RUN mkdir -p /app/uploads && chown app:app /app/uploads
 USER app
 WORKDIR /app

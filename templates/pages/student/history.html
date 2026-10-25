@@ -1,3 +1,138 @@
+{{define "partials/page-style"}}
+/* ---- pages/student/history ----------------------------------------------
+   One <details> per quiz. The <summary> is both the collapsed row and the
+   disclosure control, so the whole row is the hit target and there is no
+   second "open" affordance. Page-scoped styles stay here (contract §4);
+   shared components remain in ui-style. */
+.history-quiz + .history-quiz { border-top: 1px solid var(--bs-border-subtle); }
+
+.history-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "title chevron"
+    "state state";
+  align-items: start;
+  gap: 10px 12px;
+  padding: 16px;
+  cursor: pointer;
+  list-style: none;
+}
+.history-row::marker { content: ""; }
+.history-row::-webkit-details-marker { display: none; }
+.history-row:focus-visible { outline: var(--bs-focus-ring); outline-offset: -2px; }
+.history-quiz[open] > .history-row { border-bottom: 1px solid var(--bs-border-subtle); }
+
+.history-title {
+  grid-area: title;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+.history-title .cell-title { font-size: 16px; line-height: 22px; }
+.history-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  color: var(--bs-fg-2);
+  font-size: 13px;
+  line-height: 18px;
+}
+/* The dot lives on the item so a wrapped line never starts with a separator. */
+.history-meta-item + .history-meta-item::before {
+  content: "·";
+  margin-inline-end: 8px;
+  color: var(--bs-fg-4);
+}
+
+.history-state { grid-area: state; justify-self: start; }
+
+.history-chevron {
+  grid-area: chevron;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--bs-bg-2);
+  color: var(--bs-fg-2);
+}
+.history-chevron svg { display: block; }
+.history-quiz[open] .history-chevron { background: var(--bs-bg-3); color: var(--bs-primary-base); }
+.history-quiz[open] .history-chevron svg { transform: rotate(180deg); }
+
+@media (hover: hover) {
+  .history-row:hover .cell-title { color: var(--bs-primary-base); }
+  .history-row:hover .history-chevron { background: var(--bs-bg-3); color: var(--bs-primary-base); }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .history-chevron svg { transition: transform .35s ease; }
+}
+
+@media (min-width: 768px) {
+  .history-row {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-areas: "title state chevron";
+    align-items: center;
+    gap: 24px;
+    padding: 16px 24px;
+  }
+  .history-state { justify-self: end; }
+}
+
+/* ---- Attempt rows -------------------------------------------------------- */
+.history-attempts { margin: 0; padding: 0; list-style: none; }
+
+.history-attempt {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "label status"
+    "when when"
+    "score action";
+  align-items: center;
+  gap: 6px 12px;
+  padding: 12px 16px;
+  font-size: 13px;
+}
+.history-attempt + .history-attempt { border-top: 1px solid var(--bs-border-subtle); }
+
+.history-attempt-label { grid-area: label; min-width: 0; }
+.history-attempt-label .cell-title { font-size: 13px; }
+.history-attempt-when {
+  grid-area: when;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 16px;
+}
+.history-attempt-date { display: inline-flex; align-items: baseline; gap: 6px; white-space: nowrap; }
+.history-attempt-date .cell-sub { font-weight: 600; }
+.history-attempt-date .num { color: var(--bs-fg-1); font-weight: 600; }
+.history-attempt-score { grid-area: score; justify-self: start; }
+.history-attempt-status { grid-area: status; justify-self: start; }
+.history-attempt-action { grid-area: action; justify-self: end; white-space: nowrap; }
+
+.history-more { margin: 0; padding: 4px 16px 16px; font-size: 13px; }
+.history-none { padding: 12px 16px 4px; }
+
+@media (min-width: 768px) {
+  .history-attempt {
+    grid-template-columns: minmax(120px, 1fr) auto auto auto auto;
+    grid-template-areas: "label when score status action";
+    gap: 16px;
+    padding: 10px 24px;
+  }
+  .history-more, .history-none { padding-inline: 24px; }
+}
+{{end}}
+
+
 {{define "content"}}
 <div class="page-stack">
 
@@ -14,38 +149,53 @@
   {{else}}
 
   <div class="card p-0">
-    <div class="table-responsive">
-      <table class="table table-clean">
-        <caption class="visually-hidden">Kuis yang Anda ikuti beserta hasilnya</caption>
-        <thead>
-          <tr>
-            <th scope="col">Kuis</th>
-            <th scope="col">Percobaan</th>
-            <th scope="col">Skor terbaik</th>
-            <th scope="col">Dikirim</th>
-            <th scope="col">Status</th>
-            <th scope="col"><span class="visually-hidden">Aksi</span></th>
-          </tr>
-        </thead>
-        <tbody>
-          {{range .Data.Rows.Items}}
-          <tr>
-            <td>
-              <span class="cell-title d-block">{{.Quiz.Title}}</span>
-              <span class="cell-sub d-block">{{.TeacherName}}</span>
-            </td>
-            <td class="num">{{len .Attempts}}</td>
-            <td class="num">{{if .ShowScore}}{{with .BestScore}}{{template "partials/score.html" .}}{{else}}—{{end}}{{else}}—{{end}}</td>
-            <td class="num">{{with .LastAttempt}}{{.Short}}{{else}}—{{end}}</td>
-            <td><span class="{{.State.BadgeClass}}">{{.State.Label}}</span></td>
-            <td class="text-end text-nowrap"><a class="link-quiet" href="{{.DetailHref}}">Buka detail</a></td>
-          </tr>
+    {{range .Data.Rows.Items}}
+    <details class="history-quiz">
+      <summary class="history-row">
+        <span class="history-title">
+          <span class="cell-title">{{.Quiz.Title}}</span>
+          <span class="history-meta">
+            <span class="history-meta-item">{{.TeacherName}}</span>
+            <span class="history-meta-item"><span class="num">{{len .Attempts}}</span> percobaan</span>
+            <span class="history-meta-item">Skor terbaik <span class="num">{{if .ShowScore}}{{with .BestScore}}{{.}}{{else}}—{{end}}{{else}}—{{end}}</span></span>
+            <span class="history-meta-item">Terakhir <span class="num">{{with .LastAttempt}}{{.Short}}{{else}}—{{end}}</span></span>
+          </span>
+        </span>
+        <span class="{{.State.BadgeClass}} history-state">{{.State.Label}}</span>
+        <span class="history-chevron" aria-hidden="true">
+          <svg width="16" height="16" aria-hidden="true"><use href="#i-chev-down"></use></svg>
+        </span>
+      </summary>
+
+      {{if .Attempts}}
+      <ol class="history-attempts">
+        {{range .Attempts}}
+        <li class="history-attempt">
+          <span class="cell-title history-attempt-label">Percobaan <span class="num">{{.Number}}</span></span>
+          <span class="history-attempt-when">
+            <span class="history-attempt-date"><span class="cell-sub">Dimulai</span> <span class="num">{{with .StartedAt}}{{.DateTime}}{{else}}—{{end}}</span></span>
+            <span class="history-attempt-date"><span class="cell-sub">Dikirim</span> <span class="num">{{with .SubmittedAt}}{{.DateTime}}{{else}}—{{end}}</span></span>
+          </span>
+          {{/* Score is already nil when the teacher hides it, when the attempt is
+               still running, and while an essay waits for a grade. */}}
+          <span class="history-attempt-score num">{{with .Score}}{{template "partials/score.html" .}}{{else}}—{{end}}</span>
+          <span class="badge theme-{{.StatusTone}} history-attempt-status">{{.StatusLabel}}</span>
+          {{if eq .State "in_progress"}}
+          <a class="link-quiet history-attempt-action" href="{{.ResultHref}}" aria-label="Lanjutkan percobaan {{.Number}}">Lanjutkan</a>
+          {{else}}
+          <a class="link-quiet history-attempt-action" href="{{.ResultHref}}" aria-label="Lihat hasil percobaan {{.Number}}">Lihat hasil</a>
           {{end}}
-        </tbody>
-      </table>
-    </div>
+        </li>
+        {{end}}
+      </ol>
+      {{else}}
+      <p class="page-sub history-none">Belum ada percobaan.</p>
+      {{end}}
+      <p class="history-more"><a class="link-quiet" href="{{.DetailHref}}">Lihat semua percobaan</a></p>
+    </details>
+    {{end}}
   </div>
-  <p class="page-sub">Skor terbaik muncul sebagai — ketika guru tidak menampilkan skor untuk kuis tersebut.</p>
+  <p class="page-sub">Skor muncul sebagai — ketika guru tidak menampilkan skor untuk kuis tersebut.</p>
 
   {{template "partials/pagination.html" .Data.Pagination}}
   {{end}}

@@ -371,9 +371,7 @@ func buildDetail(ctx context.Context, q store.Querier, ownerID, quizID int64, te
 		Editable:           row.State == string(viewmodel.QuizDraft),
 		ResultsHref:        quizPath(quizID) + "/results",
 		MonitorHref:        quizPath(quizID) + "/monitor",
-		EditHref:           quizPath(quizID),
 		AddQuestionHref:    quizPath(quizID) + "/questions/new",
-		GradingHref:        "/teacher/grading",
 		RandomizeQuestions: row.RandomizeQuestions,
 		RandomizeAnswers:   row.RandomizeOptions,
 		Settings: viewmodel.QuizSettings{

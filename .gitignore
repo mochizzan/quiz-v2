@@ -5,6 +5,10 @@
 coverage.out
 *.log
 
+# docker bind mounts (persistent data)
+/var/
+/uploads/
+
 # local agent/tooling state
 .codegraph/
 .omp/

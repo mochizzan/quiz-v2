@@ -133,8 +133,8 @@ func TestGradingQueue(t *testing.T) {
 		t.Fatalf("GradingQueue: %v", err)
 	}
 	queue := page.Queue
-	if queue.Counts.Pending != 4 || queue.Counts.GradedToday != 1 {
-		t.Fatalf("counts = %+v, want pending 4 and graded today 1", queue.Counts)
+	if queue.Counts.Pending != 4 || queue.Counts.GradedToday != 1 || queue.Counts.Graded != 1 {
+		t.Fatalf("counts = %+v, want pending 4, graded today 1, graded 1", queue.Counts)
 	}
 	if queue.Rows.Total != 4 || len(queue.Rows.Items) != 4 || queue.Rows.PerPage != 20 {
 		t.Fatalf("rows = total %d items %d perPage %d, want 4/4/20",
@@ -177,7 +177,8 @@ func TestGradingQueue(t *testing.T) {
 		t.Fatalf("quiz filter: %v", err)
 	}
 	byQuiz := byQuizPage.Queue
-	if byQuiz.Rows.Total != 1 || byQuiz.Counts.Pending != 4 || byQuiz.Counts.GradedToday != 1 {
+	if byQuiz.Rows.Total != 1 || byQuiz.Counts.Pending != 4 || byQuiz.Counts.GradedToday != 1 ||
+		byQuiz.Counts.Graded != 1 {
 		t.Errorf("quiz filter = total %d counts %+v", byQuiz.Rows.Total, byQuiz.Counts)
 	}
 	if byQuiz.Rows.Items[0].QuizTitle != "Kuis Kedua" {
@@ -257,8 +258,8 @@ func TestGradingQueue(t *testing.T) {
 		t.Errorf("fallback = %+v page %d", fallback.Query, fallback.Rows.Page)
 	}
 
-	// A graded answer is not in the queue but is reachable by direct URL and
-	// renders the stored score and feedback with the one-decimal label.
+	// A graded answer is not on the pending tab but is reachable by direct URL
+	// and renders the stored score, feedback, and one-decimal form value.
 	detail, err := f.svc.GradingDetail(f.ctx, GradingDetailInput{
 		GradingQueueInput: GradingQueueInput{AccountID: f.teacherID},
 		AnswerID:          w.eka.essay1ID,
@@ -275,14 +276,64 @@ func TestGradingQueue(t *testing.T) {
 		sel.Feedback != "Bagus" {
 		t.Errorf("graded detail = %+v", sel.Answer)
 	}
-	if sel.Answer.WaitingLabel != "Dinilai 85,5%" {
-		t.Errorf("graded WaitingLabel = %q, want Dinilai 85,5%%", sel.Answer.WaitingLabel)
+	if sel.ScoreInput != "85,5" {
+		t.Errorf("ScoreInput = %q, want 85,5", sel.ScoreInput)
+	}
+	if sel.Answer.GradedAt == nil || sel.Answer.UpdatedAt == nil || sel.Answer.Edited ||
+		sel.Answer.Version != 0 || sel.Answer.WaitingLabel != "" {
+		t.Errorf("graded meta = graded %v updated %v edited %v version %d waiting %q",
+			sel.Answer.GradedAt, sel.Answer.UpdatedAt, sel.Answer.Edited,
+			sel.Answer.Version, sel.Answer.WaitingLabel)
 	}
 	if sel.Suggested != nil {
 		t.Errorf("Suggested = %+v, want nil (ATT-213)", sel.Suggested)
 	}
 	if sel.NextHref != gradingAnswerPath(w.budi.essay1ID) {
 		t.Errorf("graded NextHref = %q, want the first pending essay", sel.NextHref)
+	}
+
+	// The graded tab is the assessment history: only graded rows, one-decimal
+	// labels, and a detail that links back into the same tab.
+	historyPage, err := f.svc.GradingQueue(f.ctx, GradingQueueInput{
+		AccountID: f.teacherID, StateRaw: "graded",
+	})
+	if err != nil {
+		t.Fatalf("graded queue: %v", err)
+	}
+	history := historyPage.Queue
+	if history.Rows.Total != 1 || len(history.Rows.Items) != 1 {
+		t.Fatalf("graded rows = %d/%d, want 1", history.Rows.Total, len(history.Rows.Items))
+	}
+	row := history.Rows.Items[0]
+	if row.AnswerID != w.eka.essay1ID || row.Score == nil || row.Score.Int() != 86 ||
+		row.ScoreLabel != "85,5" || row.GradedLabel == "" || row.EditedLabel != "" ||
+		row.WaitingLabel != "" {
+		t.Errorf("graded row = %+v", row)
+	}
+	if row.Href != gradingAnswerPath(w.eka.essay1ID)+"?state=graded" {
+		t.Errorf("graded row href = %q, want the history tab", row.Href)
+	}
+	if history.Query.Tab != "graded" || len(history.Tabs) != 2 ||
+		!history.Tabs[1].Active || history.Tabs[0].Active {
+		t.Errorf("graded tabs = %+v query %+v", history.Tabs, history.Query)
+	}
+
+	historyDetail, err := f.svc.GradingDetail(f.ctx, GradingDetailInput{
+		GradingQueueInput: GradingQueueInput{AccountID: f.teacherID, StateRaw: "graded"},
+		AnswerID:          w.eka.essay1ID,
+	})
+	if err != nil {
+		t.Fatalf("graded-tab detail: %v", err)
+	}
+	sel = historyDetail.Selected
+	if want := gradingAnswerPath(w.eka.essay1ID) + "?state=graded"; sel.Action != want {
+		t.Errorf("graded-tab Action = %q, want %q", sel.Action, want)
+	}
+	if sel.BackHref != "/teacher/grading?state=graded" {
+		t.Errorf("graded-tab BackHref = %q", sel.BackHref)
+	}
+	if sel.NextHref != "" {
+		t.Errorf("single graded NextHref = %q, want none", sel.NextHref)
 	}
 }
 
@@ -414,9 +465,10 @@ func TestGradingQueuePagination(t *testing.T) {
 	}
 }
 
-// TestGradeEssayWrite pins the one teacher write (ATT-221…ATT-228): stored
-// units, provenance, feedback NULL, first-write-wins, final recompute, and the
-// attempt's updated_at preservation.
+// TestGradeEssayWrite pins the one teacher write (ATT-221…ATT-228 plus the
+// re-grade rules of the grading-history spec §4): stored units, provenance,
+// feedback NULL, version-guarded edits, final recompute, and the attempt's
+// updated_at preservation.
 func TestGradeEssayWrite(t *testing.T) {
 	w := newGradingWorld(t)
 	f := w.f
@@ -438,11 +490,13 @@ func TestGradeEssayWrite(t *testing.T) {
 		feedback *string
 		gradedBy int64
 		gradedAt time.Time
+		version  int
+		changed  time.Time
 	)
 	if err := f.db.QueryRowContext(f.ctx, `
-		SELECT score, feedback, graded_by_account_id, graded_at
+		SELECT score, feedback, graded_by_account_id, graded_at, grading_version, updated_at
 		FROM attempt_answers WHERE id = ?`, w.ayu.essay1ID).
-		Scan(&score, &feedback, &gradedBy, &gradedAt); err != nil {
+		Scan(&score, &feedback, &gradedBy, &gradedAt, &version, &changed); err != nil {
 		t.Fatalf("read graded answer: %v", err)
 	}
 	if !almostEqual(score, 0.8550) {
@@ -453,6 +507,9 @@ func TestGradeEssayWrite(t *testing.T) {
 	}
 	if gradedBy != f.teacherID || gradedAt.IsZero() {
 		t.Errorf("provenance = (%d, %v)", gradedBy, gradedAt)
+	}
+	if version != 1 {
+		t.Errorf("grading_version = %d after a first grade, want 1", version)
 	}
 
 	var final *float64
@@ -475,19 +532,31 @@ func TestGradeEssayWrite(t *testing.T) {
 		t.Fatalf("queue after grade: %v", err)
 	}
 	queue := afterPage.Queue
-	if queue.Counts.Pending != 3 || queue.Counts.GradedToday != 2 {
-		t.Errorf("queue after grade = %+v, want pending 3 and graded today 2", queue.Counts)
+	if queue.Counts.Pending != 3 || queue.Counts.GradedToday != 2 || queue.Counts.Graded != 2 {
+		t.Errorf("queue after grade = %+v, want pending 3, graded today 2, graded 2", queue.Counts)
 	}
 
-	// A retry is a conflict, not a second write.
-	err = f.svc.GradeEssay(f.ctx, GradeInput{
-		AccountID: f.teacherID, AnswerID: w.ayu.essay1ID, ScoreRaw: "100",
-	})
-	if !errors.Is(err, ErrAlreadyGraded) {
-		t.Fatalf("retry error = %v, want ErrAlreadyGraded", err)
-	}
-	if flash, ok := ConflictKey(err); !ok || flash != FlashAlreadyGraded {
-		t.Errorf("retry conflict = (%q, %v), want %q", flash, ok, FlashAlreadyGraded)
+	// A re-grade needs the exact version the form rendered. A missing, stale,
+	// or malformed token is the conflict flash, never a second write.
+	for _, tc := range []struct {
+		name string
+		raw  string
+	}{
+		{"missing", ""},
+		{"stale", "0"},
+		{"malformed", "abc"},
+	} {
+		err = f.svc.GradeEssay(f.ctx, GradeInput{
+			AccountID: f.teacherID, AnswerID: w.ayu.essay1ID,
+			ScoreRaw: "100", VersionRaw: tc.raw,
+		})
+		if !errors.Is(err, ErrGradeConflict) {
+			t.Errorf("%s version error = %v, want ErrGradeConflict", tc.name, err)
+			continue
+		}
+		if flash, ok := ConflictKey(err); !ok || flash != FlashGradeConflict {
+			t.Errorf("%s version flash = (%q, %v), want %q", tc.name, flash, ok, FlashGradeConflict)
+		}
 	}
 	var still float64
 	if err := f.db.QueryRowContext(f.ctx,
@@ -495,11 +564,78 @@ func TestGradeEssayWrite(t *testing.T) {
 		t.Fatalf("reread score: %v", err)
 	}
 	if !almostEqual(still, 0.8550) {
-		t.Errorf("retry overwrote the score: %.4f", still)
+		t.Errorf("a rejected re-grade overwrote the score: %.4f", still)
+	}
+
+	// The current version edits the stored grade: score/feedback change, the
+	// first-grade instant stays, the actor is recorded, and the counter moves.
+	if err := f.svc.GradeEssay(f.ctx, GradeInput{
+		AccountID:   f.teacherID,
+		AnswerID:    w.ayu.essay1ID,
+		ScoreRaw:    "100",
+		FeedbackRaw: "Diperbarui",
+		VersionRaw:  "1",
+	}); err != nil {
+		t.Fatalf("re-grade: %v", err)
+	}
+	var (
+		editedScore float64
+		editedFB    *string
+		editedAt    time.Time
+	)
+	if err := f.db.QueryRowContext(f.ctx, `
+		SELECT score, feedback, graded_at, grading_version
+		FROM attempt_answers WHERE id = ?`, w.ayu.essay1ID).
+		Scan(&editedScore, &editedFB, &editedAt, &version); err != nil {
+		t.Fatalf("read re-graded answer: %v", err)
+	}
+	if !almostEqual(editedScore, 1.0) || editedFB == nil || *editedFB != "Diperbarui" {
+		t.Errorf("re-grade stored (%v, %v)", editedScore, editedFB)
+	}
+	if !editedAt.Equal(gradedAt) {
+		t.Errorf("re-grade moved graded_at: %v, want %v", editedAt, gradedAt)
+	}
+	if version != 2 {
+		t.Errorf("grading_version = %d after a re-grade, want 2", version)
+	}
+	// The DATETIME column has second precision; pin an edit instant later than
+	// the first grade so the read model can prove which one it shows.
+	mustExec(t, f.db, `UPDATE attempt_answers SET updated_at = DATE_ADD(graded_at, INTERVAL 1 DAY) WHERE id = ?`,
+		w.ayu.essay1ID)
+	detail, err := f.svc.GradingDetail(f.ctx, GradingDetailInput{
+		GradingQueueInput: GradingQueueInput{AccountID: f.teacherID},
+		AnswerID:          w.ayu.essay1ID,
+	})
+	if err != nil {
+		t.Fatalf("detail after re-grade: %v", err)
+	}
+	sel := detail.Selected
+	if sel.ScoreInput != "100,0" || sel.Answer.Version != 2 || !sel.Answer.Edited ||
+		sel.Answer.GradedAt == nil || sel.Answer.UpdatedAt == nil ||
+		!sel.Answer.GradedAt.Time().Equal(gradedAt) ||
+		!sel.Answer.UpdatedAt.Time().After(gradedAt) {
+		t.Errorf("re-graded detail = input %q version %d edited %v graded %v updated %v",
+			sel.ScoreInput, sel.Answer.Version, sel.Answer.Edited,
+			sel.Answer.GradedAt, sel.Answer.UpdatedAt)
+	}
+
+	// Reusing the consumed version is a conflict and leaves the edit in place.
+	if err := f.svc.GradeEssay(f.ctx, GradeInput{
+		AccountID: f.teacherID, AnswerID: w.ayu.essay1ID,
+		ScoreRaw: "0", VersionRaw: "1",
+	}); !errors.Is(err, ErrGradeConflict) {
+		t.Errorf("reused version error = %v, want ErrGradeConflict", err)
+	}
+	if err := f.db.QueryRowContext(f.ctx,
+		`SELECT score FROM attempt_answers WHERE id = ?`, w.ayu.essay1ID).Scan(&still); err != nil {
+		t.Fatalf("reread after reused version: %v", err)
+	}
+	if !almostEqual(still, 1.0) {
+		t.Errorf("reused version overwrote the score: %.4f", still)
 	}
 
 	// Grading the last essay completes the final score from all three slots:
-	// (2*(10000+8550+0) + 3) / (2*3) = 6183 units = 0.6183.
+	// (2*(10000+10000+0) + 3) / (2*3) = 6667 units = 0.6667.
 	if err := f.svc.GradeEssay(f.ctx, GradeInput{
 		AccountID: f.teacherID, AnswerID: w.ayu.essay2ID, ScoreRaw: "0", FeedbackRaw: "   ",
 	}); err != nil {
@@ -510,8 +646,8 @@ func TestGradeEssayWrite(t *testing.T) {
 		Scan(&final, &updated); err != nil {
 		t.Fatalf("read final: %v", err)
 	}
-	if final == nil || !almostEqual(*final, 0.6183) {
-		t.Errorf("final_score = %v, want 0.6183", final)
+	if final == nil || !almostEqual(*final, 0.6667) {
+		t.Errorf("final_score = %v, want 0.6667", final)
 	}
 	if !updated.Equal(oldUpdated) {
 		t.Errorf("last grade touched updated_at: %v", updated)
@@ -527,6 +663,29 @@ func TestGradeEssayWrite(t *testing.T) {
 	}
 	if zeroScore != 0 || emptyFB != nil {
 		t.Errorf("zero/empty grade = (%v, %v), want 0 and NULL", zeroScore, emptyFB)
+	}
+
+	// A first grade only accepts version 0: a non-zero or malformed token is a
+	// conflict and writes nothing.
+	for _, tc := range []struct{ name, raw string }{
+		{"non-zero", "3"},
+		{"malformed", "x"},
+	} {
+		err := f.svc.GradeEssay(f.ctx, GradeInput{
+			AccountID: f.teacherID, AnswerID: w.citra.essay1ID,
+			ScoreRaw: "80", VersionRaw: tc.raw,
+		})
+		if !errors.Is(err, ErrGradeConflict) {
+			t.Errorf("first grade %s version = %v, want ErrGradeConflict", tc.name, err)
+		}
+	}
+	var citraScore *float64
+	if err := f.db.QueryRowContext(f.ctx,
+		`SELECT score FROM attempt_answers WHERE id = ?`, w.citra.essay1ID).Scan(&citraScore); err != nil {
+		t.Fatalf("read citra essay: %v", err)
+	}
+	if citraScore != nil {
+		t.Errorf("rejected first grade wrote score %v", *citraScore)
 	}
 
 	// Non-gradable resources are 404 before any write.
@@ -547,11 +706,217 @@ func TestGradeEssayWrite(t *testing.T) {
 		}
 	}
 
-	// A graded answer from a colleague is still a conflict for this teacher.
+	// A graded answer from a colleague is still not this teacher's resource.
 	if err := f.svc.GradeEssay(f.ctx, GradeInput{
 		AccountID: f.otherTeacherID, AnswerID: w.eka.essay1ID, ScoreRaw: "100",
+		VersionRaw: "0",
 	}); !errors.Is(err, ErrNotFound) {
 		t.Errorf("foreign graded answer = %v, want ErrNotFound", err)
+	}
+}
+
+// TestGradingHistory pins the graded tab (grading-history spec §2/§3/§7): only
+// graded essays, most recently assessed or edited first, one-decimal labels,
+// filters that keep the tab, feedback search, and an editable detail.
+func TestGradingHistory(t *testing.T) {
+	w := newGradingWorld(t)
+	f := w.f
+
+	for _, g := range []struct {
+		answerID int64
+		score    string
+		feedback string
+	}{
+		{w.ayu.essay1ID, "90", "Perlu perbaikan struktur"},
+		{w.budi.essay1ID, "70", ""},
+		{w.citra.essay1ID, "60,5", "Bagus"},
+	} {
+		if err := f.svc.GradeEssay(f.ctx, GradeInput{
+			AccountID: f.teacherID, AnswerID: g.answerID,
+			ScoreRaw: g.score, FeedbackRaw: g.feedback,
+		}); err != nil {
+			t.Fatalf("grade %d: %v", g.answerID, err)
+		}
+	}
+	// Pin the assessment instants so ordering and the edited label are stable:
+	// Ayu was edited a day after her first grade, the others were not.
+	for _, at := range []struct {
+		answerID int64
+		graded   time.Time
+		updated  time.Time
+	}{
+		{w.eka.essay1ID, time.Date(2026, 10, 24, 1, 0, 0, 0, time.UTC), time.Date(2026, 10, 24, 1, 0, 0, 0, time.UTC)},
+		{w.ayu.essay1ID, time.Date(2026, 10, 24, 2, 0, 0, 0, time.UTC), time.Date(2026, 10, 25, 2, 0, 0, 0, time.UTC)},
+		{w.budi.essay1ID, time.Date(2026, 10, 24, 3, 0, 0, 0, time.UTC), time.Date(2026, 10, 24, 3, 0, 0, 0, time.UTC)},
+		{w.citra.essay1ID, time.Date(2026, 10, 24, 4, 0, 0, 0, time.UTC), time.Date(2026, 10, 24, 4, 0, 0, 0, time.UTC)},
+	} {
+		mustExec(t, f.db,
+			`UPDATE attempt_answers SET graded_at = ?, updated_at = ? WHERE id = ?`,
+			at.graded, at.updated, at.answerID)
+	}
+
+	page, err := f.svc.GradingQueue(f.ctx, GradingQueueInput{
+		AccountID: f.teacherID, StateRaw: "graded",
+	})
+	if err != nil {
+		t.Fatalf("graded queue: %v", err)
+	}
+	queue := page.Queue
+	if queue.Counts.Pending != 1 || queue.Counts.Graded != 4 {
+		t.Errorf("counts = %+v, want pending 1 and graded 4", queue.Counts)
+	}
+	if queue.Rows.Total != 4 || len(queue.Rows.Items) != 4 {
+		t.Fatalf("graded rows = %d/%d, want 4", queue.Rows.Total, len(queue.Rows.Items))
+	}
+	wantOrder := []struct {
+		answerID   int64
+		scoreLabel string
+		edited     bool
+	}{
+		{w.ayu.essay1ID, "90,0", true},
+		{w.citra.essay1ID, "60,5", false},
+		{w.budi.essay1ID, "70,0", false},
+		{w.eka.essay1ID, "85,5", false},
+	}
+	for i, want := range wantOrder {
+		row := queue.Rows.Items[i]
+		if row.AnswerID != want.answerID || row.ScoreLabel != want.scoreLabel ||
+			row.Score == nil || row.WaitingLabel != "" || row.GradedLabel == "" ||
+			(row.EditedLabel != "") != want.edited {
+			t.Errorf("row %d = %+v, want answer %d label %q edited %v",
+				i, row, want.answerID, want.scoreLabel, want.edited)
+		}
+		if row.Href != gradingAnswerPath(want.answerID)+"?state=graded" {
+			t.Errorf("row %d href = %q, want the graded tab", i, row.Href)
+		}
+	}
+	if !strings.HasPrefix(queue.Rows.Items[0].EditedLabel, "Diubah ") {
+		t.Errorf("edited label = %q", queue.Rows.Items[0].EditedLabel)
+	}
+
+	// The pending tab is unchanged and never lists graded essays.
+	pending, err := f.svc.GradingQueue(f.ctx, GradingQueueInput{AccountID: f.teacherID})
+	if err != nil {
+		t.Fatalf("pending queue: %v", err)
+	}
+	if pending.Queue.Rows.Total != 1 || pending.Queue.Rows.Items[0].AnswerID != w.ayu.essay2ID {
+		t.Errorf("pending rows = %+v, want only Ayu essay 2", pending.Queue.Rows.Items)
+	}
+	// An invalid state is the pending default, never a 422.
+	fallback, err := f.svc.GradingQueue(f.ctx, GradingQueueInput{
+		AccountID: f.teacherID, StateRaw: "nonsense",
+	})
+	if err != nil {
+		t.Fatalf("invalid state: %v", err)
+	}
+	if fallback.Queue.Query.Tab != "pending" || fallback.Queue.Rows.Total != 1 {
+		t.Errorf("invalid state = tab %q rows %d", fallback.Queue.Query.Tab, fallback.Queue.Rows.Total)
+	}
+
+	// Filters narrow the history rows but never the header counts, and each
+	// tab/filter link keeps the active state.
+	for _, tc := range []struct {
+		name string
+		in   GradingQueueInput
+		want []int64
+	}{
+		{"quiz", GradingQueueInput{AccountID: f.teacherID, StateRaw: "graded",
+			QuizRaw: idString(w.quiz2)}, []int64{w.citra.essay1ID}},
+		{"class", GradingQueueInput{AccountID: f.teacherID, StateRaw: "graded",
+			ClassRaw: "X"}, []int64{w.ayu.essay1ID}},
+		{"feedback", GradingQueueInput{AccountID: f.teacherID, StateRaw: "graded",
+			QueryRaw: "PERBAIKAN"}, []int64{w.ayu.essay1ID}},
+		{"name", GradingQueueInput{AccountID: f.teacherID, StateRaw: "graded",
+			QueryRaw: "bagus"}, []int64{w.citra.essay1ID, w.eka.essay1ID}},
+	} {
+		got, err := f.svc.GradingQueue(f.ctx, tc.in)
+		if err != nil {
+			t.Fatalf("%s filter: %v", tc.name, err)
+		}
+		q := got.Queue
+		if q.Rows.Total != len(tc.want) || q.Counts.Pending != 1 || q.Counts.Graded != 4 {
+			t.Errorf("%s filter = total %d counts %+v, want %d rows and unfiltered counts",
+				tc.name, q.Rows.Total, q.Counts, len(tc.want))
+			continue
+		}
+		for i, want := range tc.want {
+			if q.Rows.Items[i].AnswerID != want {
+				t.Errorf("%s filter row %d = %d, want %d", tc.name, i, q.Rows.Items[i].AnswerID, want)
+			}
+		}
+		if q.Query.Tab != "graded" || !q.Tabs[1].Active ||
+			!strings.Contains(q.Tabs[1].Href, "state=graded") {
+			t.Errorf("%s filter lost the graded tab: %+v", tc.name, q.Tabs)
+		}
+	}
+
+	// A filtered-empty history offers a reset that stays on the history tab.
+	none, err := f.svc.GradingQueue(f.ctx, GradingQueueInput{
+		AccountID: f.teacherID, StateRaw: "graded", QueryRaw: "tidak ada",
+	})
+	if err != nil {
+		t.Fatalf("filtered-empty history: %v", err)
+	}
+	if none.Queue.Empty.Title != "Tidak ada esai yang cocok dengan filter." ||
+		none.Queue.Empty.Action == nil ||
+		none.Queue.Empty.Action.Href != "/teacher/grading?state=graded" {
+		t.Errorf("filtered-empty history = %+v action %+v",
+			none.Queue.Empty, none.Queue.Empty.Action)
+	}
+
+	// The next link walks the graded tab, not the pending queue.
+	detail, err := f.svc.GradingDetail(f.ctx, GradingDetailInput{
+		GradingQueueInput: GradingQueueInput{AccountID: f.teacherID, StateRaw: "graded"},
+		AnswerID:          w.ayu.essay1ID,
+	})
+	if err != nil {
+		t.Fatalf("graded detail: %v", err)
+	}
+	sel := detail.Selected
+	if sel.ScoreInput != "90,0" || sel.Answer.Version != 1 || !sel.Answer.Edited ||
+		sel.Answer.GradedAt == nil || sel.Answer.UpdatedAt == nil {
+		t.Errorf("graded detail = input %q version %d edited %v", sel.ScoreInput, sel.Answer.Version, sel.Answer.Edited)
+	}
+	if want := "/teacher/grading/" + idString(w.citra.essay1ID) + "?state=graded"; sel.NextHref != want {
+		t.Errorf("graded NextHref = %q, want %q", sel.NextHref, want)
+	}
+	// The edited instant and the preserved first-grade instant are different.
+	if sel.Answer.UpdatedAt.Time().Equal(sel.Answer.GradedAt.Time()) ||
+		!sel.Answer.UpdatedAt.Time().After(sel.Answer.GradedAt.Time()) {
+		t.Errorf("graded detail dates = graded %v updated %v",
+			sel.Answer.GradedAt, sel.Answer.UpdatedAt)
+	}
+
+	// The action and back link carry the active history filters.
+	filtered, err := f.svc.GradingDetail(f.ctx, GradingDetailInput{
+		GradingQueueInput: GradingQueueInput{
+			AccountID: f.teacherID, StateRaw: "graded", ClassRaw: "X", QueryRaw: "perbaikan",
+		},
+		AnswerID: w.ayu.essay1ID,
+	})
+	if err != nil {
+		t.Fatalf("filtered graded detail: %v", err)
+	}
+	if want := "/teacher/grading/" + idString(w.ayu.essay1ID) +
+		"?class=X&q=perbaikan&state=graded"; filtered.Selected.Action != want {
+		t.Errorf("filtered Action = %q, want %q", filtered.Selected.Action, want)
+	}
+	if want := "/teacher/grading?class=X&q=perbaikan&state=graded"; filtered.Selected.BackHref != want {
+		t.Errorf("filtered BackHref = %q, want %q", filtered.Selected.BackHref, want)
+	}
+
+	// A teacher with no graded essay gets the history empty state, no action.
+	empty := newTeacherFixture(t)
+	emptyPage, err := empty.svc.GradingQueue(empty.ctx, GradingQueueInput{
+		AccountID: empty.teacherID, StateRaw: "graded",
+	})
+	if err != nil {
+		t.Fatalf("empty history: %v", err)
+	}
+	if emptyPage.Queue.Empty.Title != "Belum ada esai yang dinilai." ||
+		emptyPage.Queue.Empty.Action != nil {
+		t.Errorf("empty history = %+v action %+v",
+			emptyPage.Queue.Empty, emptyPage.Queue.Empty.Action)
 	}
 }
 
@@ -637,6 +1002,74 @@ func TestGradeEssayValidation(t *testing.T) {
 	}
 	if final != nil {
 		t.Errorf("invalid grade set final_score = %v", *final)
+	}
+}
+
+// TestGradingBackHref pins the scoped breadcrumb (DESIGN §7): a ?quiz= filter
+// that resolves to an owned, non-draft quiz names its results page; the unscoped
+// queue, a foreign/missing id, and a draft get none. Ownership is the same
+// owner/deleted predicate the queue itself filters on, and a filter never turns
+// the 200 queue into a 404.
+func TestGradingBackHref(t *testing.T) {
+	w := newGradingWorld(t)
+	f := w.f
+
+	unscoped, err := f.svc.GradingQueue(f.ctx, GradingQueueInput{AccountID: f.teacherID})
+	if err != nil {
+		t.Fatalf("unscoped queue: %v", err)
+	}
+	if unscoped.BackHref != "" {
+		t.Errorf("unscoped BackHref = %q, want none", unscoped.BackHref)
+	}
+
+	scoped, err := f.svc.GradingQueue(f.ctx, GradingQueueInput{
+		AccountID: f.teacherID, QuizRaw: idString(w.quiz2),
+	})
+	if err != nil {
+		t.Fatalf("scoped queue: %v", err)
+	}
+	if want := resultsPath(w.quiz2); scoped.BackHref != want {
+		t.Errorf("scoped BackHref = %q, want %q", scoped.BackHref, want)
+	}
+
+	// The detail page renders the same queue chrome, so it carries it too.
+	detail, err := f.svc.GradingDetail(f.ctx, GradingDetailInput{
+		GradingQueueInput: GradingQueueInput{AccountID: f.teacherID, QuizRaw: idString(w.quiz)},
+		AnswerID:          w.ayu.essay1ID,
+	})
+	if err != nil {
+		t.Fatalf("scoped detail: %v", err)
+	}
+	if want := resultsPath(w.quiz); detail.BackHref != want {
+		t.Errorf("scoped detail BackHref = %q, want %q", detail.BackHref, want)
+	}
+
+	// A quiz the teacher cannot see, an unknown id, and a non-numeric filter all
+	// resolve to no parent: the queue stays 200 with its filtered list.
+	for _, tc := range []struct{ name, raw string }{
+		{"foreign", idString(w.foreign)},
+		{"missing", "999999"},
+		{"invalid", "not-an-id"},
+	} {
+		page, err := f.svc.GradingQueue(f.ctx, GradingQueueInput{AccountID: f.teacherID, QuizRaw: tc.raw})
+		if err != nil {
+			t.Fatalf("%s filter: %v", tc.name, err)
+		}
+		if page.BackHref != "" {
+			t.Errorf("%s filter BackHref = %q, want none", tc.name, page.BackHref)
+		}
+	}
+
+	// A draft has no results page (Results 404s it), so it cannot be the parent.
+	draft := f.newQuiz(f.teacherID, "Draf Esai", "draft", true, false, 1, "2026-10-20 09:00:00")
+	draftPage, err := f.svc.GradingQueue(f.ctx, GradingQueueInput{
+		AccountID: f.teacherID, QuizRaw: idString(draft),
+	})
+	if err != nil {
+		t.Fatalf("draft filter: %v", err)
+	}
+	if draftPage.BackHref != "" {
+		t.Errorf("draft filter BackHref = %q, want none", draftPage.BackHref)
 	}
 }
 

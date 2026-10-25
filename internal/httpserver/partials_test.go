@@ -1,6 +1,7 @@
 package httpserver_test
 
 import (
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -146,6 +147,63 @@ func TestEveryPartialDefinesItsName(t *testing.T) {
 				t.Errorf("%s.html must never define \"content\" (page contract)", name)
 			}
 		})
+	}
+}
+
+// TestConfirmDialogIsWiredIntoEveryAffectedLayout: app.js only takes over a
+// form[data-confirm] when the shared dialog is on the page, so every shell
+// whose pages carry one must render partials/dialogs.html. Without the include
+// the form would post silently, with no question at all.
+func TestConfirmDialogIsWiredIntoEveryAffectedLayout(t *testing.T) {
+	layoutFor := func(page string) string {
+		switch {
+		case strings.HasPrefix(page, "pages/auth/"):
+			return "auth"
+		case strings.HasPrefix(page, "pages/teacher/"):
+			return "teacher"
+		case strings.HasPrefix(page, "pages/student/"):
+			return "student"
+		case strings.HasPrefix(page, "pages/attempt/"):
+			return "base"
+		default:
+			return "base"
+		}
+	}
+
+	needed := map[string]string{} // layout -> one page that needs it
+	err := filepath.WalkDir(filepath.Join("templates", "pages"), func(p string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() || !strings.HasSuffix(p, ".html") {
+			return nil
+		}
+		data, err := os.ReadFile(p)
+		if err != nil {
+			return err
+		}
+		if !strings.Contains(string(data), "data-confirm=") {
+			return nil
+		}
+		page := strings.TrimPrefix(filepath.ToSlash(p), "templates/")
+		needed[layoutFor(page)] = page
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("walk pages: %v", err)
+	}
+	if len(needed) == 0 {
+		t.Fatal("no page carries data-confirm; the confirmation dialog is dead markup")
+	}
+	for layout, page := range needed {
+		path := filepath.Join("templates", "layouts", layout+".html")
+		data, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatalf("read %s: %v", path, err)
+		}
+		if !strings.Contains(string(data), `{{template "partials/dialogs.html" .}}`) {
+			t.Errorf("%s carries data-confirm but %s does not render partials/dialogs.html", page, path)
+		}
 	}
 }
 
@@ -386,16 +444,26 @@ func TestEveryPartialSubContracts(t *testing.T) {
 			`class="app-brand-title-sub">QUIZ</span>`, `app-badge-role">Guru</span>`,
 			`href="/teacher"`, `href="/teacher/quizzes"`, `href="/teacher/students"`,
 			`href="/teacher/grading"`, `href="/teacher/teachers"`,
+			`href="/teacher/profile"`, `aria-label="Profil akun"`,
 			`aria-current="page"`, `data-bs-toggle="drawer"`,
 			`data-bs-target="#nav-drawer"`, `aria-label="Buka menu"`,
 			`aria-expanded="false"`,
 			`{{with .User}}`, `.FullName`, `.Role.Label`,
 			`action="/logout"`, `name="csrf_token"`, `value="{{.CSRF}}"`,
-			`aria-label="Keluar"`,
+			`aria-label="Keluar"`, `app-profile-label`,
 		} {
 			if !strings.Contains(body, want) {
 				t.Errorf("navbar-teacher.html missing %q", want)
 			}
+		}
+		// One destination, one affordance (DESIGN §7): the account pill is the
+		// only route to the profile screen at this width.
+		if n := strings.Count(body, `href="/teacher/profile"`); n != 1 {
+			t.Errorf("navbar-teacher.html must expose /teacher/profile once, found %d", n)
+		}
+		// Sign-out is the md-and-up copy; below md the drawer owns it.
+		if !strings.Contains(body, `method="post" action="/logout" class="d-none md:d-inline-flex"`) {
+			t.Error("navbar-teacher.html logout must appear from md up")
 		}
 		if !strings.Contains(body, `d-none lg:d-flex`) {
 			t.Error("teacher desktop nav must hide below lg with d-none lg:d-flex")
@@ -413,11 +481,22 @@ func TestEveryPartialSubContracts(t *testing.T) {
 			`href="/student"`, `href="/student/history"`, `href="/profile"`,
 			`href="/join"`, `aria-current="page"`, `{{with .User}}`,
 			`.FullName`, `.ClassLabel`, `action="/logout"`,
+			`class="app-profile" href="/profile"`, `aria-label="Profil akun"`,
+			`app-profile-chevron`, `app-profile-label`,
 			`data-bs-target="#nav-drawer-student"`, `aria-expanded="false"`,
 		} {
 			if !strings.Contains(body, want) {
 				t.Errorf("navbar-student.html missing %q", want)
 			}
+		}
+		// The task nav no longer carries a "Profil" item; the account pill is
+		// the one route to /profile (DESIGN §7).
+		if n := strings.Count(body, `href="/profile"`); n != 1 {
+			t.Errorf("navbar-student.html must expose /profile once, found %d", n)
+		}
+		// Sign-out is the md-and-up copy; below md the drawer owns it.
+		if !strings.Contains(body, `method="post" action="/logout" class="d-none md:d-inline-flex"`) {
+			t.Error("navbar-student.html logout must appear from md up")
 		}
 	})
 
@@ -429,11 +508,23 @@ func TestEveryPartialSubContracts(t *testing.T) {
 			`aria-label="Tutup"`, `href="/teacher"`, `href="/teacher/quizzes"`,
 			`href="/teacher/students"`, `href="/teacher/grading"`,
 			`href="/teacher/teachers"`, `href="/teacher/anonymous"`,
-			`href="/teacher/majors"`, `action="/logout"`, `value="{{.CSRF}}"`,
+			`href="/teacher/majors"`, `href="/teacher/profile"`,
+			`class="drawer-account"`, `.Role.Label`,
+			`action="/logout"`, `value="{{.CSRF}}"`,
 		} {
 			if !strings.Contains(body, want) {
 				t.Errorf("drawer-teacher.html missing %q", want)
 			}
+		}
+		// The drawer owns the profile link below lg, exactly once: no separate
+		// "Profil" nav row beside the account row (DESIGN §7).
+		if n := strings.Count(body, `href="/teacher/profile"`); n != 1 {
+			t.Errorf("drawer-teacher.html must expose /teacher/profile once, found %d", n)
+		}
+		// Sign-out is a below-md copy only, so it never competes with the
+		// top-bar icon while the open drawer covers that icon.
+		if !strings.Contains(body, `method="post" action="/logout" class="md:d-none"`) {
+			t.Error("drawer-teacher.html logout must be the below-md copy (md:d-none)")
 		}
 	})
 
@@ -443,12 +534,22 @@ func TestEveryPartialSubContracts(t *testing.T) {
 			`<dialog class="drawer drawer-end app-drawer" id="nav-drawer-student" aria-label="Menu navigasi">`,
 			`drawer-header`, `drawer-body`, `data-bs-dismiss="drawer"`,
 			`aria-label="Tutup"`, `href="/student"`, `href="/student/history"`,
-			`href="/profile"`, `href="/join"`, `action="/logout"`,
-			`value="{{.CSRF}}"`,
+			`href="/profile"`, `href="/join"`, `class="drawer-account"`,
+			`.ClassLabel`, `action="/logout"`, `value="{{.CSRF}}"`,
 		} {
 			if !strings.Contains(body, want) {
 				t.Errorf("drawer-student.html missing %q", want)
 			}
+		}
+		// The drawer owns the profile link below lg, exactly once: no separate
+		// "Profil" nav row beside the account row (DESIGN §7).
+		if n := strings.Count(body, `href="/profile"`); n != 1 {
+			t.Errorf("drawer-student.html must expose /profile once, found %d", n)
+		}
+		// Sign-out is a below-md copy only, so it never competes with the
+		// top-bar icon while the open drawer covers that icon.
+		if !strings.Contains(body, `method="post" action="/logout" class="md:d-none"`) {
+			t.Error("drawer-student.html logout must be the below-md copy (md:d-none)")
 		}
 	})
 
@@ -502,9 +603,13 @@ func TestEveryPartialSubContracts(t *testing.T) {
 	t.Run("dialogs", func(t *testing.T) {
 		body := readPartial(t, "dialogs")
 		for _, want := range []string{
-			`<dialog class="dialog" id="dialog-confirm">`,
+			`<dialog class="dialog" id="dialog-confirm"`,
+			`aria-labelledby="dialog-confirm-title"`,
+			`aria-describedby="dialog-confirm-message"`,
+			`id="dialog-confirm-message"`, `id="dialog-confirm-accept"`,
 			"Konfirmasi", "Lanjutkan?", "Batal",
 			`data-bs-dismiss="dialog"`, `btn btn-solid theme-primary`,
+			"autofocus",
 		} {
 			if !strings.Contains(body, want) {
 				t.Errorf("dialogs.html missing %q", want)

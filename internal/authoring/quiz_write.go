@@ -58,7 +58,7 @@ func (s *Service) CreateQuiz(ctx context.Context, ownerID int64, in QuizInput) (
 				 code, invite_token, target_grade, target_major_id, starts_at, ends_at,
 				 allow_retake, max_attempts, show_score, review_mode,
 				 randomize_questions, randomize_options, published_at, closed_at)
-				VALUES (?, ?, ?, ?, ?, 'draft', ?, ?, ?, ?, ?, ?, 0, 1, 1, 'questions_only', 0, 0, NULL, NULL)`,
+				VALUES (?, ?, ?, ?, ?, 'draft', ?, ?, ?, ?, ?, ?, 0, 1, 1, 'questions_no_answers', 0, 0, NULL, NULL)`,
 				ownerID, ownerID, values.Title, values.Description, string(values.Visibility),
 				stringArg(code), token, targetGradeArg(values.Visibility, values.TargetGrade),
 				targetMajorArg(values.Visibility, values.TargetMajorID),

@@ -80,7 +80,7 @@ func TestJoinHTTPCookieFlow(t *testing.T) {
 			(owner_account_id, title, visibility, state, code, invite_token,
 			 allow_retake, max_attempts, show_score, review_mode, published_at, closed_at)
 		VALUES (?, 'Kuis HTTP', 'public', 'open', '123456', 'http-invite',
-			0, 0, 1, 'questions_only', UTC_TIMESTAMP(), NULL)`, teacherID)
+			0, 0, 1, 'questions_no_answers', UTC_TIMESTAMP(), NULL)`, teacherID)
 	if err != nil {
 		t.Fatalf("seed quiz: %v", err)
 	}

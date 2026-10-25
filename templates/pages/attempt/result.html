@@ -84,12 +84,24 @@
 .result-feedback svg { flex-shrink: 0; margin-top: 2px; color: var(--bs-accent-base); }
 .result-feedback-text { font-size: 13px; line-height: 1.55; }
 
+/* correct_only with no correct row: a calm in-section message, no action. */
+.result-empty {
+  margin-top: 8px;
+  padding: 20px 16px;
+  border-radius: 12px;
+  background: var(--bs-bg-2);
+  color: var(--bs-fg-2);
+  font-size: 13px;
+  line-height: 1.55;
+  text-align: center;
+}
+
 /* The essay grade chip renders a point value, not a bare percent. */
 .score-pill small { color: inherit; font-size: 11px; font-weight: 600; }
 {{end}}
 
 {{define "content"}}
-<div class="container py-4">
+<div class="container py-7">
   <div class="attempt-shell">
 
     <header class="attempt-top">
@@ -99,11 +111,16 @@
           <h1 class="h2 mb-0">{{.Data.Header.QuizTitle}}</h1>
           <span class="cell-sub">{{.Data.Header.StudentName}}{{if .Data.Header.ClassLabel}} · {{.Data.Header.ClassLabel}}{{end}}</span>
         </div>
-        <a class="link-quiet" href="{{.Data.QuizHref}}">Kembali ke kuis</a>
+        {{if .Data.HistoryHref}}
+        <a class="link-quiet d-inline-flex align-items-center gap-2" href="{{.Data.HistoryHref}}">
+          <svg width="16" height="16" aria-hidden="true"><use href="#i-arrow-left"></use></svg>
+          Kembali ke riwayat
+        </a>
+        {{end}}
       </div>
     </header>
 
-    <section class="card p-4" aria-labelledby="result-summary-title">
+    <section class="card p-7" aria-labelledby="result-summary-title">
       <h2 class="visually-hidden" id="result-summary-title">Ringkasan</h2>
 
       <div class="result-band">
@@ -140,9 +157,11 @@
           <div class="result-fact">
             <span class="metric-label">Soal</span>
             <span class="result-fact-val num">{{len .Data.Rows}} soal</span>
+            {{if .Data.Mode.ShowsUnansweredCount}}
             <span class="metric-foot">
               {{if .Data.Unanswered}}{{len .Data.Unanswered}} tidak dijawab{{else}}Semua dijawab{{end}}
             </span>
+            {{end}}
           </div>
         </div>
       </div>
@@ -155,9 +174,9 @@
       {{end}}
     </section>
 
-    <section class="card p-4" aria-labelledby="answers-title">
+    <section class="card p-7" aria-labelledby="answers-title">
       <div class="mb-2">
-        <h2 class="section-title" id="answers-title">{{if .Data.Mode.ShowsQuestions}}Telaah jawaban{{else}}Kunci jawaban{{end}}</h2>
+        <h2 class="section-title" id="answers-title">{{if .Data.Mode.OnlyCorrect}}Soal yang dijawab benar{{else}}Telaah jawaban{{end}}</h2>
         <p class="section-sub">Tampilan hasil: {{.Data.ModeLabel}}</p>
       </div>
 
@@ -178,17 +197,18 @@
             {{end}}
             {{end}}
           </div>
-          {{if and $.Data.ShowScore $.Data.Mode.ShowsVerdict .Essay .Graded}}
+          {{if and $.Data.ShowScore $.Data.Mode.ShowsEssayFeedback .Essay .Graded}}
           {{with .Score}}<span class="score-pill theme-{{.Tone}}">{{.Int}}<small>/100</small></span>{{end}}
           {{end}}
         </div>
 
-        {{if $.Data.Mode.ShowsQuestions}}
+        {{if $.Data.Mode.ShowsQuestion}}
         <p class="result-question">{{.Body}}</p>
         {{with .Image}}
         <img class="question-image" src="{{.URL}}" alt="{{.Alt}}" loading="lazy">
         {{end}}
 
+        {{if $.Data.Mode.ShowsStudentAnswer}}
         <div class="result-pair{{if and $.Data.Mode.ShowsKey (not .Essay)}} split{{end}}">
           <div class="answer-box {{if and $.Data.Mode.ShowsVerdict (not .Essay)}}{{if eq .Verdict "correct"}}is-correct{{else if eq .Verdict "incorrect"}}is-wrong{{end}}{{end}}">
             <span class="cell-sub d-block">Jawaban Anda</span>
@@ -201,8 +221,9 @@
           </div>
           {{end}}
         </div>
+        {{end}}
 
-        {{if and $.Data.Mode.ShowsKey .Essay}}
+        {{if and $.Data.Mode.ShowsEssayFeedback .Essay}}
         {{if .Graded}}
         {{if not .Feedback}}
         <p class="result-type mt-2">Esai dinilai oleh guru.</p>
@@ -211,14 +232,7 @@
         {{end}}
         {{end}}
 
-        {{if and $.Data.Mode.ShowsKey (not $.Data.Mode.ShowsQuestions) (not .Essay)}}
-        <div class="answer-key">
-          <span class="result-box-label">Kunci jawaban</span>
-          <span class="d-block">{{.Key}}</span>
-        </div>
-        {{end}}
-
-        {{if and $.Data.Mode.ShowsQuestions $.Data.Mode.ShowsVerdict}}
+        {{if and .Essay $.Data.Mode.ShowsEssayFeedback}}
         {{if .Feedback}}
         <div class="result-feedback">
           <svg width="16" height="16" aria-hidden="true"><use href="#i-pencil"></use></svg>
@@ -231,25 +245,19 @@
         {{end}}
       </article>
       {{end}}
+
+      {{if and .Data.Mode.OnlyCorrect (not .Data.Rows)}}
+      <p class="result-empty">Tidak ada soal yang dijawab benar.</p>
+      {{end}}
     </section>
 
+    {{if .Data.CanRetry}}
     <div class="attempt-footer">
       <div class="group">
-        <a class="btn btn-outline theme-primary" href="{{.Data.HistoryHref}}">
-          <svg width="18" height="18" aria-hidden="true"><use href="#i-history"></use></svg>
-          Riwayat kuis
-        </a>
-        {{if .Data.Mode.ShowsQuestions}}
-        <a class="btn btn-text" href="{{.Data.ReviewHref}}">Tinjau jawaban</a>
-        {{end}}
-      </div>
-      <div class="group">
-        {{if .Data.CanRetry}}
-        <a class="btn btn-outline theme-primary" href="{{.Data.RetryHref}}">Coba lagi</a>
-        {{end}}
-        <a class="btn btn-solid theme-primary" href="{{.Data.QuizHref}}">Kembali ke kuis</a>
+        <a class="btn btn-solid theme-primary" href="{{.Data.RetryHref}}">Coba lagi</a>
       </div>
     </div>
+    {{end}}
 
   </div>
 </div>

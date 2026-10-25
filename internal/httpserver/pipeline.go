@@ -373,12 +373,25 @@ func sameHost(raw string, c fiber.Ctx) bool {
 
 // takeFlash reads and clears the one-shot flash. Only the signed cookie can
 // carry it: a query key would let a link mint a message (OPS-210, IDN-028).
+// The cookie is Path=/, so the deletion must repeat that path (OPS-210).
 func (s *server) takeFlash(c fiber.Ctx) *viewmodel.Flash {
 	raw := c.Cookies(cookieFlash)
 	if raw == "" {
 		return nil
 	}
-	c.ClearCookie(cookieFlash)
+	// The deletion must carry the same Path as setFlashCookie: ClearCookie
+	// sends no Path, so a browser would treat it as /teacher/... and keep the
+	// original "/" cookie, replaying the flash on every GET until it expires.
+	c.Cookie(&fiber.Cookie{
+		Name:     cookieFlash,
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		Expires:  time.Unix(0, 0),
+		Secure:   s.cfg.CookieSecure,
+		HTTPOnly: true,
+		SameSite: "Lax",
+	})
 	payload, err := s.signer.ParseToken("flash", raw, 60*time.Second, time.Now().UTC())
 	if err != nil {
 		return nil

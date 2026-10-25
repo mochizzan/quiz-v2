@@ -22,8 +22,17 @@ func init() {
 		Auth:     ClassAnyAuth,
 		Load: func(x *Ctx) (viewmodel.PageData, error) {
 			// IDN-C10: the form is reachable during the must-change guard and
-			// carries no fields; every input renders blank.
-			return identityPage(x, "Ubah kata sandi", "profil", viewmodel.ChangePasswordPage{}), nil
+			// carries no fields; every input renders blank. The back link names
+			// the caller's own account screen, never the other role's.
+			sess, serr := identitySession(x)
+			if serr != nil {
+				return viewmodel.PageData{}, serr
+			}
+			back := "/profile"
+			if sess.IsTeacher() {
+				back = "/teacher/profile"
+			}
+			return identityPage(x, "Ubah kata sandi", "profil", viewmodel.ChangePasswordPage{BackHref: back}), nil
 		},
 	})
 	registerPage(PageRoute{
@@ -53,9 +62,9 @@ func init() {
 				x.Limiter().Clear(bucket)
 				target := "/profile"
 				if sess.IsTeacher() {
-					// IDN-C11: a teacher has no profile page; the command's
-					// shared copy rides both role homes.
-					target = "/teacher"
+					// IDN-C23/C24: a teacher now has an account screen of their own,
+					// so the success redirect no longer falls back to /teacher.
+					target = "/teacher/profile"
 				}
 				return viewmodel.PageData{}, identityRedirect(target, identity.FlashPasswordReset), nil
 			case errors.Is(err, identity.ErrSessionGone):
@@ -64,7 +73,11 @@ func init() {
 				return viewmodel.PageData{}, Redirect{}, x.SeeOther("/login", identity.FlashSessionExpired)
 			}
 			if fields, ok := identity.FieldErrorsOf(err); ok {
-				return x.Page("Ubah kata sandi", "profil", viewmodel.ChangePasswordPage{}),
+				back := "/profile"
+				if sess.IsTeacher() {
+					back = "/teacher/profile"
+				}
+				return x.Page("Ubah kata sandi", "profil", viewmodel.ChangePasswordPage{BackHref: back}),
 					Redirect{}, apperr.Validationf(fields)
 			}
 			return viewmodel.PageData{}, Redirect{}, identityFailure(err)

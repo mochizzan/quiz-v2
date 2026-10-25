@@ -259,9 +259,12 @@ func init() {
 	})
 
 	registerPage(PageRoute{
-		Method:  "POST",
-		Path:    "/attempt/:id/answer",
-		ActForm: attemptAnswerAct,
+		Method: "POST",
+		Path:   "/attempt/:id/answer",
+		// No GET shares this path: a rejected answer re-renders the question
+		// shell it was posted from (ATT-121).
+		Template: "pages/attempt/question.html",
+		ActForm:  attemptAnswerAct,
 	})
 
 	registerPage(PageRoute{

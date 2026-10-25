@@ -7,6 +7,10 @@ assets
 .env
 bin/
 
+# bind-mounted runtime data, never part of the image
+var/
+uploads/
+
 # agent/tooling state
 .codegraph
 .omp

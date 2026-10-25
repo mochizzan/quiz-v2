@@ -30,8 +30,10 @@ type SubmitInput struct {
 // ("Jawaban terkirim.").
 const FlashSubmitted = "submitted"
 
-// Submit runs one submit in one write transaction (ATT-144 step 8). The error
-// is the 303 signal the adapter maps to a redirect.
+// Submit runs one submit in one write transaction (ATT-144 step 8). A committed
+// submission is the nil return: the adapter builds ATT-141's result redirect
+// itself. Only the idempotent repeat carries a signal, because that path writes
+// nothing and the rollback is therefore free (ATT-147).
 func (s *Service) Submit(ctx context.Context, in SubmitInput) error {
 	return s.writeTx(ctx, func(tx *sql.Tx) error {
 		return submitTx(ctx, tx, in)
@@ -44,7 +46,9 @@ type submitSlot struct {
 	questionID int64
 }
 
-// submitTx is the transaction body of ATT-144, steps 1–7.
+// submitTx is the transaction body of ATT-144, steps 1–7. It returns nil once
+// every write is done: a non-nil return rolls the whole submission back in
+// store.Tx, and the success redirect is the adapter's job.
 func submitTx(ctx context.Context, tx *sql.Tx, in SubmitInput) error {
 	// (1) Lock the attempt; re-check ownership and liveness in the same
 	// transaction (ATT-024, ATT-281). The quiz may be open or closed (R-10):
@@ -147,8 +151,12 @@ func submitTx(ctx context.Context, tx *sql.Tx, in SubmitInput) error {
 		return internal(err)
 	}
 
-	// Redirect (ATT-141): the first commit carries the success flash.
-	return RedirectFlash(attemptResultPath(lock.attemptID), FlashSubmitted)
+	// Redirect (ATT-141): the first commit carries the success flash. The
+	// return is nil, not a redirect signal: store.Tx rolls back on a non-nil
+	// error, so a signal here would discard submitted_at and final_score while
+	// still sending the student to /result — where ATT-151 would bounce them
+	// back to the question form. routes_attempt.go builds the redirect.
+	return nil
 }
 
 // slotTypes snapshot-reads the type of every slotted question. A missing row

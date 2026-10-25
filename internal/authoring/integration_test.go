@@ -519,7 +519,7 @@ func TestIntegrationCreateListDetail(t *testing.T) {
 	if raw.AllowRetake || raw.MaxAttempts != 1 || !raw.ShowScore {
 		t.Fatalf("settings defaults = %+v", raw)
 	}
-	if raw.ReviewMode != "questions_only" || raw.RandomizeQuestions || raw.RandomizeOptions {
+	if raw.ReviewMode != "questions_no_answers" || raw.RandomizeQuestions || raw.RandomizeOptions {
 		t.Fatalf("review/random defaults = %+v", raw)
 	}
 	if raw.PublishedAt.Valid || raw.ClosedAt.Valid {
@@ -802,7 +802,7 @@ func TestIntegrationSaveQuizShell(t *testing.T) {
 		"randomize_answers":   {"1"},
 		"allow_retake":        {"1"},
 		"max_attempts":        {"4"},
-		"review_mode":         {"key_only"},
+		"review_mode":         {"correct_only"},
 		"show_score":          {"1"},
 	}
 	flash, err = f.svc.SaveSettings(ctx, f.owner, quizID, settings)
@@ -813,14 +813,14 @@ func TestIntegrationSaveQuizShell(t *testing.T) {
 
 	raw = readRawQuiz(t, f.db, quizID)
 	if !raw.RandomizeQuestions || !raw.RandomizeOptions || !raw.AllowRetake ||
-		raw.MaxAttempts != 4 || raw.ReviewMode != "key_only" || !raw.ShowScore {
+		raw.MaxAttempts != 4 || raw.ReviewMode != "correct_only" || !raw.ShowScore {
 		t.Fatalf("settings row = %+v", raw)
 	}
 
 	// allow_retake=false forces max_attempts=1 and ignores the number.
 	flash, err = f.svc.SaveSettings(ctx, f.owner, quizID, url.Values{
 		"max_attempts": {"9"},
-		"review_mode":  {"questions_only"},
+		"review_mode":  {"questions_no_verdict"},
 	})
 	if err != nil {
 		t.Fatalf("SaveSettings(retake off): %v", err)
@@ -828,13 +828,13 @@ func TestIntegrationSaveQuizShell(t *testing.T) {
 	requireFlash(t, flash, FlashSaved)
 	raw = readRawQuiz(t, f.db, quizID)
 	if raw.AllowRetake || raw.MaxAttempts != 1 || raw.ShowScore ||
-		raw.RandomizeQuestions || raw.RandomizeOptions || raw.ReviewMode != "questions_only" {
+		raw.RandomizeQuestions || raw.RandomizeOptions || raw.ReviewMode != "questions_no_verdict" {
 		t.Fatalf("settings after retake off = %+v", raw)
 	}
 
 	_, err = f.svc.SaveSettings(ctx, f.owner, quizID, url.Values{
 		"randomize_questions": {"yes"},
-		"review_mode":         {"key_only"},
+		"review_mode":         {"correct_only"},
 	})
 	appErr = requireValidation(t, err)
 	if appErr.Fields()["randomize_questions"] != MsgSettingsInvalid {
@@ -844,7 +844,7 @@ func TestIntegrationSaveQuizShell(t *testing.T) {
 	_, err = f.svc.SaveSettings(ctx, f.owner, quizID, url.Values{
 		"allow_retake": {"1"},
 		"max_attempts": {"11"},
-		"review_mode":  {"key_only"},
+		"review_mode":  {"correct_only"},
 	})
 	appErr = requireValidation(t, err)
 	if appErr.Fields()["max_attempts"] != MsgAttemptsRange {
@@ -857,6 +857,15 @@ func TestIntegrationSaveQuizShell(t *testing.T) {
 	appErr = requireValidation(t, err)
 	if appErr.Fields()["review_mode"] != MsgReviewModeInvalid {
 		t.Fatalf("review message = %q", appErr.Fields()["review_mode"])
+	}
+
+	// A v1 value is a field error at the form, never a CHECK-violation 500.
+	_, err = f.svc.SaveSettings(ctx, f.owner, quizID, url.Values{
+		"review_mode": {"key_only"},
+	})
+	appErr = requireValidation(t, err)
+	if appErr.Fields()["review_mode"] != MsgReviewModeInvalid {
+		t.Fatalf("old review message = %q", appErr.Fields()["review_mode"])
 	}
 }
 
@@ -908,7 +917,7 @@ func TestIntegrationQuizLifecycle(t *testing.T) {
 	// Every content write and the two content GETs refuse a frozen quiz.
 	_, err = f.svc.SaveMeta(ctx, f.owner, quizID, QuizInput{Title: "Judul Baru"})
 	requireConflict(t, err, FlashErrNotDraft)
-	_, err = f.svc.SaveSettings(ctx, f.owner, quizID, url.Values{"review_mode": {"key_only"}})
+	_, err = f.svc.SaveSettings(ctx, f.owner, quizID, url.Values{"review_mode": {"correct_only"}})
 	requireConflict(t, err, FlashErrNotDraft)
 	_, err = f.svc.CreateQuestion(ctx, f.owner, quizID,
 		essay("Soal yang tidak boleh masuk saat kuis dibuka"))

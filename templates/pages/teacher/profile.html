@@ -1,0 +1,96 @@
+{{define "partials/title"}}Profil — Twisty Quiz{{end}}
+{{define "content"}}
+<div class="page-stack">
+
+  {{/* Navigation rule (DESIGN §7): back is a quiet link at the top of the
+       reading order, labelled with its destination — never a button in the
+       page-head action slot. */}}
+  <a class="link-quiet d-inline-flex align-items-center gap-2" href="/teacher">
+    <svg width="16" height="16" aria-hidden="true"><use href="#i-arrow-left"></use></svg>
+    Kembali ke dasbor
+  </a>
+
+  <header class="page-head">
+    <div>
+      <span class="eyebrow">Akun guru</span>
+      <h1 class="h1">Profil</h1>
+      <p class="page-sub">Perbarui nama dan email yang tampil di kuis dan rekap yang Anda buat.</p>
+    </div>
+  </header>
+
+  <div class="row g-7">
+    <div class="col-12 xl:col-8">
+
+      <div class="card p-7 d-flex align-items-center gap-5 mb-7">
+        <span class="app-avatar" aria-hidden="true">{{with .User}}{{.Initials}}{{end}}</span>
+        <div class="min-w-0">
+          <span class="d-block fw-semibold">{{.Data.FullName}}</span>
+          <span class="page-sub d-block">Guru · {{.Data.Email}}</span>
+        </div>
+      </div>
+
+      <form class="card form-card" method="post" action="/teacher/profile" data-validate>
+        <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+
+        <div class="form-section">
+          <h2 class="form-section-title">Data akun</h2>
+          <p class="form-section-sub">Nama ini tampil sebagai pembuat kuis dan pemberi nilai esai.</p>
+          <div class="row g-5">
+            <div class="col-12 md:col-6">
+              <label class="form-label" for="teacher-profile-name">Nama lengkap <span class="required" aria-hidden="true">*</span></label>
+              <input class="form-control" type="text" id="teacher-profile-name" name="full_name" value="{{.Data.FullName}}" autocomplete="name" maxlength="80" aria-describedby="teacher-profile-name-help" required>
+              <div class="field-help" id="teacher-profile-name-help">Gunakan nama yang dikenal siswa dan rekan guru.</div>
+              {{with .Errors.Get "full_name"}}<div class="field-error">{{.}}</div>{{end}}
+            </div>
+            <div class="col-12 md:col-6">
+              <label class="form-label" for="teacher-profile-email">Email <span class="required" aria-hidden="true">*</span></label>
+              <input class="form-control" type="email" id="teacher-profile-email" name="email" value="{{.Data.Email}}" autocomplete="email" aria-describedby="teacher-profile-email-help" required>
+              <div class="field-help" id="teacher-profile-email-help">Email ini dipakai untuk masuk ke akun Anda.</div>
+              {{with .Errors.Get "email"}}<div class="field-error">{{.}}</div>{{end}}
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <h2 class="form-section-title">Peran dan akses</h2>
+          <p class="form-section-sub">Peran akun ditetapkan admin sekolah, jadi tidak dapat diubah dari halaman ini.</p>
+          <div class="row g-5">
+            <div class="col-12 md:col-6">
+              <span class="form-label d-block">Peran</span>
+              <p class="mb-0 fw-semibold">Guru</p>
+            </div>
+            <div class="col-12 md:col-6">
+              <span class="form-label d-block">Cakupan</span>
+              <p class="mb-0 fw-semibold">Kuis, penilaian, dan data siswa</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn btn-solid theme-primary">Simpan perubahan</button>
+        </div>
+      </form>
+
+    </div>
+
+    <div class="col-12 xl:col-4">
+      <div class="card p-7 d-flex flex-column gap-5">
+        <h2 class="section-title">Keamanan akun</h2>
+        <p class="page-sub mb-0">Ganti kata sandi secara berkala dan jangan bagikan ke siapa pun.</p>
+        <a class="btn btn-outline theme-primary" href="/change-password">Ganti kata sandi</a>
+        <div class="divider"></div>
+        <h2 class="section-title">Keluar</h2>
+        <p class="page-sub mb-0">Akhiri sesi ini bila Anda memakai perangkat bersama.</p>
+        <form method="post" action="/logout">
+          <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+          <button type="submit" class="btn btn-outline theme-danger w-100">
+            <svg width="17" height="17" aria-hidden="true"><use href="#i-signout"></use></svg>
+            Keluar
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+</div>
+{{end}}

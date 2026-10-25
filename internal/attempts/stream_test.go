@@ -298,6 +298,24 @@ func TestDiffMonitorSnapshot(t *testing.T) {
 			t.Errorf("attempt-start diff = (%v, %+v)", snapshot, updated)
 		}
 	})
+
+	// Grading preserves attempt.updated_at, so a late essay score is only
+	// visible to an open monitor through this comparison. The event payload
+	// still carries the ATT-194 subset; the page reloads for the score.
+	t.Run("late score is an update", func(t *testing.T) {
+		prev := row(501, func(r *participantSnapshot) {
+			r.State = viewmodel.ParticipationCompleted
+		})
+		next := row(501, func(r *participantSnapshot) {
+			r.State = viewmodel.ParticipationCompleted
+			score := viewmodel.NewScore(80)
+			r.Score = &score
+		})
+		snapshot, _, updated := diffMonitorSnapshot(snap(prev), snap(next))
+		if snapshot || len(updated) != 1 {
+			t.Errorf("score diff = (%v, %+v)", snapshot, updated)
+		}
+	})
 }
 
 // TestStreamPayloads pins the exact ATT-193/ATT-194 key sets and UTC Z forms.

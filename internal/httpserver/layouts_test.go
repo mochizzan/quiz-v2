@@ -10,11 +10,11 @@ import (
 	"quiz-v2/internal/httpserver"
 )
 
-// TestErrorPagesRender pins plan Task 6's two styled error pages: the 404
-// catch-all (server.go renders pages/error/404.html for any unclaimed path)
-// must answer 404 with the styled page, and GET /error/500 (registered by
-// routes_error.go) must answer 200 with the styled server-error page. TestMain
-// chdirs to the repository root, so ./templates resolves under app.Test.
+// TestErrorPagesRender pins the styled error pages: the 404 catch-all
+// (server.go renders pages/error/404.html for any unclaimed path) must answer
+// 404 with the styled page, and the preview routes registered by
+// routes_error.go must answer 200 with their own copy. TestMain chdirs to the
+// repository root, so ./templates resolves under app.Test.
 func TestErrorPagesRender(t *testing.T) {
 	app := httpserver.New(config.Config{Addr: ":8080", SessionSigningKey: testSigningKey})
 
@@ -49,6 +49,28 @@ func TestErrorPagesRender(t *testing.T) {
 			t.Errorf("500 page must contain its heading copy, got %q", html)
 		}
 	})
+
+	// Every error screen is also a preview route, so its template is exercised
+	// without provoking the real condition.
+	for _, tc := range []struct{ path, heading string }{
+		{"/error/403", "Akses ditolak"},
+		{"/error/422", "Permintaan tidak valid"},
+		{"/error/429", "Terlalu banyak permintaan"},
+	} {
+		t.Run("GET "+tc.path, func(t *testing.T) {
+			resp, err := app.Test(httptest.NewRequest("GET", tc.path, nil))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if resp.StatusCode != 200 {
+				t.Fatalf("status = %d, want 200 (route registered by routes_error.go)", resp.StatusCode)
+			}
+			body, _ := io.ReadAll(resp.Body)
+			if html := string(body); !strings.Contains(html, tc.heading) {
+				t.Errorf("%s page must contain its heading copy, got %q", tc.path, html)
+			}
+		})
+	}
 }
 
 // TestLayoutWrappersArePresent pins the layout chrome every page renders

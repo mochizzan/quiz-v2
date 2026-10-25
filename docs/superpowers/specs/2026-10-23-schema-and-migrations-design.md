@@ -384,7 +384,7 @@ anonymous identity.
 | `allow_retake` | `TINYINT(1) UNSIGNED` | NOT NULL | 0 | |
 | `max_attempts` | `TINYINT UNSIGNED` | NOT NULL | 1 | `0` means unlimited |
 | `show_score` | `TINYINT(1) UNSIGNED` | NOT NULL | 1 | |
-| `review_mode` | `VARCHAR(20)` ascii_bin | NOT NULL | `'questions_only'` | growing vocabulary |
+| `review_mode` | `VARCHAR(20)` ascii_bin | NOT NULL | `'questions_no_answers'` | growing vocabulary |
 | `randomize_questions` | `TINYINT(1) UNSIGNED` | NOT NULL | 0 | |
 | `randomize_options` | `TINYINT(1) UNSIGNED` | NOT NULL | 0 | |
 | `published_at` | `DATETIME` | NULL | — | set on draft→open |
@@ -398,7 +398,7 @@ anonymous identity.
   `FK fk_quizzes_major (target_major_id) → majors.id`,
   `FK fk_quizzes_deleter (deleted_by_account_id) → accounts.id`
 - `CHECK chk_quizzes_code (code IS NULL OR code REGEXP '^[0-9]{6}$')`
-- `CHECK chk_quizzes_review_mode (review_mode IN ('questions_and_key','key_only','questions_only','answers_only'))`
+- `CHECK chk_quizzes_review_mode (review_mode IN ('questions_no_verdict','questions_no_answers','correct_only','questions_with_key'))`
 - `CHECK chk_quizzes_attempts (max_attempts BETWEEN 0 AND 10)`
 - `CHECK chk_quizzes_window (starts_at IS NULL OR ends_at IS NULL OR ends_at >= starts_at)`
 - `CHECK chk_quizzes_target_grade (target_grade IS NULL OR target_grade BETWEEN 10 AND 12)`
@@ -420,6 +420,11 @@ anonymous identity.
 > carries both. The exact XOR is enforced, so the contradictory state cannot be stored.
 > A public quiz always has a join code and a private one never does — which means flipping
 > `visibility` while in draft must mint or clear the code in the same `UPDATE`.
+>
+> `0008_review_mode_v2` replaces the original review-mode vocabulary and default. It remaps
+> the four legacy values to the four current ones — `questions_and_key` →
+> `questions_with_key`, `answers_only` → `questions_no_verdict`, `questions_only` and
+> `key_only` → `questions_no_answers` — then installs the `CHECK` and default above.
 
 ### 6.7 `questions`
 
@@ -509,7 +514,8 @@ anonymous identity.
 | `score` | `DECIMAL(5,4)` | NULL | — | NULL = ungraded |
 | `feedback` | `VARCHAR(1000)` | NULL | — | |
 | `graded_by_account_id` | `INT UNSIGNED` | NULL | — | |
-| `graded_at` | `DATETIME` | NULL | — | |
+| `graded_at` | `DATETIME` | NULL | — | first-grade instant; preserved on edit |
+| `grading_version` | `SMALLINT UNSIGNED` | NOT NULL | 0 | edit form's optimistic-concurrency token |
 | kit | | | | |
 
 - `UNIQUE uq_answers_slot (attempt_id, question_id, deleted_at)`
@@ -525,6 +531,13 @@ anonymous identity.
 >
 > `graded_by_account_id` and `graded_at` exist because "graded today" is a screen, and a
 > screen with no source column is a lie.
+>
+> `grading_version` was added by `0009` for the grading-history rework. A grade is editable
+> by the owning teacher at any time, so a form carries the counter it rendered and a stale
+> counter is a conflict instead of a silent overwrite. It increments on every grade and
+> re-grade; existing rows start at 0. `graded_at` stays the first-grade instant and the
+> row's automatic `updated_at` records the last change, which is why the two can differ on
+> an edited answer.
 
 ### 6.11 `attempt_answer_selections`
 
@@ -708,6 +721,8 @@ migrations/
   0005_telemetry_schema.up.sql
   0006_auth_tokens_schema.up.sql
   0007_seed_majors.up.sql
+  0008_review_mode_v2.up.sql
+  0009_grading_version.up.sql
 ```
 
 Rules:
@@ -728,8 +743,12 @@ Rules:
 ### 9.2 Ordering
 
 `0001` accounts → `0002` reference (majors, students) → `0003` authoring → `0004`
-participation → `0005` telemetry → `0006` auth tokens → seed. Each file only references
-tables created by an earlier file, so a from-empty replay never needs deferred FKs.
+participation → `0005` telemetry → `0006` auth tokens → seed → `0008`
+review-mode remap → `0009` grading version. Each file only references tables created by an earlier file, so
+a from-empty replay never needs deferred FKs. `0008` is a data migration on
+`quizzes.review_mode`; it depends on `0003` and is safe to replay after a partial
+apply. `0009` appends a column to `attempt_answers` (`0005`) and is likewise
+idempotent.
 
 `accounts` precedes `majors` because `majors.deleted_by_account_id` is a real FK
 (decision 26), and a reference table cannot be created before its deleter table.
@@ -817,7 +836,7 @@ A schema test suite (written with the implementation, not part of this document)
    `deleted_at` with the exact types and defaults in §5.2.
 2. Every table has a primary key on `id`.
 3. Every declared FK exists in `information_schema.REFERENTIAL_CONSTRAINTS`.
-4. A from-empty replay applies `0001`–`0007` and a second run is a no-op.
+4. A from-empty replay applies `0001`–`0009` and a second run is a no-op.
 5. A duplicate live email fails; soft-deleting the account then re-registering succeeds —
    and one email cannot exist in both roles, because there is only one table.
 6. A registration with both participant columns, or neither, fails.

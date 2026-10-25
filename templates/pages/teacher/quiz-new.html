@@ -2,6 +2,14 @@
 {{define "content"}}
 <div class="page-stack">
 
+  {{/* Navigation rule (DESIGN §7): back is a quiet link above the header. It is
+       also the only cancel affordance — a second Batal button would duplicate
+       the same destination. */}}
+  <a class="link-quiet d-inline-flex align-items-center gap-2" href="{{.Data.CancelHref}}">
+    <svg width="16" height="16" aria-hidden="true"><use href="#i-arrow-left"></use></svg>
+    Kembali ke daftar kuis
+  </a>
+
   <div class="page-head">
     <div>
       <span class="eyebrow">Penyusunan kuis</span>
@@ -14,7 +22,7 @@
     {{template "partials/stepper.html" 1}}
   </div>
 
-  <div class="row g-4">
+  <div class="row g-7">
     <div class="col-12 xl:col-8">
       <form class="card form-card" method="post" action="{{.Data.Action}}" data-validate>
         <input type="hidden" name="csrf_token" value="{{.CSRF}}">
@@ -23,7 +31,7 @@
           <h2 class="form-section-title">Data kuis</h2>
           <p class="form-section-sub">Judul dan penjelasan yang dibaca siswa sebelum mulai mengerjakan.</p>
 
-          <div class="mb-3">
+          <div class="mb-4">
             <label class="form-label" for="quiz-title">Judul kuis <span class="required" aria-hidden="true">*</span></label>
             <input class="form-control" type="text" id="quiz-title" name="title" value="{{.Data.Title}}" maxlength="120" required autocomplete="off">
             <div class="field-help">Wajib diisi, maksimal 120 karakter.</div>
@@ -43,7 +51,7 @@
           <h2 class="form-section-title">Jadwal</h2>
           <p class="form-section-sub">Waktu hanya informasi bagi siswa. Kuis tetap dibuka dan ditutup manual dari halaman kuis.</p>
 
-          <div class="row g-3">
+          <div class="row g-5">
             <div class="col-12 md:col-6">
               <label class="form-label" for="quiz-start-at">Mulai</label>
               <input class="form-control" type="datetime-local" id="quiz-start-at" name="start_at" value="{{.Data.StartAt.Input}}">
@@ -61,7 +69,7 @@
           <h2 class="form-section-title">Akses</h2>
           <p class="form-section-sub">Kuis publik dapat diikuti semua siswa dan menerima peserta anonim. Kuis privat hanya untuk kelas dan jurusan yang dipilih.</p>
 
-          <div class="mb-3">
+          <div class="mb-4">
             <label class="form-label" for="quiz-visibility">Visibilitas</label>
             <select class="form-control" id="quiz-visibility" name="visibility" data-visibility required>
               <option value="public"{{if eq .Data.Visibility "public"}} selected{{end}}>Publik</option>
@@ -71,7 +79,7 @@
           </div>
 
           <div class="private-fields" data-private-fields{{if ne .Data.Visibility "private"}} hidden{{end}}>
-            <div class="row g-3">
+            <div class="row g-5">
               <div class="col-12 md:col-6">
                 <label class="form-label" for="quiz-target-grade">Kelas</label>
                 <select class="form-control" id="quiz-target-grade" name="target_grade"{{if ne .Data.Visibility "private"}} disabled{{end}}>
@@ -93,20 +101,19 @@
           </div>
         </div>
 
-        <p class="section-sub d-flex align-items-start gap-2 mt-3 mb-0">
+        <p class="section-sub d-flex align-items-start gap-2 mt-4 mb-0">
           <svg class="flex-shrink-0 mt-1" width="16" height="16" aria-hidden="true"><use href="#i-info"></use></svg>
           <span>Kuis disimpan sebagai draf. Tambahkan soal pada langkah 2, lalu buka kuis setelah semuanya siap. Kuis tanpa soal belum dapat dibuka.</span>
         </p>
 
         <div class="form-actions">
-          <a class="btn btn-outline theme-primary" href="{{.Data.CancelHref}}">Batal</a>
           <button class="btn btn-solid theme-primary" type="submit">Simpan draf</button>
         </div>
       </form>
     </div>
 
     <div class="col-12 xl:col-4">
-      <aside class="card p-4 d-flex flex-column gap-2 h-100" aria-labelledby="quiz-draft-rules-title">
+      <aside class="card p-7 d-flex flex-column gap-2 h-100" aria-labelledby="quiz-draft-rules-title">
         <h2 class="section-title" id="quiz-draft-rules-title">Tentang draf</h2>
         <p class="section-sub">Draf belum terlihat oleh siswa dan dapat diubah kapan saja.</p>
         <ol class="section-sub d-flex flex-column gap-2 ps-3 mb-0">

@@ -202,7 +202,7 @@ func TestValidateQuizMetaIgnoresAudience(t *testing.T) {
 func TestValidateSettings(t *testing.T) {
 	base := func() url.Values {
 		return url.Values{
-			"review_mode":  {"questions_only"},
+			"review_mode":  {string(viewmodel.ReviewQuestionsNoAnswers)},
 			"max_attempts": {"1"},
 			"show_score":   {"1"},
 		}
@@ -218,6 +218,12 @@ func TestValidateSettings(t *testing.T) {
 		{"attempts not a number", func(v url.Values) { v.Set("allow_retake", "1"); v.Set("max_attempts", "dua") }, "max_attempts", MsgAttemptsRange},
 		{"checkbox contract", func(v url.Values) { v.Set("allow_retake", "yes") }, "allow_retake", MsgSettingsInvalid},
 		{"review mode", func(v url.Values) { v.Set("review_mode", "all") }, "review_mode", MsgReviewModeInvalid},
+		// The v1 vocabulary is gone: every old value is a field error, so a
+		// stale form cannot smuggle a mode the result screen no longer has.
+		{"old questions_and_key", func(v url.Values) { v.Set("review_mode", "questions_and_key") }, "review_mode", MsgReviewModeInvalid},
+		{"old key_only", func(v url.Values) { v.Set("review_mode", "key_only") }, "review_mode", MsgReviewModeInvalid},
+		{"old questions_only", func(v url.Values) { v.Set("review_mode", "questions_only") }, "review_mode", MsgReviewModeInvalid},
+		{"old answers_only", func(v url.Values) { v.Set("review_mode", "answers_only") }, "review_mode", MsgReviewModeInvalid},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -226,6 +232,19 @@ func TestValidateSettings(t *testing.T) {
 			_, err := ValidateSettings(form)
 			assertField(t, err, tc.field, tc.msg)
 		})
+	}
+
+	// Every new value validates and round-trips into the typed field.
+	for _, mode := range viewmodel.AllReviewModes {
+		form := base()
+		form.Set("review_mode", string(mode))
+		out, err := ValidateSettings(form)
+		if err != nil {
+			t.Fatalf("review_mode %q: %v", mode, err)
+		}
+		if out.ReviewMode != mode {
+			t.Errorf("review_mode %q validated to %q", mode, out.ReviewMode)
+		}
 	}
 
 	out, err := ValidateSettings(base())
@@ -241,12 +260,12 @@ func TestValidateSettings(t *testing.T) {
 	form.Set("max_attempts", "5")
 	form.Set("randomize_questions", "1")
 	form.Set("randomize_answers", "1")
-	form.Set("review_mode", "answers_only")
+	form.Set("review_mode", string(viewmodel.ReviewQuestionsNoVerdict))
 	out, err = ValidateSettings(form)
 	if err != nil {
 		t.Fatalf("valid retake: %v", err)
 	}
-	if out.MaxAttempts != 5 || !out.AllowRetake || !out.RandomizeQuestions || !out.RandomizeAnswers || out.ReviewMode != viewmodel.ReviewAnswersOnly {
+	if out.MaxAttempts != 5 || !out.AllowRetake || !out.RandomizeQuestions || !out.RandomizeAnswers || out.ReviewMode != viewmodel.ReviewQuestionsNoVerdict {
 		t.Fatalf("valid retake = %+v", out)
 	}
 
@@ -477,6 +496,11 @@ func TestEvaluatePublish(t *testing.T) {
 		{"attempts out of range", func(in *PublishInput) { in.Quiz.MaxAttempts = 0 }, FlashErrInvalidSettings, false},
 		{"retake mismatch", func(in *PublishInput) { in.Quiz.MaxAttempts = 3 }, FlashErrInvalidSettings, false},
 		{"review mode", func(in *PublishInput) { in.Quiz.ReviewMode = "all" }, FlashErrInvalidSettings, false},
+		// The v1 vocabulary is rejected at publish time too.
+		{"old questions_and_key", func(in *PublishInput) { in.Quiz.ReviewMode = "questions_and_key" }, FlashErrInvalidSettings, false},
+		{"old key_only", func(in *PublishInput) { in.Quiz.ReviewMode = "key_only" }, FlashErrInvalidSettings, false},
+		{"old questions_only", func(in *PublishInput) { in.Quiz.ReviewMode = "questions_only" }, FlashErrInvalidSettings, false},
+		{"old answers_only", func(in *PublishInput) { in.Quiz.ReviewMode = "answers_only" }, FlashErrInvalidSettings, false},
 		{"public code missing", func(in *PublishInput) { in.Quiz.Code = sql.NullString{} }, "", true},
 		{"public code not six digits", func(in *PublishInput) {
 			in.Quiz.Code = sql.NullString{String: "12345", Valid: true}
@@ -504,6 +528,20 @@ func TestEvaluatePublish(t *testing.T) {
 				t.Fatalf("reason = %q, want %q", result.Reason, tc.reason)
 			}
 		})
+	}
+}
+
+// TestEvaluatePublishAcceptsEveryReviewMode pins the closed set at the publish
+// gate: the four v2 values pass, and TestEvaluatePublish proves the four v1
+// values are refused.
+func TestEvaluatePublishAcceptsEveryReviewMode(t *testing.T) {
+	uploads := t.TempDir()
+	for _, mode := range viewmodel.AllReviewModes {
+		in := validPublishInput(uploads)
+		in.Quiz.ReviewMode = string(mode)
+		if result := EvaluatePublish(in); !result.OK || result.Err != nil {
+			t.Errorf("mode %q rejected: OK=%v reason=%q err=%v", mode, result.OK, result.Reason, result.Err)
+		}
 	}
 }
 
@@ -560,7 +598,7 @@ func validPublishInput(uploads string) PublishInput {
 			InviteToken: "abcdefghijklmnopqrstuv",
 			MaxAttempts: 1,
 			ShowScore:   true,
-			ReviewMode:  "questions_only",
+			ReviewMode:  string(viewmodel.ReviewQuestionsWithKey),
 		},
 		Questions: []PublishQuestion{{
 			ID:       1,

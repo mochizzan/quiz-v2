@@ -212,7 +212,7 @@ closed to `not_open`; it never reveals a quiz to a non-owner teacher.
 | public, open | any student; code or invite; register then start | code or invite → identify → register → start |
 | private, open | exact `grade_level` + `major_id`; invite auto-registers; intro can register | rejected: private admits no anonymous participant |
 | draft | owner teacher only; students 404 | 404 |
-| closed | no new join; registered students see intro/history; in-progress attempts resume | 404 |
+| closed | no new join; registered students see history and results (intro 404); in-progress attempts resume | no new join; 404 unless a live registration exists, which keeps a read-only intro |
 
 Invitation URLs auto-register when the viewer is eligible and not already
 registered. Codes do not auto-register logged-in students; they land on the
@@ -292,19 +292,14 @@ orphans are tolerated. No file is shared between questions.
 
 ### R-18 — Review modes
 
-| Mode | Question body | Student answer | Key / verdict | Per-row score |
-|---|---|---|---|---|
-| `questions_and_key` | yes | yes | yes | yes |
-| `key_only` | no | no | key list only | no |
-| `questions_only` | yes | yes | no | no |
-| `answers_only` | yes | yes | no | no (also no verdict color) |
+| Mode | Question body | Student answer | Key | Verdict | Essay feedback | Essay score |
+|---|---|---|---|---|---|---|
+| `questions_no_verdict` | yes | yes | no | no | no | no |
+| `questions_no_answers` | yes | no | no | no | no | no |
+| `correct_only` | correct objective rows only, original positions | yes | no | no | no | no |
+| `questions_with_key` | yes | yes | yes | yes | yes, when graded | yes, when graded and `show_score` |
 
-`show_score = false` removes the score tile and every per-row score, but leaves
-verdicts that the mode permits; a hidden score renders `—`, never `0`.
-Essays have no key. A graded essay shows score and feedback; an ungraded one
-shows "Menunggu penilaian". The student result page exists for every submitted
-attempt; `final_score IS NULL` shows the waiting state. The teacher recap always
-shows the key regardless of mode. The pre-submit review is unaffected by mode.
+`questions_no_answers` is the default for a new quiz and its rows reveal nothing beyond the question body and image. `questions_with_key` is the only mode that discloses a key, a correct/incorrect verdict (and its colour), essay feedback, or an essay score. `correct_only` drops every essay and every objective row that is not correct, without renumbering the survivors. `show_score = false` removes the score tile and every per-row score, but never widens the mode; a hidden score renders `—`, never `0`. Essays have no key. In `questions_with_key`, a graded essay shows its score and feedback and an ungraded one shows the `Menunggu nilai` badge; the other modes show neither. The student result page exists for every submitted attempt; `final_score IS NULL` shows the waiting state in the score slot. The teacher recap always shows the key regardless of mode. The pre-submit review is unaffected by mode.
 
 ### R-19 — HTTP, errors, copy
 
@@ -464,7 +459,7 @@ Storage values are lowercase snake case. Labels are Indonesian and live in Go.
 | Quiz state | `draft`, `open`, `closed` |
 | Visibility | `public`, `private` |
 | Question type | `single`, `multiple`, `essay` |
-| Review mode | `questions_and_key`, `key_only`, `questions_only`, `answers_only` |
+| Review mode | `questions_no_verdict`, `questions_no_answers`, `correct_only`, `questions_with_key` |
 | Participation state | `registered`, `in_progress`, `completed` |
 | Attempt state | `in_progress`, `completed` (graded is `final_score != NULL`) |
 | Essay state | `ungraded`, `graded` |

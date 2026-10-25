@@ -17,7 +17,7 @@ import (
 // upload.go serves the question images the authoring domain stores on disk.
 // GET /uploads/:name is a read-only operational route: it is not a page, it has
 // no template, and it is registered with /healthz rather than through
-// registerPage, so the 72-screen pin is unaffected (contract §6).
+// registerPage, so the 74-screen pin is unaffected (contract §6).
 //
 // The name is treated as hostile. The closed grammar of AUT-015 is checked
 // before anything else, then the name must resolve to a live question of a live

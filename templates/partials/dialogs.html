@@ -1,12 +1,16 @@
-{{define "partials/dialogs.html"}}<dialog class="dialog" id="dialog-confirm">
+{{/* Bootstrap 6 dialog. One instance serves every form[data-confirm]: the
+     page sets the copy, app.js shows it and submits on accept. The browser's
+     own window.confirm() chrome is banned (see conformance_test.go), so this
+     is the only confirmation surface. */}}
+{{define "partials/dialogs.html"}}<dialog class="dialog" id="dialog-confirm" aria-labelledby="dialog-confirm-title" aria-describedby="dialog-confirm-message">
   <div class="dialog-header">
-    <h2 class="h2">Konfirmasi</h2>
+    <h2 class="dialog-title" id="dialog-confirm-title">Konfirmasi</h2>
   </div>
   <div class="dialog-body">
-    <p class="mb-0">Lanjutkan?</p>
+    <p class="mb-0" id="dialog-confirm-message">Lanjutkan?</p>
   </div>
-  <div class="dialog-footer d-flex justify-content-end gap-2">
-    <button type="button" class="btn btn-outline" data-bs-dismiss="dialog">Batal</button>
-    <button type="button" class="btn btn-solid theme-primary" data-bs-dismiss="dialog">Konfirmasi</button>
+  <div class="dialog-footer">
+    <button type="button" class="btn btn-outline theme-primary" data-bs-dismiss="dialog" autofocus>Batal</button>
+    <button type="button" class="btn btn-solid theme-primary" id="dialog-confirm-accept" data-bs-dismiss="dialog">Konfirmasi</button>
   </div>
 </dialog>{{end}}

@@ -8,10 +8,6 @@
       <h1 class="h1">Siswa</h1>
       <p class="page-sub">Kelola akun siswa, kelas, jurusan, dan token atur ulang.</p>
     </div>
-    <a class="btn btn-outline theme-primary" href="/teacher/anonymous">
-      <svg width="18" height="18" aria-hidden="true"><use href="#i-users"></use></svg>
-      Peserta anonim
-    </a>
   </div>
 
   <div class="tabs-scroll">
@@ -24,12 +20,12 @@
   </div>
 
   {{with .Data.ResetToken}}
-  <section class="card p-4" aria-labelledby="reset-token-title" role="status" aria-live="polite">
+  <section class="card p-7" aria-labelledby="reset-token-title" role="status" aria-live="polite">
     <div>
       <h2 class="section-title" id="reset-token-title">Token atur ulang</h2>
       <p class="section-sub">Berikan token ini kepada siswa. Token berlaku 24 jam hingga {{.ExpiresAt.DateTime}} WIB.</p>
     </div>
-    <div class="copy-field mt-3">
+    <div class="copy-field mt-4">
       <label class="visually-hidden" for="reset-token">Token atur ulang</label>
       <input class="form-control" type="text" id="reset-token" value="{{.Token}}" readonly>
       <button type="button" class="btn btn-outline theme-primary" data-copy="reset-token">
@@ -40,7 +36,7 @@
   </section>
   {{end}}
 
-  <section class="card p-4" aria-labelledby="student-filter-title">
+  <section class="card p-7" aria-labelledby="student-filter-title">
     <div class="row-between">
       <div>
         <h2 class="section-title" id="student-filter-title">Cari dan saring</h2>
@@ -48,7 +44,7 @@
       </div>
     </div>
 
-    <form class="d-flex flex-wrap align-items-end gap-3 mt-3" method="get" action="/teacher/students">
+    <form class="d-flex flex-wrap align-items-end gap-5 mt-4" method="get" action="/teacher/students">
       {{range .Data.Tabs}}{{if .Active}}{{if ne .Label "Semua kelas"}}<input type="hidden" name="grade" value="{{.Label}}">{{end}}{{end}}{{end}}
       <div class="flex-grow-1">
         <label class="form-label" for="student-search">Cari siswa</label>
@@ -77,13 +73,13 @@
       </div>
     </form>
 
-    <div class="mt-3">
+    <div class="mt-4">
       {{template "partials/tabs.html" .Data.Tabs}}
     </div>
   </section>
 
   <section class="card" aria-labelledby="student-list-title">
-    <div class="p-4">
+    <div class="p-7">
       <div class="row-between">
         <div>
           <h2 class="section-title" id="student-list-title">Daftar siswa</h2>
@@ -93,7 +89,7 @@
     </div>
 
     {{if .Data.Students.Empty}}
-    <div class="p-4 pt-0">
+    <div class="p-7 pt-0">
       {{template "partials/empty-state.html" .Data.Empty}}
     </div>
     {{else}}
@@ -134,7 +130,7 @@
         </tbody>
       </table>
     </div>
-    <div class="p-4 pt-3">
+    <div class="p-7 pt-5">
       {{template "partials/pagination.html" .Data.Pagination}}
     </div>
     {{end}}

@@ -1,10 +1,60 @@
-{{define "content"}}{{with .Data}}<div class="text-center">
-  <span class="eyebrow">Error {{.Code}}</span>
-  <p class="display-4 fw-bold mb-2" style="color: var(--bs-primary-base)">{{.Code}}</p>
-  <h1 class="h2 mb-2">{{.Title}}</h1>
-  <p class="page-sub measure mx-auto mb-4">{{.Message}}</p>
-  <div class="d-flex flex-wrap justify-content-center gap-2">
-    <a class="btn btn-solid theme-primary" href="{{.HomeHref}}">Kembali ke halaman masuk</a>
-    <a class="btn btn-outline theme-primary" href="/join">Gabung lewat kode</a>
+{{define "content"}}
+{{with .Data}}
+<div class="error-page-container type-500">
+  <div class="error-header">
+    <span class="error-type">Error {{.Code}}</span>
   </div>
-</div>{{end}}{{end}}
+  
+  <div class="error-content">
+    <div class="error-code-display">{{.Code}}</div>
+    <h1 class="error-title">{{.Title}}</h1>
+    <p class="error-message">{{.Message}}</p>
+    
+    <div class="error-technical-section">
+      <div class="technical-indicator">
+        <span class="indicator-dot"></span>
+        <span class="indicator-dot"></span>
+        <span class="indicator-dot"></span>
+      </div>
+      <p class="technical-note">Sistem sedang dalam pemeliharaan. Tim kami telah diberi tahu.</p>
+    </div>
+  </div>
+  
+  <div class="error-actions">
+    <a class="btn btn-solid theme-primary" href="{{.HomeHref}}">Kembali ke halaman masuk</a>
+    {{if .ShowSecondaryAction}}
+    <a class="btn btn-outline theme-primary" href="/join">Gabung lewat kode</a>
+    {{end}}
+  </div>
+</div>
+{{end}}{{end}}{{define "scripts"}}
+<script>
+// Distinctive loading animation for 500 page
+document.addEventListener('DOMContentLoaded', function() {
+  const errorContainer = document.querySelector('.error-page-container');
+  const dots = document.querySelectorAll('.indicator-dot');
+  
+  errorContainer.style.opacity = '0';
+  errorContainer.style.transform = 'translateY(20px)';
+  
+  dots.forEach((dot, index) => {
+    dot.style.opacity = '0';
+    dot.style.transform = 'scale(0)';
+  });
+  
+  setTimeout(() => {
+    errorContainer.style.transition = 'all 0.6s ease-out';
+    errorContainer.style.opacity = '1';
+    errorContainer.style.transform = 'translateY(0)';
+    
+    dots.forEach((dot, index) => {
+      setTimeout(() => {
+        dot.style.transition = 'all 0.3s ease-out';
+        dot.style.opacity = '1';
+        dot.style.transform = 'scale(1)';
+      }, index * 150);
+    });
+  }, 100);
+});
+</script>
+{{end}}

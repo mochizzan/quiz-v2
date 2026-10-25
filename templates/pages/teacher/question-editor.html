@@ -1,4 +1,4 @@
-{{define "partials/title"}}{{if .Data.IsNew}}Tambah soal{{else}}Edit soal{{end}} — Twisty Quiz{{end}}
+{{define "partials/title"}}{{if .Data.IsNew}}Tambah soal{{else}}Ubah soal{{end}} — Twisty Quiz{{end}}
 {{define "partials/page-style"}}
 /* Question editor: one writing column, one narrow reference rail. */
 .editor-layout { display: grid; grid-template-columns: 1fr; gap: 20px; align-items: start; }
@@ -30,9 +30,28 @@
 .option-remove .btn { color: #B42318; }
 .option-remove .btn:hover { background: #FDF0ED; }
 
-.image-preview { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 12px; padding: 10px; border: 1px solid #E2E6EB; border-radius: 14px; background: #F4F6F8; }
-.image-preview img { display: block; width: 120px; height: 80px; object-fit: cover; border: 1px solid #E2E6EB; border-radius: 10px; background: #FFFFFF; }
-.image-preview .form-label { margin: 0; font-size: 13px; }
+/* Image attachment: one well owns the picker, the preview and the removal. */
+.image-well { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; padding: 14px; border: 1px solid var(--bs-border-color); border-radius: 18px; background: var(--bs-bg-2); }
+.image-empty, .image-attached { display: flex; flex: 1 1 220px; align-items: center; gap: 12px; min-width: 0; }
+.image-empty[hidden], .image-attached[hidden], .image-cancel[hidden], .image-remove[hidden] { display: none; }
+.image-empty-icon { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; flex-shrink: 0; border: 1px solid var(--bs-border-color); border-radius: 50%; background: var(--bs-bg-1); color: var(--bs-fg-2); }
+.image-empty-title { margin: 0; color: var(--bs-fg-body); font-size: 13px; font-weight: 600; line-height: 1.4; }
+.image-thumb { display: block; width: 104px; height: 72px; flex-shrink: 0; border: 1px solid var(--bs-border-color); border-radius: 12px; background: var(--bs-bg-1); object-fit: cover; transition: opacity var(--bs-control-transition-duration) var(--bs-control-transition-timing); }
+.image-copy { min-width: 0; }
+.image-title { margin: 0; color: var(--bs-fg-body); font-size: 13px; font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; }
+.image-note { display: none; margin-top: 5px; color: var(--bs-danger-fg); font-size: 12px; line-height: 1.45; }
+.image-well:has(.image-remove input:checked) .image-thumb { opacity: .4; }
+.image-well:has(.image-remove input:checked) .image-title { color: var(--bs-fg-2); text-decoration: line-through; }
+[data-image-field]:has(.image-remove input:checked) .image-note { display: block; }
+[data-image-field]:has(.image-remove input:checked) #question-image-help { display: none; }
+.image-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.image-pick, .image-remove { cursor: pointer; }
+.image-pick:has(input:focus-visible) { outline: 3px solid rgba(41, 54, 129, .36); outline-offset: 2px; }
+.image-remove:has(input:focus-visible) { outline: 3px solid rgba(180, 35, 24, .36); outline-offset: 2px; }
+.image-remove .when-removed { display: none; }
+.image-remove:has(input:checked) .when-idle { display: none; }
+.image-remove:has(input:checked) .when-removed { display: inline; }
+@media (min-width: 640px) { .image-actions { margin-left: auto; } }
 
 .editor-note { margin: 0; color: #687182; font-size: 13px; line-height: 1.55; }
 .essay-hint { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border: 1px solid #E2E6EB; border-radius: 14px; background: #F4F6F8; color: #121721; font-size: 13px; line-height: 1.5; }
@@ -41,6 +60,16 @@
 .settings-list { margin: 4px 0 0; }
 .setting-item dt { margin: 0; }
 .setting-item dd { margin: 0; }
+
+/* Page-wide drop target. It only appears while a file is dragged over the
+   editor and is pointer-events:none so the drop still lands on the page. */
+.image-drop { position: fixed; inset: 0; z-index: 1085; display: grid; place-items: center; padding: 24px; background: rgba(18, 23, 33, .55); pointer-events: none; }
+.image-drop[hidden] { display: none; }
+.image-drop-frame { display: flex; flex-direction: column; align-items: center; width: min(440px, 100%); padding: 36px 32px 32px; border: 2px dashed #5589C3; border-radius: 24px; background: #FFFFFF; text-align: center; }
+.image-drop-icon { display: inline-flex; align-items: center; justify-content: center; width: 64px; height: 64px; border-radius: 50%; background: #EEF4FA; color: #293681; }
+.image-drop-title { margin: 20px 0 0; color: #121721; font-size: 24px; font-weight: 600; line-height: 30px; }
+.image-drop-copy { margin: 6px 0 0; color: #687182; font-size: 14px; line-height: 20px; }
+.image-drop-meta { margin: 14px 0 0; color: #687182; font-size: 13px; line-height: 18px; }
 {{end}}
 {{define "content"}}
 {{with .Data}}
@@ -55,7 +84,7 @@
   <header class="page-head">
     <div class="min-w-0">
       <span class="eyebrow">{{if .Position}}Soal {{.Position}}{{else}}Soal{{end}}</span>
-      <h1 class="h1">{{if .IsNew}}Tambah soal{{else}}Edit soal{{end}}</h1>
+      <h1 class="h1">{{if .IsNew}}Tambah soal{{else}}Ubah soal{{end}}</h1>
       <p class="page-sub">{{.Quiz.Title}}</p>
     </div>
     <span class="badge theme-primary">{{.Type.Label}}</span>
@@ -107,23 +136,53 @@
         </div>
       </div>
 
-      <div class="form-section">
-        <label class="form-label" for="question-image">Gambar soal <span class="fg-secondary">(opsional)</span></label>
-        {{with .Image}}
-        <div class="image-preview">
-          <img src="{{.URL}}" alt="{{.Alt}}">
-          <div class="min-w-0">
-            <p class="mb-1 fw-semibold">{{.Alt}}</p>
-            <p class="field-help mb-1">{{.SizeLabel}}</p>
-            <label class="d-inline-flex align-items-center gap-2" for="remove-image">
-              <input class="check" type="checkbox" id="remove-image" name="remove_image" value="1">
-              <span>Hapus gambar ini</span>
+      <div class="form-section" data-image-field>
+        <p class="form-label" id="question-image-label">Gambar soal <span class="fg-secondary">(opsional)</span></p>
+
+        <div class="image-well" role="group" aria-labelledby="question-image-label">
+          <div class="image-empty" data-image-empty{{if .Image}} hidden{{end}}>
+            <span class="image-empty-icon" aria-hidden="true">
+              <svg width="20" height="20" aria-hidden="true"><use href="#i-image"></use></svg>
+            </span>
+            <p class="image-empty-title">Belum ada gambar</p>
+          </div>
+
+          <div class="image-attached" data-image-attached{{if not .Image}} hidden{{end}}>
+            <img class="image-thumb" data-image-thumb{{with .Image}} src="{{.URL}}"{{end}} alt="" width="104" height="72">
+            <div class="image-copy">
+              <p class="image-title" data-image-title>Gambar tersimpan</p>
+              <p class="field-help" data-image-meta>{{with .Image}}{{.SizeLabel}}{{end}}</p>
+            </div>
+          </div>
+
+          <div class="image-actions">
+            <label class="btn btn-sm btn-outline theme-primary image-pick">
+              <input class="visually-hidden" type="file" id="question-image" name="image" accept="image/jpeg,image/png,image/webp" aria-describedby="question-image-help" data-image-input>
+              <svg width="16" height="16" aria-hidden="true"><use href="#i-upload"></use></svg>
+              <span data-image-pick-label>{{if .Image}}Ganti gambar{{else}}Pilih gambar{{end}}</span>
             </label>
+            <label class="btn btn-sm btn-outline theme-danger image-remove" data-image-remove{{if not .Image}} hidden{{end}}>
+              <input class="visually-hidden" type="checkbox" name="remove_image" value="1" data-image-remove-input>
+              <svg width="16" height="16" aria-hidden="true"><use href="#i-trash"></use></svg>
+              <span class="when-idle">Hapus gambar</span>
+              <span class="when-removed">Batalkan hapus</span>
+            </label>
+            <button class="btn btn-sm btn-outline theme-primary image-cancel" type="button" data-image-cancel hidden>
+              <svg width="16" height="16" aria-hidden="true"><use href="#i-close"></use></svg>
+              Batalkan pilihan
+            </button>
           </div>
         </div>
-        {{end}}
-        <input class="form-control" type="file" id="question-image" name="image" accept="image/jpeg,image/png,image/webp" aria-describedby="question-image-help">
+
         <p class="field-help" id="question-image-help">JPEG, PNG, atau WebP. Maksimal 10 MB, satu gambar per soal.</p>
+        <p class="image-note">Gambar dihapus saat soal disimpan.</p>
+        <p class="field-error" data-image-error role="alert" hidden></p>
+
+        <div class="mt-4">
+          <label class="form-label" for="question-image-alt">Deskripsi gambar <span class="fg-secondary">(opsional)</span></label>
+          <input class="form-control" type="text" id="question-image-alt" name="image_alt" value="{{with .Image}}{{.Alt}}{{end}}" maxlength="255" aria-describedby="question-image-alt-help" data-image-alt>
+          <p class="field-help" id="question-image-alt-help">Dibacakan pembaca layar. Jelaskan isi gambar, bukan nama berkasnya.</p>
+        </div>
       </div>
 
       <fieldset class="form-section" data-objective-only{{if eq $type "essay"}} hidden{{end}}>
@@ -202,7 +261,7 @@
           {{end}}
         </div>
 
-        <div class="row-between mt-3">
+        <div class="row-between mt-4">
           <button class="btn btn-outline theme-primary" type="button" data-add-option>
             <svg width="16" height="16" aria-hidden="true"><use href="#i-plus"></use></svg>
             Tambah pilihan
@@ -215,14 +274,13 @@
       <div class="form-section" data-essay-only{{if ne $type "essay"}} hidden{{end}}>
         <h2 class="form-section-title">Penilaian esai</h2>
         <p class="editor-note">{{.EssayNote}}</p>
-        <div class="essay-hint mt-3">
+        <div class="essay-hint mt-4">
           <svg width="18" height="18" aria-hidden="true"><use href="#i-info"></use></svg>
           <span>Esai tidak memiliki kunci jawaban. Nilai diberikan guru di halaman Penilaian setelah jawaban dikirim.</span>
         </div>
       </div>
 
       <div class="form-actions">
-        <a class="btn btn-outline theme-primary" href="{{.CancelHref}}">Batal</a>
         <button class="btn btn-solid theme-primary" type="submit">
           <svg width="16" height="16" aria-hidden="true"><use href="#i-check"></use></svg>
           Simpan soal
@@ -232,7 +290,7 @@
 
     <aside class="editor-rail" aria-label="Ringkasan dan panduan soal">
 
-      <section class="card p-4" aria-labelledby="editor-summary-title">
+      <section class="card p-7" aria-labelledby="editor-summary-title">
         <h2 class="section-title" id="editor-summary-title">Ringkasan</h2>
         <dl class="settings-list">
           <div class="setting-item">
@@ -250,7 +308,7 @@
         </dl>
       </section>
 
-      <section class="card p-4" aria-labelledby="editor-guide-title">
+      <section class="card p-7" aria-labelledby="editor-guide-title">
         <h2 class="section-title" id="editor-guide-title">Panduan singkat</h2>
         <ul class="guide-list">
           <li>Tulis satu pertanyaan untuk satu gagasan.</li>
@@ -261,7 +319,7 @@
       </section>
 
       {{if not .IsNew}}{{with .DeleteHref}}
-      <section class="card p-4" aria-labelledby="editor-danger-title">
+      <section class="card p-7" aria-labelledby="editor-danger-title">
         <h2 class="section-title" id="editor-danger-title">Hapus soal</h2>
         <p class="field-help">Soal yang dihapus tidak dapat dikembalikan. Jawaban siswa pada soal ini ikut terhapus.</p>
         <form method="post" action="{{.}}" data-confirm="Hapus soal ini? Jawaban siswa pada soal ini ikut terhapus.">
@@ -275,6 +333,19 @@
       {{end}}{{end}}
 
     </aside>
+  </div>
+</div>
+
+{{/* Shown by app.js while an image is dragged over the page. The overlay is
+     inert; the drop is handled at the window and routed into the image field. */}}
+<div class="image-drop" data-image-drop hidden aria-hidden="true">
+  <div class="image-drop-frame">
+    <span class="image-drop-icon" aria-hidden="true">
+      <svg width="28" height="28" aria-hidden="true"><use href="#i-image"></use></svg>
+    </span>
+    <p class="image-drop-title">Lepas gambar di sini</p>
+    <p class="image-drop-copy">Gambar akan dipasang ke soal ini.</p>
+    <p class="image-drop-meta">JPEG, PNG, atau WebP. Maksimal 10 MB.</p>
   </div>
 </div>
 {{end}}

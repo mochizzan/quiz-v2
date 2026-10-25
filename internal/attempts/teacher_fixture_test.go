@@ -75,7 +75,7 @@ func (f *teacherFixture) newQuiz(owner int64, title, state string, showScore, al
 		                     review_mode, created_at)
 		VALUES (?, ?, 'public', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		owner, title, state, code, token, published, closed, show, allow, maxAttempts,
-		string(viewmodel.ReviewQuestionsAndKey), createdAt)
+		string(viewmodel.ReviewQuestionsWithKey), createdAt)
 }
 
 // newStudent inserts an active student account and its profile row.

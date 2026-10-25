@@ -48,16 +48,17 @@
 {{with .Data}}
 <div class="page-stack recap-page">
 
+  <a class="link-quiet recap-back d-inline-flex align-items-center gap-2" href="{{.BackHref}}">
+    <svg width="16" height="16" aria-hidden="true"><use href="#i-arrow-left"></use></svg>
+    Kembali ke hasil kuis
+  </a>
+
   <div class="page-head">
     <div>
       <span class="eyebrow">Rekap percobaan</span>
       <h1 class="h1 mb-0">{{.Attempt.StudentName}}</h1>
       <p class="page-sub">{{.Attempt.ClassLabel}} · {{.Attempt.QuizTitle}}</p>
     </div>
-    <a class="link-quiet recap-back" href="{{.BackHref}}">
-      <svg width="18" height="18" aria-hidden="true"><use href="#i-arrow-left"></use></svg>
-      Kembali
-    </a>
   </div>
 
   <section class="card recap-card recap-header" aria-label="Identitas percobaan">

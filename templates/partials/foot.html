@@ -4,4 +4,8 @@
 <script type="module" src="/static/vendor/bootstrap/bootstrap.bundle.min.js"></script>
 <script src="/static/vendor/jquery/jquery-4.0.0.min.js" defer></script>
 <script type="module" src="/static/js/app.js"></script>
+{{/* Page-scoped script slot, emitted after the shared modules so a page can
+     add its own module without editing this file. Default is empty. */}}
+{{template "partials/page-script" .}}
 {{end}}
+{{define "partials/page-script"}}{{end}}

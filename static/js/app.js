@@ -1,10 +1,14 @@
-// Twisty Quiz application behaviour (ES module). Bootstrap is imported by the
-// bundle script tag; this file carries only app-specific wiring.
+// Twisty Quiz application behaviour (ES module). Bootstrap's bundle is loaded
+// by the script tag in foot.html and re-imported here only for the components
+// this file drives directly (window.bootstrap is banned); everything else is
+// data-API wiring.
 //
 // NO network calls of any kind — fetch / XMLHttpRequest / EventSource /
 // sendBeacon are banned here on purpose (the backend wiring arrives later).
 // Everything is guarded so the file is inert on pages that do not carry the
 // relevant elements.
+import { Dialog } from "../vendor/bootstrap/bootstrap.bundle.min.js";
+
 export {};
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -56,6 +60,232 @@ document.addEventListener("DOMContentLoaded", () => {
   typeInputs.forEach((input) => input.addEventListener("change", syncType));
   if (typeInputs.length) syncType();
 
+  // ---- Question image attachment -------------------------------------------
+  // The server already renders a saved image; this block only adds the live
+  // preview for a file chosen in this session and keeps removal reversible
+  // until the form is saved.
+  const imageField = document.querySelector("[data-image-field]");
+  if (imageField) {
+    const input = imageField.querySelector("[data-image-input]");
+    const empty = imageField.querySelector("[data-image-empty]");
+    const attached = imageField.querySelector("[data-image-attached]");
+    const thumb = imageField.querySelector("[data-image-thumb]");
+    const title = imageField.querySelector("[data-image-title]");
+    const meta = imageField.querySelector("[data-image-meta]");
+    const pickLabel = imageField.querySelector("[data-image-pick-label]");
+    const remove = imageField.querySelector("[data-image-remove]");
+    const removeInput = imageField.querySelector("[data-image-remove-input]");
+    const cancel = imageField.querySelector("[data-image-cancel]");
+    const error = imageField.querySelector("[data-image-error]");
+
+    const saved = {
+      has: !attached.hidden,
+      src: thumb.getAttribute("src") || "",
+      title: title.textContent,
+      meta: meta.textContent,
+    };
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+    const maxBytes = 10 * 1024 * 1024;
+    let previewURL = "";
+    let staged = false;
+    let removeWasChecked = false;
+
+    const formatBytes = (bytes) => {
+      if (bytes < 1024) return `${bytes} B`;
+      const units = ["KB", "MB", "GB"];
+      let value = bytes / 1024;
+      let unit = 0;
+      while (value >= 1024 && unit < units.length - 1) {
+        value /= 1024;
+        unit += 1;
+      }
+      return `${value.toFixed(1).replace(".", ",")} ${units[unit]}`;
+    };
+
+    const setThumb = (src) => {
+      if (src) thumb.setAttribute("src", src);
+      else thumb.removeAttribute("src");
+    };
+
+    const clearPreview = () => {
+      if (previewURL) URL.revokeObjectURL(previewURL);
+      previewURL = "";
+    };
+
+    const setError = (message) => {
+      error.textContent = message;
+      error.hidden = message === "";
+      if (message) input.setAttribute("aria-invalid", "true");
+      else input.removeAttribute("aria-invalid");
+    };
+
+    const showSaved = () => {
+      clearPreview();
+      attached.hidden = !saved.has;
+      empty.hidden = saved.has;
+      setThumb(saved.src);
+      title.textContent = saved.title;
+      meta.textContent = saved.meta;
+      pickLabel.textContent = saved.has ? "Ganti gambar" : "Pilih gambar";
+      cancel.hidden = true;
+      remove.hidden = !saved.has;
+      if (staged) removeInput.checked = removeWasChecked;
+      staged = false;
+    };
+
+    const showStaged = (file) => {
+      if (!staged) {
+        removeWasChecked = removeInput.checked;
+        staged = true;
+      }
+      clearPreview();
+      previewURL = URL.createObjectURL(file);
+      setThumb(previewURL);
+      title.textContent = file.name;
+      meta.textContent = formatBytes(file.size);
+      attached.hidden = false;
+      empty.hidden = true;
+      pickLabel.textContent = "Ganti gambar";
+      remove.hidden = true;
+      removeInput.checked = false;
+      cancel.hidden = false;
+      setError("");
+    };
+
+    input.addEventListener("change", () => {
+      const file = input.files && input.files[0];
+      if (!file) {
+        showSaved();
+        setError("");
+        return;
+      }
+      if (file.size > maxBytes) {
+        input.value = "";
+        showSaved();
+        setError("Gambar maksimal 10 MB.");
+        input.focus();
+        return;
+      }
+      if (file.type && !allowedTypes.includes(file.type)) {
+        input.value = "";
+        showSaved();
+        setError("Gambar harus berupa JPEG, PNG, atau WebP.");
+        input.focus();
+        return;
+      }
+      showStaged(file);
+    });
+
+    // A file dragged anywhere over the editor gets the whole page as its
+    // target. The overlay is pointer-events:none, so dragenter/dragleave stay
+    // on the page underneath and the depth count remains stable.
+    const dropOverlay = document.querySelector("[data-image-drop]");
+    if (dropOverlay) {
+      const imageName = /\.(jpe?g|png|webp)$/i;
+      let dragDepth = 0;
+
+      const hasFiles = (event) => {
+        const types = event.dataTransfer && event.dataTransfer.types;
+        return !!types && Array.from(types).includes("Files");
+      };
+
+      const hasImage = (event) => {
+        if (!hasFiles(event)) return false;
+        const items = Array.from(event.dataTransfer.items || []).filter(
+          (item) => item.kind === "file",
+        );
+        // Some browsers withhold the MIME type until drop; show the target
+        // for those instead of making the drag feel ignored.
+        return items.length === 0 || items.some(
+          (item) => !item.type || item.type.startsWith("image/"),
+        );
+      };
+
+      const showDropOverlay = () => {
+        if (!dropOverlay.hidden) return;
+        dropOverlay.hidden = false;
+        dropOverlay.setAttribute("aria-hidden", "false");
+      };
+
+      const hideDropOverlay = () => {
+        dragDepth = 0;
+        if (dropOverlay.hidden) return;
+        dropOverlay.hidden = true;
+        dropOverlay.setAttribute("aria-hidden", "true");
+      };
+
+      window.addEventListener("dragenter", (event) => {
+        if (!hasImage(event)) return;
+        event.preventDefault();
+        dragDepth += 1;
+        showDropOverlay();
+      });
+
+      window.addEventListener("dragover", (event) => {
+        if (!hasImage(event)) return;
+        event.preventDefault();
+        if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
+        showDropOverlay();
+      });
+
+      window.addEventListener("dragleave", (event) => {
+        if (dropOverlay.hidden) return;
+        if (!event.relatedTarget) {
+          hideDropOverlay();
+          return;
+        }
+        dragDepth = Math.max(0, dragDepth - 1);
+        if (dragDepth === 0) hideDropOverlay();
+      });
+
+      window.addEventListener("drop", (event) => {
+        if (!hasFiles(event)) return;
+        event.preventDefault();
+        hideDropOverlay();
+
+        const file = event.dataTransfer.files && event.dataTransfer.files[0];
+        if (!file) return;
+
+        const looksLikeImage = file.type
+          ? allowedTypes.includes(file.type)
+          : imageName.test(file.name);
+        if (!looksLikeImage) {
+          setError("Gambar harus berupa JPEG, PNG, atau WebP.");
+          input.focus();
+          return;
+        }
+
+        try {
+          const transfer = new DataTransfer();
+          transfer.items.add(file);
+          input.files = transfer.files;
+          input.dispatchEvent(new Event("change", { bubbles: true }));
+          if (!error.textContent) {
+            imageField.scrollIntoView({ block: "nearest" });
+          }
+        } catch {
+          setError("Gambar tidak dapat dipasang. Pilih lewat tombol Pilih gambar.");
+          input.focus();
+        }
+      });
+
+      window.addEventListener("dragend", hideDropOverlay);
+      window.addEventListener("blur", hideDropOverlay);
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") hideDropOverlay();
+      });
+    }
+
+    cancel.addEventListener("click", () => {
+      input.value = "";
+      showSaved();
+      setError("");
+      input.focus();
+    });
+
+    window.addEventListener("pagehide", clearPreview);
+  }
+
   // ---- Repeatable options --------------------------------------------------
   const optionList = document.querySelector("[data-options]");
   const addOption = document.querySelector("[data-add-option]");
@@ -93,11 +323,23 @@ document.addEventListener("DOMContentLoaded", () => {
   const sortable = document.querySelector("[data-sortable]");
   if (sortable) {
     let dragged = null;
+    let dirty = false;
+    const reorderForm = sortable.closest("form");
+    const saveOrder = reorderForm ? reorderForm.querySelector("[data-save-order]") : null;
     const orderInput = document.getElementById("question-order");
+    const canSaveOrder = Boolean(reorderForm && saveOrder && orderInput);
+    const baselineOrder = Array.from(sortable.querySelectorAll("[data-sortable-item]"))
+      .map((item) => item.dataset.id)
+      .join(",");
     const syncOrder = () => {
       const items = Array.from(sortable.querySelectorAll("[data-sortable-item]"));
+      const order = items.map((item) => item.dataset.id).join(",");
       if (orderInput) {
-        orderInput.value = items.map((item) => item.dataset.id).join(",");
+        orderInput.value = order;
+      }
+      if (canSaveOrder) {
+        dirty = order !== baselineOrder;
+        saveOrder.hidden = !dirty;
       }
       items.forEach((item, index) => {
         const number = item.querySelector(".question-index");
@@ -151,6 +393,16 @@ document.addEventListener("DOMContentLoaded", () => {
         (next || button).focus();
       });
     });
+    if (canSaveOrder) {
+      reorderForm.addEventListener("submit", () => {
+        dirty = false;
+      });
+      window.addEventListener("beforeunload", (event) => {
+        if (!dirty) return;
+        event.preventDefault();
+        event.returnValue = "";
+      });
+    }
     syncOrder();
   }
 
@@ -173,14 +425,59 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  // ---- Confirmation --------------------------------------------------------
-  document.querySelectorAll("form[data-confirm]").forEach((form) => {
-    form.addEventListener("submit", (event) => {
-      if (!window.confirm(form.dataset.confirm)) {
+  // ---- Confirmation dialog -------------------------------------------------
+  // The browser's own confirm() chrome is banned, so every form[data-confirm]
+  // asks through the shared Bootstrap 6 dialog (partials/dialogs.html): the
+  // attribute supplies the question, the pressed button supplies the label.
+  const confirmDialog = document.getElementById("dialog-confirm");
+  const confirmMessage = document.getElementById("dialog-confirm-message");
+  const confirmAccept = document.getElementById("dialog-confirm-accept");
+  if (confirmDialog && confirmMessage && confirmAccept) {
+    const confirmInstance = Dialog.getOrCreateInstance(confirmDialog);
+    let pending = null;
+
+    const acceptLabel = (submitter) => {
+      if (!submitter) return "Konfirmasi";
+      if (submitter.dataset.confirmLabel) return submitter.dataset.confirmLabel;
+      const text = submitter.textContent.replace(/\s+/g, " ").trim();
+      return text || "Konfirmasi";
+    };
+
+    document.querySelectorAll("form[data-confirm]").forEach((form) => {
+      form.addEventListener("submit", (event) => {
+        // The post-dialog submit is the same form asking a second time.
+        if (form.dataset.confirmed === "true") {
+          delete form.dataset.confirmed;
+          return;
+        }
         event.preventDefault();
-      }
+        pending = { form, submitter: event.submitter };
+        confirmMessage.textContent = form.dataset.confirm;
+        confirmAccept.textContent = acceptLabel(event.submitter);
+        confirmInstance.show(event.submitter);
+      });
     });
-  });
+
+    // Accept submits at once instead of on close: Bootstrap drops a hide()
+    // issued while the opening transition still runs, and a sticky "approved"
+    // flag would then fire on a later Escape or backdrop click.
+    confirmAccept.addEventListener("click", () => {
+      const target = pending;
+      pending = null;
+      if (!target) return;
+      target.form.dataset.confirmed = "true";
+      target.form.requestSubmit(target.submitter || undefined);
+      window.setTimeout(() => {
+        delete target.form.dataset.confirmed;
+      }, 0);
+    });
+
+    // Every close that is not an accept (Batal, Escape, the backdrop) forgets
+    // the form it was asking about.
+    confirmDialog.addEventListener("hidden.bs.dialog", () => {
+      pending = null;
+    });
+  }
 
   // ---- Character counter ---------------------------------------------------
   // With a ceiling (textarea maxlength), the counter reads "312 / 2000" so

@@ -92,14 +92,16 @@ func TestMonitorSnapshot(t *testing.T) {
 		answered   int
 		focus      int
 		lastSeen   string
+		started    string
+		score      int
 		hasAttempt bool
 		anonymous  bool
 	}{
-		{"Ayu Lestari", "AL", "X RPL", viewmodel.ParticipationInProgress, 1, 0, "2026-10-23 06:30:00", true, false},
-		{"Budi Santoso", "BS", "XI RPL", viewmodel.ParticipationInProgress, 2, 2, "2026-10-23 05:30:00", true, false},
-		{"Dodi Pratama", "DP", "XII RPL", viewmodel.ParticipationCompleted, 2, 1, "2026-10-22 04:35:00", true, false},
-		{"Anonim Satu", "AS", "X RPL", viewmodel.ParticipationRegistered, 0, 0, "2026-10-23 02:00:00", false, true},
-		{"Citra Dewi", "CD", "XII RPL", viewmodel.ParticipationRegistered, 0, 0, "2026-10-23 03:00:00", false, false},
+		{"Ayu Lestari", "AL", "X RPL", viewmodel.ParticipationInProgress, 1, 0, "2026-10-23 06:30:00", "2026-10-23 06:00:00", -1, true, false},
+		{"Budi Santoso", "BS", "XI RPL", viewmodel.ParticipationInProgress, 2, 2, "2026-10-23 05:30:00", "2026-10-23 05:00:00", -1, true, false},
+		{"Dodi Pratama", "DP", "XII RPL", viewmodel.ParticipationCompleted, 2, 1, "2026-10-22 04:35:00", "2026-10-22 03:00:00", 80, true, false},
+		{"Anonim Satu", "AS", "X RPL", viewmodel.ParticipationRegistered, 0, 0, "2026-10-23 02:00:00", "", -1, false, true},
+		{"Citra Dewi", "CD", "XII RPL", viewmodel.ParticipationRegistered, 0, 0, "2026-10-23 03:00:00", "", -1, false, false},
 	}
 	for i, wantRow := range want {
 		row := page.Rows[i]
@@ -118,6 +120,25 @@ func TestMonitorSnapshot(t *testing.T) {
 		wantTime, _ := time.Parse("2006-01-02 15:04:05", wantRow.lastSeen)
 		if !row.UpdatedAt.Time().Equal(wantTime) {
 			t.Errorf("row %d last seen = %v, want %v", i, row.UpdatedAt.Time(), wantTime)
+		}
+		// The monitor keeps Skor and Mulai as page-only columns, so the page
+		// model carries the server-rendered truth the SSE payload cannot.
+		if wantRow.started == "" {
+			if row.StartedAt != nil {
+				t.Errorf("row %d StartedAt = %v, want nil", i, row.StartedAt)
+			}
+		} else {
+			wantStart, _ := time.Parse("2006-01-02 15:04:05", wantRow.started)
+			if row.StartedAt == nil || !row.StartedAt.Time().Equal(wantStart) {
+				t.Errorf("row %d StartedAt = %v, want %v", i, row.StartedAt, wantStart)
+			}
+		}
+		if wantRow.score < 0 {
+			if row.Score != nil {
+				t.Errorf("row %d Score = %v, want nil", i, row.Score)
+			}
+		} else if row.Score == nil || row.Score.Int() != wantRow.score {
+			t.Errorf("row %d Score = %v, want %d", i, row.Score, wantRow.score)
 		}
 	}
 	if page.Rows[0].AttemptID == nil || page.Rows[0].RegistrationID != ayuReg {
@@ -139,6 +160,11 @@ func TestMonitorSnapshot(t *testing.T) {
 	}
 	if closed.Empty.Title != "Kuis tidak sedang berlangsung" {
 		t.Errorf("closed empty title = %q", closed.Empty.Title)
+	}
+	// The page's back link is the only route to the quiz, so the empty state
+	// must not repeat it as an action (DESIGN §8).
+	if closed.Empty.Action != nil {
+		t.Errorf("closed empty action = %+v, want none", closed.Empty.Action)
 	}
 
 	// A draft is also not-on-air when owned (ATT-181).
@@ -181,5 +207,8 @@ func TestMonitorEmptyOpenQuiz(t *testing.T) {
 	}
 	if page.Empty.Title != "Belum ada peserta" {
 		t.Errorf("empty open title = %q", page.Empty.Title)
+	}
+	if page.Empty.Action != nil {
+		t.Errorf("empty open action = %+v, want none: the back link is the only route to the quiz", page.Empty.Action)
 	}
 }

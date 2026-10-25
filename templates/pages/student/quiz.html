@@ -36,12 +36,12 @@
   </div>
   {{end}}
 
-  <div class="row g-4">
-    <div class="col-12 lg:col-7 d-flex flex-column gap-4">
+  <div class="row g-7">
+    <div class="col-12 lg:col-7 d-flex flex-column gap-7">
 
-      <div class="card p-4 d-flex flex-column gap-3">
+      <div class="card p-7 d-flex flex-column gap-5">
         <h2 class="section-title">Tentang kuis</h2>
-        <div class="row g-3">
+        <div class="row g-5">
           <div class="col-12 md:col-6">
             <span class="cell-sub d-block">Jadwal</span>
             <span class="fw-semibold">{{.Data.Quiz.Schedule}}</span>
@@ -61,7 +61,7 @@
         </div>
       </div>
 
-      <div class="card p-4 d-flex flex-column gap-3">
+      <div class="card p-7 d-flex flex-column gap-5">
         <h2 class="section-title">Aturan pengerjaan</h2>
         <ul class="mb-0 ps-4 d-flex flex-column gap-2">
           <li>
@@ -79,9 +79,9 @@
 
     </div>
 
-    <div class="col-12 lg:col-5 d-flex flex-column gap-4">
+    <div class="col-12 lg:col-5 d-flex flex-column gap-7">
 
-      <div class="card p-4 d-flex flex-column gap-3">
+      <div class="card p-7 d-flex flex-column gap-5">
         <div class="row-between">
           <h2 class="section-title">Status Anda</h2>
           {{if .Data.Participation}}
@@ -150,14 +150,16 @@
         </div>
       </div>
 
-      <div class="card p-4 d-flex flex-column gap-3">
-        <div class="row-between">
-          <h2 class="section-title">Percobaan</h2>
-          <span class="num page-sub">{{.Data.AttemptsUsed}} dari {{.Data.MaxAttempts}}</span>
+      <div class="card">
+        <div class="p-7">
+          <div class="row-between">
+            <h2 class="section-title">Percobaan</h2>
+            <span class="num page-sub">{{.Data.AttemptsUsed}} dari {{.Data.MaxAttempts}}</span>
+          </div>
         </div>
         {{if .Data.Attempts}}
         <div class="table-responsive">
-          <table class="table table-clean">
+          <table class="table table-clean mb-0">
             <caption class="visually-hidden">Percobaan Anda di {{.Data.Quiz.Title}}</caption>
             <thead>
               <tr>
@@ -188,7 +190,9 @@
           </table>
         </div>
         {{else}}
-        <p class="page-sub mb-0">Belum ada percobaan. Percobaan pertama tercatat saat Anda memulai kuis.</p>
+        <div class="px-7 pb-7">
+          <p class="page-sub m-0">Belum ada percobaan. Percobaan pertama tercatat saat Anda memulai kuis.</p>
+        </div>
         {{end}}
       </div>
 

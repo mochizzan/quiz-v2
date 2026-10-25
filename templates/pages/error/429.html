@@ -1,9 +1,32 @@
-{{define "content"}}{{with .Data}}<div class="text-center">
-  <span class="eyebrow">Error {{.Code}}</span>
-  <p class="display-4 fw-bold mb-2" style="color: var(--bs-primary-base)">{{.Code}}</p>
-  <h1 class="h2 mb-2">{{.Title}}</h1>
-  <p class="page-sub measure mx-auto mb-4">{{.Message}}</p>
-  <div class="d-flex flex-wrap justify-content-center gap-2">
+{{define "content"}}
+{{with .Data}}
+<div class="error-page-container type-429">
+  <div class="error-header">
+    <span class="error-type">Rate Limit</span>
+  </div>
+  
+  <div class="error-content">
+    <div class="error-code-display">{{.Code}}</div>
+    <h1 class="error-title">{{.Title}}</h1>
+    <p class="error-message">{{.Message}}</p>
+    
+    <div class="rate-limit-section">
+      <div class="timer-indicator">
+        <div class="timer-circle">
+          <svg viewBox="0 0 36 36" width="60" height="60">
+            <path class="timer-track" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.83 a 15.9155 15.9155 0 0 1 0 -31.83" fill="none" stroke="currentColor" stroke-width="2"/>
+            <path class="timer-progress" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.83 a 15.9155 15.9155 0 0 1 0 -31.83" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="50, 100"/>
+          </svg>
+          <span class="timer-text">60s</span>
+        </div>
+      </div>
+      <p class="rate-limit-note">Terlalu banyak permintaan. Silakan coba lagi nanti.</p>
+    </div>
+  </div>
+  
+  <div class="error-actions">
     <a class="btn btn-solid theme-primary" href="{{.HomeHref}}">Kembali ke halaman masuk</a>
   </div>
-</div>{{end}}{{end}}
+</div>
+{{end}}
+{{end}}

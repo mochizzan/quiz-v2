@@ -7,11 +7,13 @@
 .dash-row {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 0;
+  gap: 16px;
+  padding: 16px 0;
   border-top: 1px solid var(--bs-border-color);
 }
-.dash-row:first-child { border-top: 0; padding-top: 2px; }
+/* The first row needs no top padding: the card's own stack gap already
+   separates it from the section header. */
+.dash-row:first-child { border-top: 0; padding-top: 0; }
 .dash-row:last-child { padding-bottom: 0; }
 .dash-icon {
   display: inline-flex;
@@ -39,16 +41,16 @@
 .dash-row-meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 2px 12px;
-  margin: 2px 0 0;
+  gap: 4px 16px;
+  margin: 4px 0 0;
   color: #687182;
   font-size: 12px;
 }
-.dash-row-compact { padding: 10px 0; }
+.dash-row-compact { padding: 12px 0; }
 .dash-count {
   display: inline-flex;
   align-items: center;
-  padding: 3px 10px;
+  padding: 4px 10px;
   border-radius: 9999px;
   background: #F4F6F8;
   color: #121721;
@@ -71,16 +73,19 @@
       <h1 class="h1">Selamat datang kembali, {{.Data.GreetingName}}</h1>
       <p class="page-sub">{{.Data.DateLine}}</p>
     </div>
-    <a class="btn btn-solid theme-primary" href="/teacher/quizzes/new">
+    {{/* The navbar carries the create CTA from xl up; this one serves the
+         narrower breakpoints, so the primary action appears exactly once per
+         screen at every width (same swap as the student dashboard). */}}
+    <a class="btn btn-solid theme-primary d-inline-flex xl:d-none" href="/teacher/quizzes/new">
       <svg width="18" height="18" aria-hidden="true"><use href="#i-plus"></use></svg>
-      Buat kuis baru
+      Buat kuis
     </a>
   </header>
 
-  <div class="row g-4">
+  <div class="row g-7">
 
     <section class="col-12 lg:col-7" aria-labelledby="dash-recent-title">
-      <div class="card p-4 h-100 d-flex flex-column gap-3">
+      <div class="card p-7 h-100 d-flex flex-column gap-5">
         <div class="row-between">
           <div>
             <h2 class="section-title" id="dash-recent-title">Kuis terbaru</h2>
@@ -114,9 +119,9 @@
       </div>
     </section>
 
-    <div class="col-12 lg:col-5 d-flex flex-column gap-4">
+    <div class="col-12 lg:col-5 d-flex flex-column gap-7">
 
-      <section class="card p-4" aria-labelledby="dash-most-title">
+      <section class="card p-7" aria-labelledby="dash-most-title">
         <div class="row-between">
           <div>
             <h2 class="section-title" id="dash-most-title">Paling banyak diikuti</h2>
@@ -127,7 +132,7 @@
           </span>
         </div>
         {{if .Data.MostJoined}}
-        <ul class="dash-list list-unstyled m-0 mt-2">
+        <ul class="dash-list list-unstyled m-0 mt-7">
           {{range .Data.MostJoined}}
           <li class="dash-row dash-row-compact">
             <a class="dash-row-title flex-grow-1" href="{{.Href}}">{{.Quiz.Title}}</a>
@@ -136,11 +141,11 @@
           {{end}}
         </ul>
         {{else}}
-        <p class="section-sub mt-2 mb-0">Belum ada peserta terdaftar.</p>
+        <p class="section-sub mt-7 mb-0">Belum ada peserta terdaftar.</p>
         {{end}}
       </section>
 
-      <section class="card p-4" aria-labelledby="dash-least-title">
+      <section class="card p-7" aria-labelledby="dash-least-title">
         <div class="row-between">
           <div>
             <h2 class="section-title" id="dash-least-title">Paling sedikit diikuti</h2>
@@ -151,7 +156,7 @@
           </span>
         </div>
         {{if .Data.LeastJoined}}
-        <ul class="dash-list list-unstyled m-0 mt-2">
+        <ul class="dash-list list-unstyled m-0 mt-7">
           {{range .Data.LeastJoined}}
           <li class="dash-row dash-row-compact">
             <a class="dash-row-title flex-grow-1" href="{{.Href}}">{{.Quiz.Title}}</a>
@@ -160,7 +165,7 @@
           {{end}}
         </ul>
         {{else}}
-        <p class="section-sub mt-2 mb-0">Belum ada peserta terdaftar.</p>
+        <p class="section-sub mt-7 mb-0">Belum ada peserta terdaftar.</p>
         {{end}}
       </section>
 
@@ -168,7 +173,7 @@
   </div>
 
   <section class="card" aria-labelledby="dash-top-title">
-    <div class="p-4">
+    <div class="p-7">
       <h2 class="section-title" id="dash-top-title">Nilai tertinggi per kuis</h2>
       <p class="section-sub">Nilai terbaik dari setiap kuis yang sudah memiliki percobaan selesai.</p>
     </div>
@@ -189,7 +194,7 @@
         <tbody>
           {{range .Data.TopScores}}
           <tr>
-            <td><a class="link-quiet" href="{{.Href}}">{{.Quiz.Title}}</a></td>
+            <td>{{.Quiz.Title}}</td>
             <td class="cell-title">{{.StudentName}}</td>
             <td class="cell-sub">{{.ClassLabel}}</td>
             <td class="num">{{template "partials/score.html" .Score}}</td>
@@ -200,7 +205,7 @@
       </table>
     </div>
     {{else}}
-    <div class="px-4 pb-4">
+    <div class="px-7 pb-7">
       <p class="section-sub m-0">Belum ada percobaan selesai yang memiliki nilai.</p>
     </div>
     {{end}}

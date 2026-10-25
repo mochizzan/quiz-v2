@@ -114,21 +114,6 @@ func loadResultData(ctx context.Context, tx *sql.Tx, a attemptView) ([]takeSlot,
 	return slotRows, opts, sels, nil
 }
 
-// resultOptionSets returns the selected set and the option rows in display
-// order (ATT-153's DerivedOptionOrder). The caller only needs the ordered
-// rows; the set keeps the helper symmetrical with the pre-submit loader.
-func resultOptionSets(cur takeSlot, opts []optionRow, h attemptView, sel []int64) (map[int64]bool, []optionRow) {
-	ordered := orderedOptions(opts, h.seed, h.randomizeOptions)
-	if cur.essay() {
-		return nil, ordered
-	}
-	set := map[int64]bool{}
-	for _, id := range sel {
-		set[id] = true
-	}
-	return set, ordered
-}
-
 // resultAnswerText is ATT-153's student answer: selected bodies in display
 // order joined with ", ", the essay text, or "-".
 func resultAnswerText(cur takeSlot, ordered []optionRow, sel []int64) string {
@@ -170,14 +155,11 @@ func correctKeyText(cur takeSlot, ordered []optionRow) string {
 }
 
 // resultVerdict derives the verdict from the stored score, never by
-// recomputing anything (ATT-153), and applies the ATT-152 visibility matrix:
-// only questions_and_key and questions_only carry a verdict (and with it the
-// colour). A missing score on an answered objective row is treated as
-// ungraded rather than inventing a zero.
-func resultVerdict(cur takeSlot, mode viewmodel.ReviewMode) string {
-	if mode != viewmodel.ReviewQuestionsAndKey && mode != viewmodel.ReviewQuestionsOnly {
-		return ""
-	}
+// recomputing anything (ATT-153). A missing score on an answered objective row
+// is treated as ungraded rather than inventing a zero. The verdict is derived
+// whether or not the mode displays it, because correct_only filters on it;
+// buildResultRow blanks it for every other mode.
+func resultVerdict(cur takeSlot) string {
 	if !slotAnswered(cur) {
 		return "unanswered"
 	}
@@ -194,4 +176,68 @@ func resultVerdict(cur takeSlot, mode viewmodel.ReviewMode) string {
 		return "correct"
 	}
 	return "incorrect"
+}
+
+// buildResultRows renders the ATT-152 matrix over the loaded slots. A row that
+// the mode drops leaves no gap in Position: the original slot position is
+// carried, so a correct_only screen still says "3, 7 and 12".
+func buildResultRows(slots []takeSlot, opts map[int64][]optionRow, sels map[int64][]int64, seed uint32, randomizeOptions bool, mode viewmodel.ReviewMode, showScore bool) []viewmodel.ResultRow {
+	rows := make([]viewmodel.ResultRow, 0, len(slots))
+	for i := range slots {
+		cur := slots[i]
+		ordered := orderedOptions(opts[cur.questionID], seed, randomizeOptions)
+		row, keep := buildResultRow(i+1, cur, ordered, sels[cur.questionID], mode, showScore)
+		if !keep {
+			continue
+		}
+		rows = append(rows, row)
+	}
+	return rows
+}
+
+// buildResultRow renders one row for the ATT-152 visibility matrix and reports
+// whether the mode keeps it. This is the single place the matrix lives: the
+// student answer, key, verdict, and essay feedback/score are each populated
+// only when the mode's capability predicate allows it, so a new call site
+// cannot leak a field by forgetting a branch.
+//
+// correct_only drops every row that is not a stored "correct" objective
+// answer; buildResultRows carries the original position, so the survivors are
+// not renumbered.
+func buildResultRow(position int, cur takeSlot, ordered []optionRow, sel []int64, mode viewmodel.ReviewMode, showScore bool) (viewmodel.ResultRow, bool) {
+	if !mode.ShowsQuestion() {
+		// Unknown value (schema drift): fail closed to the least-revealing
+		// known mode rather than showing the stored record.
+		mode = viewmodel.ReviewQuestionsNoAnswers
+	}
+	verdict := resultVerdict(cur)
+	if mode.OnlyCorrect() && (cur.essay() || verdict != "correct") {
+		return viewmodel.ResultRow{}, false
+	}
+
+	row := viewmodel.ResultRow{
+		Position: position,
+		Type:     cur.typ,
+		Body:     cur.prompt,
+		Image:    questionImage(cur.imagePath, cur.imageAlt, cur.imageBytes),
+		Essay:    cur.essay(),
+	}
+	if mode.ShowsStudentAnswer() {
+		row.StudentAnswer = resultAnswerText(cur, ordered, sel)
+	}
+	if mode.ShowsKey() && !cur.essay() {
+		row.Key = correctKeyText(cur, ordered)
+	}
+	if mode.ShowsVerdict() {
+		row.Verdict = verdict
+	}
+	if mode.ShowsEssayFeedback() && cur.essay() && cur.score.Valid {
+		// Graded essay: score numeral gated on show_score (ATT-154).
+		row.Graded = true
+		if showScore {
+			row.Score = &viewmodel.Score{Percent: DisplayPercent(ScoreUnits(cur.score.Float64))}
+		}
+		row.Feedback = cur.feedback.String
+	}
+	return row, true
 }

@@ -683,42 +683,7 @@ func assembleResult(ctx context.Context, tx *sql.Tx, h attemptView) (viewmodel.A
 		shownScore = &viewmodel.Score{Percent: DisplayPercent(ScoreUnits(h.final.Float64))}
 	}
 
-	rows := make([]viewmodel.ResultRow, 0, len(slots))
-	for i := range slots {
-		cur := slots[i]
-		if mode == viewmodel.ReviewKeyOnly && cur.essay() {
-			// ATT-152 key_only: essay rows are omitted entirely; the key
-			// list is the whole page.
-			continue
-		}
-		sols, orderedOpts := resultOptionSets(cur, opts[cur.questionID], h, sels[cur.questionID])
-		_ = sols
-		row := viewmodel.ResultRow{
-			Position:      i + 1,
-			Type:          cur.typ,
-			Body:          cur.prompt,
-			Image:         questionImage(cur.imagePath, cur.imageAlt, cur.imageBytes),
-			Essay:         cur.essay(),
-			StudentAnswer: resultAnswerText(cur, orderedOpts, sels[cur.questionID]),
-		}
-		// The matrix (ATT-152): key and verdict visibility per mode.
-		if mode.ShowsQuestions() {
-			row.StudentAnswer = resultAnswerText(cur, orderedOpts, sels[cur.questionID])
-		}
-		if mode.ShowsKey() {
-			row.Key = correctKeyText(cur, orderedOpts)
-		}
-		row.Verdict = resultVerdict(cur, mode)
-		if mode == viewmodel.ReviewQuestionsAndKey && cur.essay() && cur.score.Valid {
-			// Graded essay: score numeral gated on show_score (ATT-154).
-			row.Graded = true
-			if showScore {
-				row.Score = &viewmodel.Score{Percent: DisplayPercent(ScoreUnits(cur.score.Float64))}
-			}
-			row.Feedback = cur.feedback.String
-		}
-		rows = append(rows, row)
-	}
+	rows := buildResultRows(slots, opts, sels, h.seed, h.randomizeOptions, mode, showScore)
 
 	out := viewmodel.AttemptResult{
 		Header:       h.attemptHeaderOf(),
@@ -730,13 +695,15 @@ func assembleResult(ctx context.Context, tx *sql.Tx, h attemptView) (viewmodel.A
 		Mode:         mode,
 		ModeLabel:    mode.Label(),
 		Rows:         rows,
-		Unanswered:   unansweredPositions(slots),
-		QuizHref:     quizHref(h.quizID),
-		ReviewHref:   "", // ATT-155: this page IS the review; dead anchor stays empty
-		HistoryHref:  resultHistoryHref(h, h.quizID),
+		HistoryHref:  resultHistoryHref(h),
 		FocusLoss:    focus,
 		AttemptsUsed: attempts,
 		MaxAttempts:  h.effectiveMax,
+	}
+	// The unanswered positions are a verdict-adjacent fact: only the modes
+	// that show the verdict (or the student's own answer beside it) name them.
+	if mode.ShowsUnansweredCount() {
+		out.Unanswered = unansweredPositions(slots)
 	}
 	// CanRetry (ATT-155): only the remaining-capacity condition; ATT-101
 	// re-checks every condition server-side.
@@ -748,13 +715,15 @@ func assembleResult(ctx context.Context, tx *sql.Tx, h attemptView) (viewmodel.A
 }
 
 // resultHistoryHref: authenticated students reach the per-quiz history;
-// anonymous participants have no history (ATT-155) so the template's always
-// rendered link points at the quiz page instead. Flagged template gap.
-func resultHistoryHref(h attemptView, quizID uint32) string {
+// anonymous participants have no history (ATT-155), so the trailing slot
+// renders nothing. There is deliberately no quiz-page fallback: the quiz page
+// is 404 for a student once the quiz closes (PAR-088), and an anonymous
+// participant's only route back is the attempt itself.
+func resultHistoryHref(h attemptView) string {
 	if h.studentID != 0 {
-		return "/student/history/" + strconv.FormatUint(uint64(quizID), 10)
+		return "/student/history/" + strconv.FormatUint(uint64(h.quizID), 10)
 	}
-	return quizHref(quizID)
+	return ""
 }
 
 // ptrLocalTimeOf lifts the submitted_at column.

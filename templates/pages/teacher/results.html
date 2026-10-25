@@ -87,13 +87,9 @@
       <p class="page-sub">Rekap percobaan, nilai, dan catatan fokus untuk kuis ini.</p>
     </div>
     <div class="d-flex flex-wrap gap-2">
-      <a class="btn btn-outline theme-primary" href="{{.BackHref}}">
-        <svg width="18" height="18" aria-hidden="true"><use href="#i-quiz"></use></svg>
-        Detail kuis
-      </a>
-      <a class="btn btn-outline theme-primary" href="/teacher/grading">
+      <a class="btn btn-outline theme-primary" href="{{.GradingHref}}">
         <svg width="18" height="18" aria-hidden="true"><use href="#i-grade"></use></svg>
-        Nilai esai
+        Nilai esai kuis ini
       </a>
     </div>
   </header>
@@ -133,10 +129,10 @@
     <svg width="18" height="18" aria-hidden="true"><use href="#i-info"></use></svg>
     <div>
       <strong>Tampilan hasil siswa: {{.ReviewMode.Label}}.</strong>
-      {{if eq .ReviewMode "questions_and_key"}}Siswa dapat meninjau soal, jawaban, dan kunci jawaban.
-      {{else if eq .ReviewMode "key_only"}}Siswa hanya melihat kunci jawaban, tanpa teks soal.
-      {{else if eq .ReviewMode "questions_only"}}Siswa melihat soal dan jawabannya, tanpa kunci jawaban.
-      {{else if eq .ReviewMode "answers_only"}}Siswa melihat jawabannya tanpa penilaian benar atau salah.
+      {{if eq .ReviewMode "questions_no_verdict"}}Siswa melihat soal dan jawabannya, tanpa penilaian benar atau salah dan tanpa kunci jawaban.
+      {{else if eq .ReviewMode "questions_no_answers"}}Siswa hanya melihat soal, tanpa jawaban, kunci jawaban, maupun penilaian.
+      {{else if eq .ReviewMode "correct_only"}}Siswa hanya melihat soal yang dijawab benar; esai tidak ditampilkan.
+      {{else if eq .ReviewMode "questions_with_key"}}Siswa dapat meninjau soal, jawaban, kunci jawaban, dan umpan balik esai.
       {{else}}Tampilan ini mengikuti pengaturan kuis.{{end}}
     </div>
   </div>

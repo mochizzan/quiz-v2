@@ -7,7 +7,7 @@ cascades, transaction boundaries, concurrency and idempotency, time and retentio
 and status taxonomy, route coverage, operational prerequisites, and the schema-delta
 register.
 **Lens:** systems, concurrency, and data lifecycle. This is not a fifth command spec.
-**Sources:** `2026-10-23-business-logic-00-contract.md` (binding); the seven
+**Sources:** `2026-10-23-business-logic-00-contract.md` (binding); the eight
 `migrations/*.up.sql`; all fifteen `internal/model` structs; the schema design §5–§10; the
 frontend data contract §2, §17, §21–§24; the old design §11 (superseded context only),
 §14, §16; `AGENTS.md`; `docker-compose.yml`; `internal/config`, `internal/store`,
@@ -1217,13 +1217,13 @@ adds the handler. Until then, OPS-212 is the contract, not a claim that the rout
 
 ## 11. Operational prerequisites
 
-**OPS-230** **Migrations.** Apply `0001`–`0007` with the one-shot runner (schema §9.3),
+**OPS-230** **Migrations.** Apply `0001`–`0009` with the one-shot runner (schema §9.3),
 never as a boot hook. The runner takes `GET_LOCK('quiz.migrations', 30)` on a pinned
 connection, applies files lexicographically, writes the ledger row only after every statement
 in the file succeeds, and stops on the first error. The app starts even if the DB is down (the
 advisory ping only warns), but it cannot serve data until the schema and seed exist. Verify
 with `SELECT name FROM schema_migrations WHERE deleted_at = '1970-01-01 00:00:00' ORDER BY name`
-returning the seven names. No migration is edited after being applied.
+returning the nine names. No migration is edited after being applied.
 
 **OPS-231** **Rate limiter storage.** In-process, mutex-protected, bounded map with a sliding
 window per key; evict idle keys every 5 minutes and cap the table (10,000 keys). Scopes: login
@@ -1482,7 +1482,7 @@ code, a stored value, or an invariant named in §4.
 ## 14. Open questions and schema deltas
 
 `OPS-005` forbids requiring a schema change. The register below therefore contains only
-resolutions that fit the seven migrations, config, interface, or operations. Each item names
+resolutions that fit the nine migrations, config, interface, or operations. Each item names
 the owner that must adopt it.
 
 ### 14.1 Register
@@ -1572,7 +1572,7 @@ injection is explicit where the failure is not reachable through the UI.
 
 | ID | Executable statement |
 |---|---|
-| A-01 | Run `0001`–`0007` twice on an empty database: the second run changes nothing, `schema_migrations` has exactly seven live rows with unique names, and a deliberately broken file leaves no ledger row. |
+| A-01 | Run `0001`–`0009` twice on an empty database: the second run changes nothing, `schema_migrations` has exactly nine live rows with unique names, and a deliberately broken file leaves no ledger row. |
 | A-02 | Extract `INV-01`–`INV-30` and `OPS-INV-01`–`OPS-INV-12`; each appears once as a §4 row with an enforcement layer and at least one A-case; the check fails on a missing or duplicate ID. |
 | A-03 | With the process in Asia/Jakarta and the DB session at UTC, create a quiz at 23:30 UTC: the row stores 23:30, the page renders 06:30 WIB next day, `@@session.time_zone` is `+00:00`, and no read differs by 7 h. |
 | A-04 | `GET /healthz` with the DB up returns 200, body exactly `ok`, `text/plain`, no session or CSRF requirement, within 2 s. |

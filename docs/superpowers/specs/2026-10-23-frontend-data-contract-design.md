@@ -204,7 +204,7 @@ application validation (old spec §11); this section is the closed list.
 | `QuestionType` | `single`, `multiple`, `essay` | Pilihan tunggal, Pilihan ganda, Esai |
 | `ParticipationState` | `registered`, `in_progress`, `completed` | Terdaftar, Sedang berlangsung, Selesai |
 | `AttemptState` | `in_progress`, `completed` | Sedang berlangsung, Selesai |
-| `ReviewMode` | `questions_and_key`, `key_only`, `questions_only`, `answers_only` | see §5.2 |
+| `ReviewMode` | `questions_no_verdict`, `questions_no_answers`, `correct_only`, `questions_with_key` | see §5.2 |
 | `EssayState` | `ungraded`, `graded` | Menunggu penilaian, Sudah dinilai |
 | `JoinError` | `unknown_code`, `not_open`, `wrong_audience`, `already_registered`, `anonymous_not_allowed` | see §5.3 |
 | `SortOrder` | `newest`, `oldest`, `name_asc`, `name_desc` | Terbaru, Terlama, Nama A–Z, Nama Z–A |
@@ -220,15 +220,17 @@ Rules:
 
 | Value | Label | Content |
 |---|---|---|
-| `questions_and_key` | Soal dan kunci jawaban | Every question, the student's answer, and the correct answer |
-| `key_only` | Hanya kunci jawaban | The correct answer list, without question bodies |
-| `questions_only` | Hanya soal | Question bodies and the student's answers, no key, no verdict |
-| `answers_only` | Jawaban siswa tanpa penilaian | Question bodies and the student's answers, no key, no verdict color |
+| `questions_no_verdict` | Soal dan jawaban siswa | The question and the student's own answer; no key, verdict, colour, essay feedback, or essay score |
+| `questions_no_answers` | Hanya soal | The question body and image only; no answer box |
+| `correct_only` | Hanya soal yang benar | Only correctly answered objective questions, at their original numbers; essays omitted; question and answer, no verdict badge or colour |
+| `questions_with_key` | Soal dan kunci jawaban | The full record: question, student answer, key, verdict badge and colour, essay feedback, essay score |
 
-`answers_only` is visually distinguished from `questions_only` by suppressing
-verdict badges and score marks; both are content-identical otherwise. This is
-a deliberate duplication inherited from the product decision; a builder may
-collapse them only with the user's agreement.
+The four modes are content-distinct. `questions_no_answers` is the default for a
+new quiz and is the least revealing; `questions_with_key` is the only mode that
+discloses the key, a verdict, or essay grading. `correct_only` filters rather
+than substitutes, so the surviving rows keep their original positions. A mode
+never infers a verdict from a colour: where the verdict is hidden, the colour is
+hidden with it.
 
 `show_score` is a separate boolean. When false it hides the score on the
 result page, in history, and in the student's "best score" tile. A hidden
@@ -706,14 +708,18 @@ type AttemptResult struct {
 
 - If the quiz has ungraded essays, the page shows "Menunggu penilaian" in the
   score slot. Content still follows `Mode`.
-- `questions_and_key`: body + student answer + key.
-- `key_only`: key list only.
-- `questions_only`: body + student answer, no verdict.
-- `answers_only`: body + student answer, no verdict, no color.
-- `show_score = false` removes the score tile and the per-row score; verdicts
-  remain as the mode allows.
-- Essays have no key; a graded essay shows its score and feedback, an ungraded
-  one shows "Menunggu penilaian".
+- `questions_no_verdict`: body + student answer; no key, verdict, or essay
+  grading.
+- `questions_no_answers`: body + image only; no answer box.
+- `correct_only`: correctly answered objective rows only, at their original
+  positions; essays omitted.
+- `questions_with_key`: body + student answer + key + verdict + essay feedback
+  and score.
+- `show_score = false` removes the score tile and the per-row score; the
+  verdict a mode permits is unchanged.
+- Essays have no key; a graded essay shows its score and feedback only in
+  `questions_with_key`, and an ungraded one shows the `Menunggu nilai` badge
+  there.
 - The result page is reachable from history for every completed attempt.
 
 ## 11. Teacher dashboard
@@ -1241,9 +1247,10 @@ product. They are marked here so they can be checked during review.
 2. Invite token format (`/invite/:token`, unguessable, generated at creation).
 3. Quiz code generated at creation for every quiz but surfaced and accepted
    only for public quizzes.
-4. `answers_only` renders question bodies plus the student's answers, without
-   key or verdict.
-5. Default review mode `questions_only`, default score visibility on.
+4. `questions_no_answers` renders the question body and image only, with no
+   answer box; `correct_only` lists only correctly answered objective questions
+   and omits essays.
+5. Default review mode `questions_no_answers`, default score visibility on.
 6. Averages display one decimal; per-attempt scores are whole percentages.
 7. No relative dates; no timer; no rombel/section; no pass mark; no class
    average.

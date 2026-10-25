@@ -139,11 +139,17 @@ func PercentLabel(percent int) string {
 // TenthsLabel renders a one-decimal average with the Indonesian comma:
 // 725 → "72,5%", 363 → "36,3%", 1000 → "100,0%" (ATT-244).
 func TenthsLabel(tenths int) string {
+	return TenthsValue(tenths) + "%"
+}
+
+// TenthsValue renders the numeral half of TenthsLabel, for a form field that
+// must round-trip a stored one-decimal grade: 855 → "85,5".
+func TenthsValue(tenths int) string {
 	if tenths < 0 {
 		tenths = 0
 	}
 	if tenths > 10*100 {
 		tenths = 10 * 100
 	}
-	return fmt.Sprintf("%d,%d%%", tenths/10, tenths%10)
+	return fmt.Sprintf("%d,%d", tenths/10, tenths%10)
 }

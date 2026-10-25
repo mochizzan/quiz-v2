@@ -107,8 +107,8 @@
   letter-spacing: 0.4px;
   text-transform: uppercase;
 }
-/* The six link pills need the space the badge occupies until the profile
-   meta appears at 1440px. */
+/* The role badge and the profile meta both return at 1280px, where the shell
+   has the room for them; below that the link pills keep their single row. */
 @media (max-width: 1279.98px) {
   .app-badge-role { display: none; }
 }
@@ -230,13 +230,37 @@
   border: 1px solid #E2E6EB;
   border-radius: 9999px;
   background-color: #F4F6F8;
+  color: inherit;
+  line-height: 1;
+  text-decoration: none;
+}
+/* The pill is a link to the account screen, so it needs the same visible
+   state change every other control gets (DESIGN §8, §11). */
+.app-profile:hover { border-color: #E2E7EC; background-color: #E2E7EC; }
+.app-profile[aria-current="page"] { border-color: #E2E7EC; background-color: #E2E7EC; }
+/* Account access is a utility, not a task destination, and exactly one
+   control owns it per width: this pill from lg up, the drawer's account row
+   below lg. Hiding the pill there stops a bare avatar becoming a second,
+   unlabelled route to /profile beside the menu (DESIGN §7). */
+@media (max-width: 1023.98px) {
+  .app-profile { display: none; }
+}
+/* The pill always names itself: the word "Profil" carries the destination
+   until the wide shell has room for the person's name and role. */
+.app-profile-label {
+  color: #121721;
+  font-size: 13px;
+  font-weight: 600;
   line-height: 1;
 }
-/* Name + role need the width freed by the 1440px shell step; below that the
-   pill collapses to the avatar so the six link pills keep their single row. */
-.app-profile-meta { display: none; }
-@media (min-width: 1440px) {
-  .app-profile-meta { display: block; }
+@media (min-width: 1280px) {
+  .app-profile-label { display: none; }
+}
+/* Name + role take over at 1280px, where the shell has the room for them
+   (the task nav no longer carries an account link). */
+.app-profile-meta { display: none; min-width: 0; }
+@media (min-width: 1280px) {
+  .app-profile-meta { display: block; max-width: 176px; }
 }
 .app-avatar {
   display: inline-flex;
@@ -244,6 +268,7 @@
   justify-content: center;
   width: 32px;
   height: 32px;
+  flex-shrink: 0;
   border-radius: 50%;
   color: #FFFFFF;
   background-image: linear-gradient(135deg, #4274D9 0%, #5589C3 100%);
@@ -253,18 +278,26 @@
 }
 .app-profile-name {
   display: block;
+  overflow: hidden;
   color: #121721;
   font-size: 13px;
   font-weight: 600;
   line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .app-profile-sub {
   display: block;
+  overflow: hidden;
   color: #687182;
   font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
+/* A chevron is a non-text navigation cue, so it clears the 3:1 floor from
+   DESIGN §2.3 instead of sitting on the decorative text-muted grey. */
 .app-profile-chevron {
-  color: #94A3B8;
+  color: #687182;
 }
 
 /* ---- Mobile drawer ------------------------------------------------------ */
@@ -314,6 +347,36 @@
   border-left-color: #E24A21;
   font-weight: 700;
 }
+/* The account row is the drawer's one route to the profile screen — it
+   replaces both the old "Profil" nav item and the account pill hidden below
+   lg, so identity and destination arrive in a single control. */
+.app-drawer .drawer-account {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  padding: 10px 14px;
+  border: 1px solid #E2E6EB;
+  border-radius: 18px;
+  background-color: #F4F6F8;
+  color: inherit;
+  text-decoration: none;
+}
+.app-drawer .drawer-account:hover,
+.app-drawer .drawer-account[aria-current="page"] {
+  border-color: #E2E7EC;
+  background-color: #E2E7EC;
+}
+.drawer-account-meta {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+.drawer-account .app-profile-name { font-size: 14px; }
+.drawer-account .app-profile-sub { font-size: 12px; }
+.drawer-account .app-profile-chevron { flex-shrink: 0; }
 /* Phone primary actions are touch targets (DESIGN §10). */
 .app-drawer .btn {
   min-height: 44px;
@@ -366,6 +429,7 @@
 @media (prefers-reduced-motion: no-preference) {
   .app-nav .nav-link,
   .app-drawer .nav-link,
+  .app-drawer .drawer-account,
   .app-icon-btn,
   .app-profile {
     transition: color 0.15s, background-color 0.15s, border-color 0.15s,

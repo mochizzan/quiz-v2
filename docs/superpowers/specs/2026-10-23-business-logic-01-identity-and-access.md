@@ -59,7 +59,7 @@ Every route registered by `registerPage` (and every non-page route) declares exa
 | `owner-teacher` | active teacher **and** resource owner | `303 /login` | `404` (including a non-owner teacher) |
 | `anonymous-or-public` | PAR guests and any signed-in actor | render | — |
 
-**IDN-012.** `404` for wrong role is deliberate (R-05, R-19): a student probing `/teacher/students` learns nothing about whether the route or the resource exists. A teacher probing `/profile` gets `404`, because R-05 and contract §10.3 make profile student-only.
+**IDN-012.** `404` for wrong role is deliberate (R-05, R-19): a student probing `/teacher/students` learns nothing about whether the route or the resource exists. A teacher probing `/profile` gets `404`, because R-05 and contract §10.3 make `/profile` the student screen; a teacher's own account lives at `/teacher/profile` (IDN-C23).
 **IDN-013.** `403` is reserved for exactly two situations: CSRF verification failure (R-19, INV-28) and a login attempt with **correct** credentials on a pending teacher account (contract §9.1 "403-style message"). Everything else that is not allowed is `404` or a `303` redirect.
 **IDN-014.** `303` is the only redirect status. `301`/`302`/`307`/`308` are not emitted by this domain.
 **IDN-015.** No `401`. No `405`: an unregistered method falls to the 404 catch-all, which OPS owns.
@@ -89,6 +89,8 @@ Every route registered by `registerPage` (and every non-page route) declares exa
 | `POST /teacher/students/:id/reset-token` | `teacher` | IDN-C20 | live student |
 | `GET /teacher/teachers` | `teacher` | IDN-C21 | school-wide |
 | `POST /teacher/teachers/:id/approve` | `teacher` | IDN-C22 | target live teacher with `status='pending'` |
+| `GET /teacher/profile` | `teacher` | IDN-C23 | own account only; no `:id` exists |
+| `POST /teacher/profile` | `teacher` | IDN-C24 | own account only |
 
 **IDN-016.** Routes owned by other domains use the same classes: AUT and ATT teacher routes are `owner-teacher` (owner check by AUT/ATT, 404 for non-owner); PAR's `/student*` are `student`; PAR's `/join*`, `/invite/*`, `/quiz/:id*` are `anonymous-or-public`; OPS's `/healthz`, `/error/*`, `/uploads/:name` are `public`. IDN does not implement those ownership checks; it supplies `CurrentUser` and the class.
 **IDN-017.** `POST /attempt/:id/beacon` is the sole CSRF-exempt route in the system (R-16, R-20, INV-28). Its authorization and same-origin check belong to ATT. No IDN route is exempt.
@@ -445,7 +447,7 @@ restart and hides a misconfiguration.
 
 ### IDN-C10 — `GET /change-password`
 - **Actor:** any authenticated (student or teacher), including a `must_change_password=1` session. **Authorization:** `any-auth`. **Preconditions:** a valid session (IDN-041). Unauthenticated → `303 /login` + `session_expired`.
-- **Model:** `ChangePasswordPage{}` with no fields; current/new/confirm inputs are always blank. **Status/effects:** `200`, no-store; issues/reuses CSRF. The page is reachable during the must-change guard and is the guard's redirect target, so it must render without a role home.
+- **Model:** `ChangePasswordPage{BackHref}` with no fields; current/new/confirm inputs are always blank. `BackHref` is the caller's own account screen — `/profile` for a student, `/teacher/profile` for a teacher. **Status/effects:** `200`, no-store; issues/reuses CSRF. The page is reachable during the must-change guard and is the guard's redirect target, so it must render without a role home.
 - **Copy:** success `password_reset`; wrong current `current_wrong`; same password `same_password`.
 
 ### IDN-C11 — `POST /change-password`
@@ -454,7 +456,7 @@ restart and hides a misconfiguration.
 - **Input:** `current_password`, `new_password`, `password_confirm` (contract §18). All required; policy on `new_password`; byte-equal confirmation.
 - **Transaction/lock:** `BEGIN`; `SELECT id, password_hash, must_change_password FROM accounts WHERE id=? AND deleted_at=sentinel FOR UPDATE`. Verify `current_password` against the hash **under the lock**; wrong → rollback, `422 current_wrong`, increment the account bucket. Verify `new_password` is not the current password (bcrypt compare against the same hash) → `422 same_password`. Re-check policy under the lock (the input is unchanged but this keeps validation and write one unit).
 - **Effects:** `UPDATE accounts SET password_hash=?, must_change_password=0 WHERE id=?`; `UPDATE sessions SET deleted_at=UTC_TIMESTAMP() WHERE account_id=? AND id<>? AND deleted_at=sentinel` (revoke every **other** session, keep the current one); `COMMIT`.
-- **Postconditions:** new hash; flag cleared; current session live and slid; every other device is signed out; no CSRF rotation (R-16 rotates only login/logout). **Status:** `303 /teacher` for a teacher, `303 /profile` + `password_reset` for a student; `422`; `429`; `500`.
+- **Postconditions:** new hash; flag cleared; current session live and slid; every other device is signed out; no CSRF rotation (R-16 rotates only login/logout). **Status:** `303 /profile` + `password_reset` for a student, `303 /teacher/profile` + `password_reset` for a teacher; `422`; `429`; `500`.
 - **Concurrency:** the account row lock serializes two submissions; the second re-reads the new hash, so the old `current_password` fails with `422 current_wrong` rather than double-writing. A concurrent reset also locks the account (IDN-C09) and revokes all sessions, including this one: the change either commits first (then reset overwrites) or sees its session already revoked on the next request. **Provenance:** `updated_at`; no password history. **Idempotency:** a sequential replay fails on `current_password`; the outcome never depends on request order beyond last-writer-wins on the hash.
 
 ### IDN-C12 — `GET /auth/pending`
@@ -477,7 +479,7 @@ restart and hides a misconfiguration.
 - **Idempotency:** repeated POSTs with the same (now dead) cookie still return `303 logged_out` once CSRF passes; the old token cannot be replayed as a session.
 
 ### IDN-C14 — `GET /profile`
-- **Actor:** active student. **Authorization:** `student`. Teacher → `404` (R-05: no teacher profile); visitor → `303 /login`.
+- **Actor:** active student. **Authorization:** `student`. Teacher → `404` (a teacher's own account is `/teacher/profile`, IDN-C23); visitor → `303 /login`.
 - **Model:** `ProfilePage{FullName, Email, GradeLevel, MajorID, Majors: live majors}` plus the read-only class label `XII IPA` and "Hubungi guru untuk mengubah kelas atau jurusan."
 - **Query:** live `accounts` + live `students` + live `majors` by `account_id` of the session. Grade and major are **read-only**; no `:id` path parameter exists, so a student cannot address another student. **Status/effects:** `200`, no-store; issues/reuses CSRF. Never exposes sessions, last login, reset tokens, or `must_change_password`.
 
@@ -555,6 +557,20 @@ restart and hides a misconfiguration.
 - **Effects/postconditions:** `chk_accounts_teacher_approval` holds because `status='active'` and `approved_at` are set together; `approved_by_account_id` is the actor. The target can now log in; its pending page resolves `approved` (the token is not consumed). No session is created for the target; no notification is sent; the target's quizzes (none yet) are unaffected. **Status:** `303 /teacher/teachers` + `approved`, or `+ already_approved` for the idempotent case; `404`; `500`.
 - **Concurrency:** two teachers approving simultaneously: the predicate lets exactly one `UPDATE` match; the other affects 0 rows and follows the re-read path to idempotent success. No double approver, no constraint violation.
 - **Bootstrap:** if no active teacher exists, this route is unreachable (no valid session), which is the correct expression of R-03/R-24; the runner must insert the first active teacher. **Provenance/idempotency:** `approved_by_account_id`, `approved_at`, `updated_at`. Idempotent: approval is monotonic and a repeat is a success, not a conflict.
+
+### IDN-C23 — `GET /teacher/profile`
+- **Actor:** active teacher. **Authorization:** `teacher`. A student → `404` (the student's own screen is `/profile`, IDN-C14); a visitor → `303 /login`. No `:id` exists, so one teacher can never address another.
+- **Model:** `TeacherProfilePage{FullName, Email}` plus the read-only role label `Guru`. No class, major, or `students` row is read.
+- **Query:** the session's own live `accounts` row with `role='teacher'`. A missing or non-teacher row is a data fault → `500`, never an empty form. **Status/effects:** `200`, no-store; issues/reuses CSRF. Never exposes sessions, last login, reset tokens, or `must_change_password`.
+
+### IDN-C24 — `POST /teacher/profile`
+- **Route:** `POST /teacher/profile`. **Actor:** active teacher. **Authorization:** `teacher`.
+- **CSRF:** required. **Rate limit:** none beyond CSRF; the command is not credential-guessing.
+- **Input:** `full_name`, `email` only. `role`, `status`, `password`, and `must_change_password` in the body are ignored, not errors.
+- **Validation:** IDN-081 and IDN-053. Uniqueness excluding self; a same-address case change is a no-op success; the unique key is the final arbiter under a race → `422 email_taken`.
+- **Transaction:** `SELECT id … FOR UPDATE`, then `UPDATE accounts SET full_name=?, email=? WHERE id=? AND deleted_at=sentinel`. No session revocation, no CSRF rotation, no role or approval change.
+- **Postconditions:** names are current everywhere on the next render (IDN-153). **Status:** `303 /teacher/profile` + `saved`; `422` re-renders the form with the submitted pair; `500`. A session revoked between resolution and the write is `303 /login` + `session_expired` (IDN-112).
+- **Concurrency/idempotency:** last-writer-wins, same as IDN-C15; two teachers editing different accounts never block each other.
 
 ---
 ## 6. Queries and read models
@@ -747,6 +763,8 @@ On `GET /teacher/students`: verify signature/purpose/teacher id; SHA-256 the emb
 | `POST /teacher/students/:id/reset-token` | IDN-C20 | INV-22; I06, I07 | AC-54–AC-56 |
 | `GET /teacher/teachers` | IDN-C21 | INV-04; I03, I09 | AC-57 |
 | `POST /teacher/teachers/:id/approve` | IDN-C22 | INV-03, INV-04; I03 | AC-58–AC-60 |
+| `GET /teacher/profile` | IDN-C23 | INV-03; I09 | AC-79 |
+| `POST /teacher/profile` | IDN-C24 | INV-01; I09, I13 | AC-80 |
 | every POST | middleware | INV-28; I05 | AC-61–AC-64 |
 | every route | middleware | INV-21; I01 | AC-65–AC-70 |
 | every list | §6 | I12 | AC-71–AC-72 |
@@ -759,7 +777,7 @@ On `GET /teacher/students`: verify signature/purpose/teacher id; SHA-256 the emb
 Implemented as ruled, with the objection recorded here as contract §1 requires; detail and recommendations are in §12.3.
 
 - **R-04** (reset sets `must_change_password=0`) conflicts with the schema spec's "1 for resets and bootstrap". Implemented as R-04 (0); the schema note's wording is read as "temporary admin-set passwords" (schema §6.2 is descriptive, not a constraint).
-- **R-05** (teacher name/email immutable, no teacher profile) means a registration typo is uncorrectable in v1. Implemented; recovery is out of band.
+- **R-05** (teacher name/email immutable, no teacher profile) is **superseded by IDN-C23/C24**: a teacher edits their own name and email at `/teacher/profile`. The original objection — a registration typo uncorrectable in v1 — is closed. Role, status, approval, and the student-only `/profile` are unchanged.
 - **R-03 vs R-24** (no bootstrap-existence leak vs "the pending page says approval is not available") are reconciled with a static sentence that is true regardless of whether a bootstrap exists (IDN-106).
 - **Old §12** pins login/register at 5 attempts/15 min **per IP**. Implemented as 5/15 per `(email, IP)` plus a 30/15 per-IP ceiling to keep a class behind one NAT usable; recorded as a deliberate refinement, not a silent change.
 - **R-22** (no email verification) is implemented; the risk is account-email ownership, accepted for a single school.
@@ -860,9 +878,10 @@ Each statement is executable as a server-side test with `app.Test` and a test da
 **AC-38.** Replaying the old session cookie after logout → protected GET is `303 /login`, never a rendered page; GET `/logout` → `404`.
 
 ### Profile and teacher student management
-**AC-39.** `GET /profile` as a student returns own name/email/read-only class; as a teacher it returns `404`; as a visitor `303 /login`. **AC-40.** `POST /profile` changes name/email without revoking the session and without touching `students`; a case-only email change succeeds as a no-op.
+**AC-39.** `GET /profile` as a student returns own name/email/read-only class; as a teacher it returns `404` (the teacher's own screen is `/teacher/profile`, AC-79); as a visitor `303 /login`. **AC-40.** `POST /profile` changes name/email without revoking the session and without touching `students`; a case-only email change succeeds as a no-op.
 **AC-41.** `POST /profile` with another live account's email → `422 email_taken`; with a soft-deleted account's email → success.
 **AC-42.** `POST /profile` cannot change grade or major: submitted values are ignored and the students row is unchanged.
+**AC-79.** `GET /teacher/profile` as a teacher returns own name/email and the read-only role; as a student → `404`; as a visitor → `303 /login`. **AC-80.** `POST /teacher/profile` changes name and email only: role, status, approval, and password are unchanged; another live account's email → `422 email_taken`; a case-only email change succeeds as a no-op.
 **AC-43.** Students list filters by grade/major/search, sorts by all four orders, paginates at 10, and always tie-breaks `id ASC`; invalid values fall back to defaults with no `422`. **AC-44.** Search escapes `%` and `_`; searching for `%` does not return every student.
 **AC-45.** Empty roster and filtered-empty render distinct titles/bodies; filtered-empty offers a reset link.
 **AC-46.** A page beyond the last page clamps to the last page; page 0 clamps to 1; totals and rows agree.
@@ -886,7 +905,7 @@ Each statement is executable as a server-side test with `app.Test` and a test da
 **AC-64.** A spoofed `X-Forwarded-For` does not create a fresh rate-limit bucket unless a trusted proxy is configured.
 **AC-65.** A session idle for 61 minutes is invalid and its GET is `303 /login` + `session_expired`; a session used at minute 59 slides to a full 60 minutes. **AC-66.** Session lookup rejects a row whose account is pending, soft-deleted, or missing, even if the token hash matches.
 **AC-67.** `Set-Cookie` for the session has no `Max-Age`, `Path=/`, `HttpOnly`, `SameSite=Lax`, and no `Domain`; clearing it uses `Max-Age=0`. **AC-68.** Reset revokes all sessions; change-password revokes all but the current; delete revokes all; logout revokes one.
-**AC-69.** A student GET/POST on any `/teacher/*` route → `404`; a teacher GET/POST `/profile` → `404`; a visitor on either → `303 /login`. **AC-70.** A visitor on `/auth/pending` with a valid token gets `200` and only name+state; a pending teacher gets no session from any route.
+**AC-69.** A student GET/POST on any `/teacher/*` route → `404`; a teacher GET/POST `/profile` → `404` (their own screen is `/teacher/profile`); a visitor on either → `303 /login`. **AC-70.** A visitor on `/auth/pending` with a valid token gets `200` and only name+state; a pending teacher gets no session from any route.
 **AC-71.** Every list route never returns `422` for bad query input; each returns `200` with defaults and echoes the effective values.
 **AC-72.** Empty vs filtered-empty is distinguishable in the model for students and for the teacher directory sections.
 **AC-73.** Student deletion is atomic: an injected failure at any child leaves every row live and returns `500`; a successful delete leaves no live child (INV-18).

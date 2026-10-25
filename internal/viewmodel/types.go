@@ -90,8 +90,8 @@ func FlashFor(key string) *Flash {
 		return &Flash{Kind: "success", Title: "Jawaban terkirim."}
 	case "graded":
 		return &Flash{Kind: "success", Title: "Nilai esai tersimpan."}
-	case "already_graded":
-		return &Flash{Kind: "error", Title: "Esai ini sudah dinilai dan tidak dapat diubah."}
+	case "grade_conflict":
+		return &Flash{Kind: "error", Title: "Nilai sudah diubah di tempat lain.", Body: "Muat ulang halaman untuk melihat nilai terbaru."}
 	case "published":
 		return &Flash{Kind: "success", Title: "Kuis dibuka."}
 	case "closed":

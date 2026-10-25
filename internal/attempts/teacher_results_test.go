@@ -79,6 +79,14 @@ func TestResultsMetricsFiltersAndPagination(t *testing.T) {
 	if !got.Tabs[0].Active {
 		t.Error("default tab is not active")
 	}
+	// The header's grading action is this quiz's slice of the essay queue, never
+	// the whole-school /teacher/grading the nav points at.
+	if want := "/teacher/grading?quiz=" + idString(quiz); got.GradingHref != want {
+		t.Errorf("GradingHref = %q, want %q", got.GradingHref, want)
+	}
+	if got.BackHref != quizPath(quiz) {
+		t.Errorf("BackHref = %q, want the quiz detail", got.BackHref)
+	}
 
 	// Page 2 holds Budi (0%) then Ayu (73%); 0 is a score, never nil.
 	page2, err := f.svc.Results(f.ctx, ResultsInput{QuizID: quiz, AccountID: f.teacherID, PageRaw: "2"})
@@ -221,6 +229,11 @@ func TestResultsMetricsFiltersAndPagination(t *testing.T) {
 	if empty.Empty.Title != "Belum ada percobaan." || empty.Rows.Page != 1 {
 		t.Errorf("empty state = %q page %d, want the no-attempt copy on page 1",
 			empty.Empty.Title, empty.Rows.Page)
+	}
+	// Zero attempts is not a filtered-empty list: the only destination is the
+	// back link above the heading, so the empty state carries no action.
+	if empty.Empty.Action != nil {
+		t.Errorf("zero-attempt empty action = %+v, want none (the back link owns it)", empty.Empty.Action)
 	}
 
 	draft := f.newQuiz(f.teacherID, "Draf", "draft", true, false, 1, "2026-09-23 09:00:00")

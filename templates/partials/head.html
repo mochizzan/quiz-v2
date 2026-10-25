@@ -79,6 +79,10 @@ use { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round
      redefines this template (e.g. auth pages include partials/auth-style). */}}
 {{template "partials/page-style" .}}
 </style>
+{{/* Page-scoped <head> slot. The default is empty; a page parsed last may
+     redefine it for a <noscript> fallback or another head-only hint. */}}
+{{template "partials/page-head" .}}
 {{end}}
 {{define "partials/title"}}Twisty Quiz{{end}}
 {{define "partials/page-style"}}{{end}}
+{{define "partials/page-head"}}{{end}}

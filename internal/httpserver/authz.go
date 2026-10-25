@@ -48,7 +48,7 @@ func (c AuthClass) valid() bool {
 // routeKey is the registry key for one method+path pair.
 func routeKey(method, path string) string { return method + " " + path }
 
-// routeClasses is the authorization matrix for the 72 pinned routes plus the
+// routeClasses is the authorization matrix for the 74 pinned routes plus the
 // two operational routes outside the pin. It is deliberately one table rather
 // than a field on each registration: the matrix is auditable in one place and
 // cannot drift route by route (IDN-015, IDN-016, OPS-220).
@@ -78,6 +78,8 @@ var routeClasses = map[string]AuthClass{
 	routeKey("POST", "/teacher/students/:id/reset-token"): ClassTeacher,
 	routeKey("GET", "/teacher/teachers"):                  ClassTeacher,
 	routeKey("POST", "/teacher/teachers/:id/approve"):     ClassTeacher,
+	routeKey("GET", "/teacher/profile"):                   ClassTeacher,
+	routeKey("POST", "/teacher/profile"):                  ClassTeacher,
 
 	// PAR — participation and eligibility.
 	routeKey("GET", "/join"):                          ClassAnonymousOrPublic,
@@ -135,7 +137,10 @@ var routeClasses = map[string]AuthClass{
 	routeKey("GET", "/teacher/recap/:attemptID"):    ClassOwnerTeacher,
 
 	// OPS — operational and error preview routes.
+	routeKey("GET", "/error/403"): ClassPublic,
 	routeKey("GET", "/error/404"): ClassPublic,
+	routeKey("GET", "/error/422"): ClassPublic,
+	routeKey("GET", "/error/429"): ClassPublic,
 	routeKey("GET", "/error/500"): ClassPublic,
 	routeKey("GET", "/healthz"):   ClassPublic,
 }

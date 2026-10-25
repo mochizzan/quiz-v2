@@ -9,7 +9,9 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
+	"time"
 
 	"github.com/gofiber/fiber/v3"
 
@@ -61,40 +63,89 @@ func TestGradingDraftOverlay(t *testing.T) {
 	if got != ungraded {
 		t.Fatal("draft replaced the detail pointer")
 	}
-	// The frozen template renders Score.Int, so the one-decimal submission is
-	// echoed as its whole display percent (86), not 85.5.
-	if got.Score == nil || got.Score.Int() != 86 {
-		t.Errorf("draft score = %v, want 86", got.Score)
+	// The template renders ScoreInput, so the one-decimal submission is echoed
+	// exactly as typed (85,5), not as its whole display percent.
+	if got.ScoreInput != "85,5" {
+		t.Errorf("draft score input = %q, want 85,5", got.ScoreInput)
 	}
 	if got.Feedback != "  Catatan guru  " {
 		t.Errorf("draft feedback = %q, want the verbatim value", got.Feedback)
 	}
 
-	// An invalid score clears the draft score but keeps the feedback.
+	// The raw string is echoed even when it is invalid; the 422 response then
+	// carries both the typed value and the field error.
 	invalid := gradingDraft(ungraded, attempts.GradeInput{
 		ScoreRaw:    "85,55",
 		FeedbackRaw: "Catatan",
 	})
-	if invalid.Score != nil {
-		t.Errorf("invalid draft score = %v, want nil", invalid.Score)
+	if invalid.ScoreInput != "85,55" {
+		t.Errorf("invalid draft score input = %q, want the raw value", invalid.ScoreInput)
 	}
 	if invalid.Feedback != "Catatan" {
 		t.Errorf("invalid draft feedback = %q", invalid.Feedback)
 	}
 
-	// A graded answer is read-only: the stored score and feedback win.
+	// A graded answer is editable: the submitted values overlay the stored
+	// ones, while the stored score, dates, and version stay untouched for the
+	// conflict check on the next submit.
 	stored := &viewmodel.Score{Percent: 75}
+	gradedAt := viewmodel.NewLocalTime(time.Date(2026, 10, 23, 8, 0, 0, 0, time.UTC))
+	updatedAt := viewmodel.NewLocalTime(time.Date(2026, 10, 24, 8, 0, 0, 0, time.UTC))
 	graded := &viewmodel.GradingDetail{
-		Answer:   viewmodel.EssayAnswer{State: viewmodel.EssayGraded},
-		Score:    stored,
-		Feedback: "Tersimpan",
+		Answer: viewmodel.EssayAnswer{
+			State: viewmodel.EssayGraded, GradedAt: &gradedAt,
+			UpdatedAt: &updatedAt, Edited: true, Version: 3,
+		},
+		Score:      stored,
+		ScoreInput: "75,0",
+		Feedback:   "Tersimpan",
 	}
 	got = gradingDraft(graded, attempts.GradeInput{
 		ScoreRaw:    "100",
 		FeedbackRaw: "Baru",
 	})
-	if got.Score != stored || got.Feedback != "Tersimpan" {
-		t.Errorf("graded draft = %+v, want the stored score/feedback", got)
+	if got.ScoreInput != "100" || got.Feedback != "Baru" {
+		t.Errorf("graded draft = input %q feedback %q, want the submitted values",
+			got.ScoreInput, got.Feedback)
+	}
+	if got.Score != stored || got.Answer.Version != 3 || !got.Answer.Edited ||
+		got.Answer.GradedAt != &gradedAt || got.Answer.UpdatedAt != &updatedAt {
+		t.Errorf("graded draft mutated stored state: %+v", got.Answer)
+	}
+}
+
+// TestGradingQueryCarriesTabAndFilters pins the POST redirect contract: a
+// success or a conflict returns the teacher to the tab and filters they were
+// using, and the pending default stays a bare path.
+func TestGradingQueryCarriesTabAndFilters(t *testing.T) {
+	x := &Ctx{Query: url.Values{
+		"state": {"graded"},
+		"q":     {"budi"},
+		"class": {"XI"},
+		"quiz":  {"7"},
+		"page":  {"2"},
+	}}
+	want := "class=XI&q=budi&quiz=7&state=graded"
+	if got := gradingQuery(x); got != want {
+		t.Errorf("gradingQuery = %q, want %q", got, want)
+	}
+	if got, wantPath := gradingWithQuery("/teacher/grading", x),
+		"/teacher/grading?"+want; got != wantPath {
+		t.Errorf("gradingWithQuery = %q, want %q", got, wantPath)
+	}
+	if got, wantPath := gradingWithQuery("/teacher/grading/9", x),
+		"/teacher/grading/9?"+want; got != wantPath {
+		t.Errorf("detail gradingWithQuery = %q, want %q", got, wantPath)
+	}
+
+	for _, raw := range []string{"", "pending", "invalid"} {
+		empty := &Ctx{Query: url.Values{"state": {raw}}}
+		if got := gradingQuery(empty); got != "" {
+			t.Errorf("state %q carried %q, want a bare path", raw, got)
+		}
+		if got := gradingWithQuery("/teacher/grading", empty); got != "/teacher/grading" {
+			t.Errorf("state %q path = %q, want /teacher/grading", raw, got)
+		}
 	}
 }
 

@@ -2,13 +2,14 @@
 {{define "content"}}
 <div class="page-stack">
 
+  <a class="link-quiet d-inline-flex align-items-center gap-2" href="{{.Data.CancelHref}}">
+    <svg width="16" height="16" aria-hidden="true"><use href="#i-arrow-left"></use></svg>
+    Kembali ke peserta anonim
+  </a>
+
   <div class="page-head">
     <div>
-      <a class="link-quiet d-inline-flex align-items-center gap-2" href="/teacher/anonymous">
-        <svg width="16" height="16" aria-hidden="true"><use href="#i-arrow-left"></use></svg>
-        Kembali ke peserta anonim
-      </a>
-      <h1 class="h1 mt-3">Ubah peserta anonim</h1>
+      <h1 class="h1">Ubah peserta anonim</h1>
       <p class="page-sub">{{.Data.FullName}}</p>
     </div>
   </div>
@@ -17,7 +18,7 @@
     Peserta ini tidak memiliki akun. Perubahan berlaku pada identitas yang terhubung dengan cookie peserta di perangkatnya.
   </div>
 
-  <div class="row g-4">
+  <div class="row g-7">
     <div class="col-12 lg:col-8">
       <form class="card form-card" method="post" action="{{.Data.Action}}" data-validate>
         <input type="hidden" name="csrf_token" value="{{.CSRF}}">
@@ -26,12 +27,12 @@
           <h2 class="form-section-title">Identitas peserta</h2>
           <p class="form-section-sub">Nama dan kelas yang tampil pada hasil kuis.</p>
 
-          <div class="mb-3">
+          <div class="mb-4">
             <label class="form-label" for="anonymous-name">Nama lengkap <span class="required" aria-hidden="true">*</span></label>
             <input class="form-control" type="text" id="anonymous-name" name="full_name" value="{{.Data.FullName}}" autocomplete="name" minlength="2" maxlength="80" required>
           </div>
 
-          <div class="d-flex flex-wrap gap-3">
+          <div class="d-flex flex-wrap gap-5">
             <div class="flex-grow-1">
               <label class="form-label" for="anonymous-grade">Kelas <span class="required" aria-hidden="true">*</span></label>
               <select class="form-control" id="anonymous-grade" name="grade_level" required>
@@ -50,7 +51,6 @@
         </div>
 
         <div class="form-actions">
-          <a class="btn btn-outline theme-primary" href="{{.Data.CancelHref}}">Batal</a>
           <button class="btn btn-solid theme-primary" type="submit">
             <svg width="18" height="18" aria-hidden="true"><use href="#i-check"></use></svg>
             Simpan perubahan
@@ -65,7 +65,7 @@
         <p class="page-sub mt-2">Identitas dan riwayat percobaan peserta anonim ini akan dihapus. Tindakan ini tidak dapat dibatalkan.</p>
         <form method="post" action="/teacher/anonymous/{{.Data.ID}}/delete" data-confirm="Hapus {{.Data.FullName}}? Identitas dan riwayat percobaan peserta anonim ini akan dihapus.">
           <input type="hidden" name="csrf_token" value="{{.CSRF}}">
-          <button class="btn btn-outline theme-danger w-100 mt-3" type="submit">
+          <button class="btn btn-outline theme-danger w-100 mt-4" type="submit">
             <svg width="18" height="18" aria-hidden="true"><use href="#i-trash"></use></svg>
             Hapus peserta
           </button>

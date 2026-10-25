@@ -11,9 +11,10 @@ import (
 )
 
 // This file is the "teacher-management" route group, owned by the identity
-// domain: the student roster and its edit/delete/reset-token commands, and
-// teacher approval. Anonymous participants and majors belong to the
-// participation domain and live in routes_teacher_catalogue.go.
+// domain: the student roster and its edit/delete/reset-token commands, teacher
+// approval, and the signed-in teacher's own account (IDN-C23). Anonymous
+// participants and majors belong to the participation domain and live in
+// routes_teacher_catalogue.go.
 //
 // Each route carries its production Load/Act handler. The edit command uses
 // ActForm so a rejected edit re-renders the same form with the teacher's values
@@ -194,6 +195,59 @@ func init() {
 				return Redirect{}, identityFailure(err)
 			}
 			return identityRedirect("/teacher/teachers", flash), nil
+		},
+	})
+
+	// IDN-C23/C24: the teacher's own account. R-05 kept teacher identity immutable
+	// in v1; this screen removes that exception for name and email, so a
+	// registration typo is correctable without an out-of-band reset. The
+	// password still changes at IDN-C11, and the role itself is never writable.
+	registerPage(PageRoute{
+		Method:   "GET",
+		Path:     "/teacher/profile",
+		Template: "pages/teacher/profile.html",
+		Nav:      "profil",
+		Auth:     ClassTeacher,
+		Load: func(x *Ctx) (viewmodel.PageData, error) {
+			sess, serr := identitySession(x)
+			if serr != nil {
+				return viewmodel.PageData{}, serr
+			}
+			account, err := identityService(x).TeacherProfile(x.c.Context(), sess.AccountID)
+			if err != nil {
+				return viewmodel.PageData{}, identityFailure(err)
+			}
+			return identityPage(x, "Profil", "profil", account), nil
+		},
+	})
+	registerPage(PageRoute{
+		Method: "POST",
+		Path:   "/teacher/profile",
+		Auth:   ClassTeacher,
+		ActForm: func(x *Ctx) (viewmodel.PageData, Redirect, error) {
+			sess, serr := identitySession(x)
+			if serr != nil {
+				return viewmodel.PageData{}, Redirect{}, serr
+			}
+			err := identityService(x).SaveProfile(x.c.Context(), sess.AccountID, identity.ProfileInput{
+				FullName: x.Value("full_name"),
+				Email:    x.Value("email"),
+			})
+			switch {
+			case err == nil:
+				return viewmodel.PageData{}, Redirect{Path: "/teacher/profile", Flash: identity.FlashSaved}, nil
+			case errors.Is(err, identity.ErrSessionGone):
+				return viewmodel.PageData{}, Redirect{}, x.SeeOther("/login", identity.FlashSessionExpired)
+			}
+			if fields, ok := identity.FieldErrorsOf(err); ok {
+				// IDN-083: re-render with the submitted pair so the field that
+				// failed validation can be corrected in place.
+				return x.Page("Profil", "profil", viewmodel.TeacherProfilePage{
+					FullName: x.Value("full_name"),
+					Email:    x.Value("email"),
+				}), Redirect{}, apperr.Validationf(fields)
+			}
+			return viewmodel.PageData{}, Redirect{}, identityFailure(err)
 		},
 	})
 }

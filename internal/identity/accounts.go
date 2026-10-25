@@ -254,6 +254,13 @@ type Profile struct {
 	MajorID    int64
 }
 
+// TeacherAccount is a teacher's own account read model (IDN-C23). A teacher has
+// no students row, so the account row is the entire screen.
+type TeacherAccount struct {
+	FullName string
+	Email    string
+}
+
 // LoadProfile reads the session account's own live account, profile, and major
 // id. A missing account or profile is a data fault (INV-02); the caller maps
 // nil to a 500 rather than inventing a grade.
@@ -273,6 +280,26 @@ func LoadProfile(ctx context.Context, q store.Querier, accountID int64) (*Profil
 		return nil, err
 	}
 	return &p, nil
+}
+
+// LoadTeacherAccount reads the session account's own live row when that row is
+// a teacher (IDN-C23). A teacher has no students row, so name and email are the
+// whole of the read model. A missing or non-teacher row returns nil; the caller
+// maps nil to a 500 rather than rendering a student through teacher chrome.
+func LoadTeacherAccount(ctx context.Context, q store.Querier, accountID int64) (*TeacherAccount, error) {
+	var a TeacherAccount
+	err := q.QueryRowContext(ctx, `
+		SELECT full_name, email FROM accounts
+		WHERE id = ? AND deleted_at = ? AND role = 'teacher'`,
+		accountID, store.LiveAt,
+	).Scan(&a.FullName, &a.Email)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &a, nil
 }
 
 // LiveMajors lists the selectable majors in the pinned order: name ASC, id ASC

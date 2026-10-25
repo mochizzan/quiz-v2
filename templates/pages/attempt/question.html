@@ -1,10 +1,10 @@
 {{define "content"}}
-<div class="container py-4">
+<div class="container py-7">
   <div class="attempt-shell">
 
     <header class="attempt-top">
       <div class="row-between">
-        <div class="d-flex align-items-center gap-3 min-w-0">
+        <div class="d-flex align-items-center gap-5 min-w-0">
           <span class="empty-icon empty-icon-sm" aria-hidden="true">
             <svg width="20" height="20" aria-hidden="true"><use href="#i-quiz"></use></svg>
           </span>
@@ -19,7 +19,7 @@
         </div>
       </div>
 
-      <div class="d-flex flex-wrap align-items-center gap-3">
+      <div class="d-flex flex-wrap align-items-center gap-5">
         <span role="progressbar" aria-valuenow="{{.Data.Progress.Percent}}" aria-valuemin="0" aria-valuemax="100" aria-label="Kemajuan pengerjaan" class="attempt-progress flex-grow-1">
           <span style="width: {{.Data.Progress.Percent}}%"></span>
         </span>
@@ -32,8 +32,8 @@
          sticky bar and the question. Landscape (xl, 1280+) turns the navigator
          into a sticky left rail so the wide axis carries navigation. */}}
     <div class="attempt-body">
-      <nav class="card p-3 attempt-rail" aria-label="Navigasi soal">
-        <div class="row-between mb-3">
+      <nav class="card p-5 attempt-rail" aria-label="Navigasi soal">
+        <div class="row-between mb-4">
           <span class="section-title">Navigasi soal</span>
           <span class="cell-sub">Dimulai {{.Data.Header.StartedAt.DateTime}} WIB</span>
         </div>
@@ -86,7 +86,7 @@
           {{end}}
         </div>
 
-        <div class="attempt-footer mt-4">
+        <div class="attempt-footer mt-7">
           {{/* Exit lives with the "go elsewhere, don't commit" cluster (prev).
                Answers save themselves on change via app.js; prev/next also
                commit whatever is currently on the form, so a browser without

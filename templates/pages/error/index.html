@@ -1,0 +1,22 @@
+{{define "content"}}
+{{with .Data}}
+<div class="error-page-container">
+  <div class="error-header">
+    <span class="error-type">Error {{.Code}}</span>
+  </div>
+  
+  <div class="error-content">
+    <div class="error-code-display">{{.Code}}</div>
+    <h1 class="error-title">{{.Title}}</h1>
+    <p class="error-message">{{.Message}}</p>
+  </div>
+  
+  <div class="error-actions">
+    <a class="btn btn-solid theme-primary" href="{{.HomeHref}}">Kembali ke halaman masuk</a>
+    {{if .ShowSecondaryAction}}
+    <a class="btn btn-outline theme-primary" href="/join">Gabung lewat kode</a>
+    {{end}}
+  </div>
+</div>
+{{end}}
+{{end}}

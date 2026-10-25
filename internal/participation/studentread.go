@@ -491,7 +491,7 @@ func (s *Service) buildStudentHistoryDetail(actor Actor, quiz quizRow, records [
 		attemptRows[i].MaxAttempts = limit
 	}
 
-	return viewmodel.HistoryDetail{
+	detail := viewmodel.HistoryDetail{
 		Quiz:        viewmodel.QuizRef{ID: quiz.ID, Title: quiz.Title},
 		TeacherName: quiz.TeacherName,
 		Audience:    audienceLabel(quiz),
@@ -500,9 +500,15 @@ func (s *Service) buildStudentHistoryDetail(actor Actor, quiz quizRow, records [
 		Attempts:    attemptRows,
 		MaxAttempts: limit,
 		CanRetry:    canRetry,
-		RetryHref:   quizPath(uint32(quiz.ID)),
 		BackHref:    "/student/history",
 	}
+	// PAR-157/PAR-088: the quiz page is 404 for a student once the quiz
+	// closes, so the detail page only offers it while the quiz is open. A
+	// closed quiz leaves the per-attempt rows as the only destinations.
+	if open {
+		detail.RetryHref = quizPath(uint32(quiz.ID))
+	}
+	return detail
 }
 
 // studentQuizCard is the shared card base for the three dashboard lists. It

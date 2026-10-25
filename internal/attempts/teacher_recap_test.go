@@ -20,7 +20,7 @@ func TestRecapSubmitted(t *testing.T) {
 	// The owner sees the truth even for a mode that hides the key from students.
 	mustExec(t, f.db, `
 		UPDATE quizzes
-		SET review_mode = 'questions_only', randomize_questions = 1, randomize_options = 1
+		SET review_mode = 'questions_no_answers', randomize_questions = 1, randomize_options = 1
 		WHERE id = ?`, quiz)
 
 	const seed = uint32(4242)

@@ -38,6 +38,8 @@
 .grading-row-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
 .grading-row-wait { color: #687182; font-size: 11px; font-weight: 600; white-space: nowrap; }
 .grading-row-q { margin-top: 5px; color: #687182; font-size: 12px; line-height: 1.45; }
+.grading-row-time { display: block; margin-top: 5px; color: #687182; font-size: 11px; font-weight: 600; }
+.grading-row-top .score-pill { flex-shrink: 0; }
 .grading-queue-foot { padding: 8px 16px; border-top: 1px solid #ECEFF2; }
 .grading-queue-foot:empty { display: none; }
 
@@ -121,11 +123,21 @@
 {{with .Data}}
 <div class="page-stack">
 
+  {{/* Navigation rule (DESIGN §7): a queue scoped to one quiz is a drill-down
+       from that quiz's results page; the unscoped queue is a top-level nav
+       destination and carries no back link. */}}
+  {{if .BackHref}}
+  <a class="link-quiet d-inline-flex align-items-center gap-2" href="{{.BackHref}}">
+    <svg width="16" height="16" aria-hidden="true"><use href="#i-arrow-left"></use></svg>
+    Kembali ke hasil kuis
+  </a>
+  {{end}}
+
   <div class="page-head">
     <div>
       <span class="eyebrow">Penilaian</span>
       <h1 class="h1 mb-0">Penilaian esai</h1>
-      <p class="page-sub">Tinjau jawaban esai, beri nilai, lalu lanjut ke esai berikutnya.</p>
+      <p class="page-sub">Tinjau jawaban esai, beri nilai, atau perbarui nilai yang sudah tersimpan.</p>
     </div>
     <div class="grading-counts" aria-label="Ringkasan antrean">
       <div class="grading-count">
@@ -138,9 +150,15 @@
         <span class="metric-value">{{.Queue.Counts.GradedToday}}</span>
         <span class="metric-foot">esai</span>
       </div>
+      <div class="grading-count">
+        <span class="metric-label">Sudah dinilai</span>
+        <span class="metric-value">{{.Queue.Counts.Graded}}</span>
+        <span class="metric-foot">esai</span>
+      </div>
     </div>
   </div>
 
+  {{$gradedTab := eq .Queue.Query.Tab "graded"}}
   {{$selectedID := 0}}
   {{with .Selected}}{{$selectedID = .Answer.ID}}{{end}}
 
@@ -168,10 +186,11 @@
           <a class="queue-row{{if eq .AnswerID $selectedID}} active{{end}}" href="{{.Href}}"{{if eq .AnswerID $selectedID}} aria-current="true"{{end}}>
             <span class="grading-row-top">
               <span class="name">{{.StudentName}}</span>
-              <span class="grading-row-wait">{{.WaitingLabel}}</span>
+              {{if .Score}}<span class="score-pill theme-{{.Score.Tone}}">{{.ScoreLabel}}</span>{{else}}<span class="grading-row-wait">{{.WaitingLabel}}</span>{{end}}
             </span>
             <span class="meta d-block">{{.ClassLabel}} · {{.QuizTitle}}</span>
             <span class="grading-row-q text-truncate-2">{{.QuestionExcerpt}}</span>
+            {{if .GradedLabel}}<span class="grading-row-time">{{.GradedLabel}}{{if .EditedLabel}} · {{.EditedLabel}}{{end}}</span>{{end}}
           </a>
           {{end}}
         </div>
@@ -188,7 +207,10 @@
           <h2 class="section-title">{{.Answer.StudentName}}</h2>
           <p class="section-sub">{{.Answer.ClassLabel}} · Percobaan {{.Attempt.AttemptNo}} dari {{.Attempt.MaxAttempts}}</p>
         </div>
-        <span class="badge {{if .Answer.Score}}theme-success{{else}}theme-warning{{end}}">{{.Answer.State.Label}}</span>
+        <div class="d-flex flex-wrap align-items-center gap-3">
+          {{if .Answer.Score}}<span class="score-pill theme-{{.Answer.Score.Tone}}">{{.ScoreInput}}%</span>{{end}}
+          <span class="badge {{if .Answer.Score}}theme-success{{else}}theme-warning{{end}}">{{.Answer.State.Label}}</span>
+        </div>
       </header>
 
       <div class="grading-meta">
@@ -196,10 +218,23 @@
           <svg width="16" height="16" aria-hidden="true"><use href="#i-clock"></use></svg>
           Dikirim {{.Answer.SubmittedAt.DateTime}}
         </span>
+        {{if .Answer.GradedAt}}
+        <span>
+          <svg width="16" height="16" aria-hidden="true"><use href="#i-history"></use></svg>
+          Dinilai {{.Answer.GradedAt.DateTime}}
+        </span>
+        {{if .Answer.Edited}}{{with .Answer.UpdatedAt}}
+        <span>
+          <svg width="16" height="16" aria-hidden="true"><use href="#i-history"></use></svg>
+          Diubah {{.DateTime}}
+        </span>
+        {{end}}{{end}}
+        {{else}}
         <span>
           <svg width="16" height="16" aria-hidden="true"><use href="#i-history"></use></svg>
           {{.Answer.WaitingLabel}}
         </span>
+        {{end}}
       </div>
 
       <div class="grading-block">
@@ -258,26 +293,36 @@
 
       <form class="grading-form" method="post" action="{{.Action}}" data-validate>
         <input type="hidden" name="csrf_token" value="{{$.CSRF}}">
+        {{if .Answer.GradedAt}}<input type="hidden" name="version" value="{{.Answer.Version}}">{{end}}
+        {{$scoreErr := $.Errors.Get "score"}}
+        {{$feedbackErr := $.Errors.Get "feedback"}}
         <div class="grading-form-grid">
           <div class="grading-score-field">
             <label class="form-label" for="grading-score">Nilai esai</label>
             <div class="grading-score-row">
-              <input class="form-control grading-score-input" type="number" id="grading-score" name="score" min="0" max="100" step="0.1" inputmode="decimal" value="{{with .Score}}{{.Int}}{{end}}" placeholder="{{with .Suggested}}{{.Int}}{{end}}" required aria-describedby="grading-score-help">
+              <input class="form-control grading-score-input" type="text" id="grading-score" name="score" inputmode="decimal" value="{{.ScoreInput}}" placeholder="{{with .Suggested}}{{.Int}}{{end}}" required aria-describedby="grading-score-help{{if $scoreErr}} grading-score-error{{end}}"{{if $scoreErr}} aria-invalid="true"{{end}}>
               {{with .Suggested}}<span class="grading-suggest">Saran <span class="score-pill">{{.Int}}</span></span>{{end}}
             </div>
             <p class="field-help" id="grading-score-help">Skala 0–100, satu angka desimal (misalnya 75,5).</p>
+            {{with $scoreErr}}<div class="field-error" id="grading-score-error" role="alert">{{.}}</div>{{end}}
           </div>
           <div>
             <label class="form-label" for="grading-feedback">Umpan balik <span class="fg-secondary">(opsional)</span></label>
-            <textarea class="form-control" id="grading-feedback" name="feedback" rows="4" placeholder="Tulis catatan untuk peserta…">{{.Feedback}}</textarea>
+            <textarea class="form-control" id="grading-feedback" name="feedback" rows="4" placeholder="Tulis catatan untuk peserta…" aria-describedby="grading-feedback-help{{if $feedbackErr}} grading-feedback-error{{end}}"{{if $feedbackErr}} aria-invalid="true"{{end}}>{{.Feedback}}</textarea>
+            <div class="field-help" id="grading-feedback-help">Catatan untuk peserta, maksimal 1000 karakter.</div>
+            {{with $feedbackErr}}<div class="field-error" id="grading-feedback-error" role="alert">{{.}}</div>{{end}}
           </div>
         </div>
+        {{if .Answer.GradedAt}}
+        <p class="grading-note">Perubahan menggantikan nilai sebelumnya. Waktu penilaian pertama tetap tercatat.</p>
+        {{else}}
         <p class="grading-note">Nilai percobaan dihitung otomatis dari rata-rata skor soal.</p>
+        {{end}}
         <div class="grading-actions">
-          {{if .NextHref}}<a class="btn btn-outline theme-primary" href="{{.NextHref}}">Lewati</a>{{end}}
+          {{if .NextHref}}<a class="btn btn-outline theme-primary" href="{{.NextHref}}">{{if .Answer.GradedAt}}Berikutnya{{else}}Lewati{{end}}</a>{{end}}
           <button type="submit" class="btn btn-solid theme-primary">
             <svg width="18" height="18" aria-hidden="true"><use href="#i-check"></use></svg>
-            Simpan nilai
+            {{if .Answer.GradedAt}}Simpan perubahan{{else}}Simpan nilai{{end}}
           </button>
         </div>
       </form>
@@ -288,8 +333,8 @@
         <span class="empty-icon">
           <svg width="26" height="26" aria-hidden="true"><use href="#i-grade"></use></svg>
         </span>
-        <h2>Pilih esai untuk dinilai</h2>
-        <p>Pilih salah satu esai di antrean untuk melihat jawaban dan memberi nilai.</p>
+        <h2>{{if $gradedTab}}Pilih esai yang sudah dinilai{{else}}Pilih esai untuk dinilai{{end}}</h2>
+        <p>{{if $gradedTab}}Pilih salah satu esai di riwayat untuk melihat atau memperbarui nilainya.{{else}}Pilih salah satu esai di antrean untuk melihat jawaban dan memberi nilai.{{end}}</p>
       </div>
     </article>
     {{end}}

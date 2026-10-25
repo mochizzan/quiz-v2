@@ -1,22 +1,24 @@
 {{define "content"}}
 <div class="page-stack">
 
+  {{/* Navigation rule (DESIGN §7): back is a quiet link above the header, labelled with its destination. */}}
+  <a class="link-quiet d-inline-flex align-items-center gap-2" href="/student">
+    <svg width="16" height="16" aria-hidden="true"><use href="#i-arrow-left"></use></svg>
+    Kembali ke dasbor
+  </a>
+
   <header class="page-head">
     <div>
       <span class="eyebrow">Akun siswa</span>
       <h1 class="h1">Profil</h1>
       <p class="page-sub">Perbarui nama dan email yang dipakai untuk masuk ke Twisty Quiz.</p>
     </div>
-    <a class="btn btn-outline theme-primary" href="/student">
-      <svg width="17" height="17" aria-hidden="true"><use href="#i-arrow-left"></use></svg>
-      Kembali ke dasbor
-    </a>
   </header>
 
-  <div class="row g-4">
+  <div class="row g-7">
     <div class="col-12 xl:col-8">
 
-      <div class="card p-4 d-flex align-items-center gap-3 mb-4">
+      <div class="card p-7 d-flex align-items-center gap-5 mb-7">
         <span class="app-avatar" aria-hidden="true">{{with .User}}{{.Initials}}{{end}}</span>
         <div class="min-w-0">
           <span class="d-block fw-semibold">{{.Data.FullName}}</span>
@@ -30,7 +32,7 @@
         <div class="form-section">
           <h2 class="form-section-title">Data akun</h2>
           <p class="form-section-sub">Nama lengkap tampil di papan skor dan rekap guru.</p>
-          <div class="row g-3">
+          <div class="row g-5">
             <div class="col-12 md:col-6">
               <label class="form-label" for="profile-name">Nama lengkap <span class="required" aria-hidden="true">*</span></label>
               <input class="form-control" type="text" id="profile-name" name="full_name" value="{{.Data.FullName}}" autocomplete="name" maxlength="80" aria-describedby="profile-name-help" required>
@@ -49,7 +51,7 @@
         <div class="form-section">
           <h2 class="form-section-title">Kelas dan jurusan</h2>
           <p class="form-section-sub">Kelas dan jurusan ditetapkan oleh guru, jadi tidak dapat diubah dari halaman ini.</p>
-          <div class="row g-3">
+          <div class="row g-5">
             <div class="col-12 md:col-6">
               <span class="form-label d-block">Kelas</span>
               <p class="mb-0 fw-semibold">{{with .User}}{{.ClassLabel}}{{end}}</p>
@@ -62,7 +64,6 @@
         </div>
 
         <div class="form-actions">
-          <a class="btn btn-outline theme-primary" href="/student">Batal</a>
           <button type="submit" class="btn btn-solid theme-primary">Simpan perubahan</button>
         </div>
       </form>
@@ -70,7 +71,7 @@
     </div>
 
     <div class="col-12 xl:col-4">
-      <div class="card p-4 d-flex flex-column gap-3">
+      <div class="card p-7 d-flex flex-column gap-5">
         <h2 class="section-title">Keamanan akun</h2>
         <p class="page-sub mb-0">Ganti kata sandi secara berkala dan jangan bagikan ke siapa pun.</p>
         <a class="btn btn-outline theme-primary" href="/change-password">Ganti kata sandi</a>

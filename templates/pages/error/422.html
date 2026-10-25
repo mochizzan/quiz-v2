@@ -1,9 +1,28 @@
-{{define "content"}}{{with .Data}}<div class="text-center">
-  <span class="eyebrow">Error {{.Code}}</span>
-  <p class="display-4 fw-bold mb-2" style="color: var(--bs-primary-base)">{{.Code}}</p>
-  <h1 class="h2 mb-2">{{.Title}}</h1>
-  <p class="page-sub measure mx-auto mb-4">{{.Message}}</p>
-  <div class="d-flex flex-wrap justify-content-center gap-2">
+{{define "content"}}
+{{with .Data}}
+<div class="error-page-container type-422">
+  <div class="error-header">
+    <span class="error-type">Error {{.Code}}</span>
+  </div>
+  
+  <div class="error-content">
+    <div class="error-code-display">{{.Code}}</div>
+    <h1 class="error-title">{{.Title}}</h1>
+    <p class="error-message">{{.Message}}</p>
+    
+    <div class="fixable-section">
+      <h2 class="fixable-title">Cara memperbaikinya:</h2>
+      <ol class="fixable-steps">
+        <li>Pastikan format permintaan sesuai dengan yang diharapkan</li>
+        <li>Periksa ulang parameter yang dikirimkan</li>
+        <li>Coba lagi dengan data yang valid</li>
+      </ol>
+    </div>
+  </div>
+  
+  <div class="error-actions">
     <a class="btn btn-solid theme-primary" href="{{.HomeHref}}">Kembali ke halaman masuk</a>
   </div>
-</div>{{end}}{{end}}
+</div>
+{{end}}
+{{end}}

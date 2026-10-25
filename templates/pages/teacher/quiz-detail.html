@@ -443,15 +443,6 @@
   padding-top: 16px;
   border-top: 1px solid var(--bs-border-subtle);
 }
-.lifecycle-links {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px 16px;
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid var(--bs-border-subtle);
-  font-size: 13px;
-}
 
 /* ---- Empty state refinement --------------------------------------------- */
 .empty-panel {
@@ -519,10 +510,14 @@
     <div class="d-flex flex-wrap align-items-center gap-2">
       <span class="badge {{.State.BadgeClass}}">{{.State.Label}}</span>
       {{if $editable}}
+      {{/* The empty panel below owns the primary until the list has a row, so
+           the same action is never rendered twice with two primaries. */}}
+      {{if .Questions}}
       <a class="btn btn-solid theme-primary" href="{{.AddQuestionHref}}">
         <svg width="18" height="18" aria-hidden="true"><use href="#i-plus"></use></svg>
         Tambah soal
       </a>
+      {{end}}
       {{end}}
       {{if eq .State "open"}}
       <a class="btn btn-outline theme-primary" href="{{.MonitorHref}}">
@@ -616,7 +611,7 @@
                 <svg width="13" height="13" aria-hidden="true"><use href="#i-chev-down"></use></svg>
               </button>
               <span class="tool-sep" aria-hidden="true"></span>
-              <a class="btn btn-sm btn-outline theme-primary" href="{{$q.EditHref}}">Edit</a>
+              <a class="btn btn-sm btn-outline theme-primary" href="{{$q.EditHref}}">Ubah</a>
               <button class="btn btn-sm btn-outline theme-danger" type="submit" form="delete-question-{{$q.ID}}" aria-label="Hapus soal {{$q.Position}}">
                 <svg width="14" height="14" aria-hidden="true"><use href="#i-trash"></use></svg>
               </button>
@@ -628,8 +623,8 @@
 
         {{if $editable}}
         <div class="builder-foot">
-          <p class="field-help mb-0">Seret baris atau gunakan tombol naik/turun, lalu simpan urutan. Pengurutan memerlukan JavaScript.</p>
-          <button class="btn btn-outline theme-primary" type="submit">
+          <p class="field-help mb-0">Seret baris atau gunakan tombol naik/turun. Tombol Simpan urutan muncul setelah urutan berubah. Pengurutan memerlukan JavaScript.</p>
+          <button class="btn btn-outline theme-primary" type="submit" data-save-order hidden>
             <svg width="16" height="16" aria-hidden="true"><use href="#i-check"></use></svg>
             Simpan urutan
           </button>
@@ -653,7 +648,7 @@
 
     <aside class="builder-rail" aria-label="Pengaturan dan akses kuis">
 
-      <section class="card p-4" aria-labelledby="settings-title">
+      <section class="card p-7" aria-labelledby="settings-title">
         <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
           <h2 class="section-title m-0" id="settings-title">Pengaturan</h2>
           {{if not $editable}}<span class="badge bg-2 fg-secondary">Terkunci</span>{{end}}
@@ -702,10 +697,10 @@
           <div class="field-row">
             <label class="form-label" for="setting-review-mode">Tampilan hasil siswa</label>
             <select class="form-control" id="setting-review-mode" name="review_mode">
-              <option value="questions_and_key"{{if eq .Settings.ReviewMode "questions_and_key"}} selected{{end}}>Soal dan kunci jawaban</option>
-              <option value="key_only"{{if eq .Settings.ReviewMode "key_only"}} selected{{end}}>Hanya kunci jawaban</option>
-              <option value="questions_only"{{if eq .Settings.ReviewMode "questions_only"}} selected{{end}}>Hanya soal</option>
-              <option value="answers_only"{{if eq .Settings.ReviewMode "answers_only"}} selected{{end}}>Jawaban siswa tanpa penilaian</option>
+              <option value="questions_no_verdict"{{if eq .Settings.ReviewMode "questions_no_verdict"}} selected{{end}}>Soal dan jawaban siswa</option>
+              <option value="questions_no_answers"{{if eq .Settings.ReviewMode "questions_no_answers"}} selected{{end}}>Hanya soal</option>
+              <option value="correct_only"{{if eq .Settings.ReviewMode "correct_only"}} selected{{end}}>Hanya soal yang benar</option>
+              <option value="questions_with_key"{{if eq .Settings.ReviewMode "questions_with_key"}} selected{{end}}>Soal dan kunci jawaban</option>
             </select>
           </div>
 
@@ -719,7 +714,7 @@
             </span>
           </div>
 
-          <button class="btn btn-solid theme-primary w-100 mt-3" type="submit">
+          <button class="btn btn-outline theme-primary w-100 mt-4" type="submit">
             <svg width="16" height="16" aria-hidden="true"><use href="#i-check"></use></svg>
             Simpan pengaturan
           </button>
@@ -751,7 +746,7 @@
         {{end}}
       </section>
 
-      <section class="card p-4" aria-labelledby="share-title">
+      <section class="card p-7" aria-labelledby="share-title">
         <h2 class="section-title" id="share-title">Bagikan</h2>
 
         {{if eq .Visibility "public"}}
@@ -780,7 +775,7 @@
         <p class="field-help">Kuis privat tidak memakai kode. Bagikan tautan undangan; siswa harus masuk dengan akun yang sesuai.</p>
         {{end}}
 
-        <div class="mt-3">
+        <div class="mt-4">
           <label class="form-label" for="invite-url">Tautan undangan</label>
           <div class="copy-field share-copy">
             <input class="form-control" type="text" id="invite-url" value="{{.InviteURL}}" readonly>
@@ -794,7 +789,7 @@
         </div>
       </section>
 
-      <section class="card p-4" aria-labelledby="lifecycle-title">
+      <section class="card p-7" aria-labelledby="lifecycle-title">
         <h2 class="section-title" id="lifecycle-title">Status kuis</h2>
 
         <ol class="state-meter" aria-label="Posisi dalam siklus kuis: draf, dibuka, ditutup">
@@ -820,7 +815,7 @@
         </p>
 
         {{with .PublishAction}}
-        <form class="mt-3" method="post" action="{{.Href}}" data-confirm="Buka kuis {{$.Data.Quiz.Title}}? Siswa dapat mulai bergabung setelah kuis dibuka.">
+        <form class="mt-4" method="post" action="{{.Href}}" data-confirm="Buka kuis {{$.Data.Quiz.Title}}? Siswa dapat mulai bergabung setelah kuis dibuka.">
           <input type="hidden" name="csrf_token" value="{{$.CSRF}}">
           <button class="btn btn-solid theme-primary w-100" type="submit"{{if not $.Data.CanPublish}} disabled{{if $.Data.PublishBlockedReason}} aria-describedby="publish-blocked"{{end}}{{end}}>
             <svg width="16" height="16" aria-hidden="true"><use href="#i-play"></use></svg>
@@ -852,13 +847,6 @@
             </button>
           </form>
           {{end}}
-        </div>
-
-        <div class="lifecycle-links">
-          {{if ne .State "draft"}}<a class="link-quiet" href="{{.ResultsHref}}">Lihat hasil</a>{{end}}
-          {{if eq .State "open"}}<a class="link-quiet" href="{{.MonitorHref}}">Monitor langsung</a>{{end}}
-          {{if ne .State "draft"}}<a class="link-quiet" href="{{.GradingHref}}">Nilai esai</a>{{end}}
-          {{if $editable}}<a class="link-quiet" href="{{.EditHref}}">Ubah data kuis</a>{{end}}
         </div>
       </section>
 

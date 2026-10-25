@@ -207,7 +207,7 @@ func seedBeaconHTTP(t *testing.T, db *store.DB) beaconHTTPWorld {
 			(owner_account_id, title, visibility, state, code, invite_token,
 			 allow_retake, max_attempts, show_score, review_mode, published_at, closed_at)
 		VALUES (?, 'Kuis Beacon HTTP', 'public', 'open', '654321', 'beacon-http-invite',
-			0, 1, 1, 'questions_only', UTC_TIMESTAMP(), NULL)`, teacherID)
+			0, 1, 1, 'questions_no_answers', UTC_TIMESTAMP(), NULL)`, teacherID)
 	if err != nil {
 		t.Fatalf("seed quiz: %v", err)
 	}

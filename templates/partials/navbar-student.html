@@ -6,20 +6,21 @@
   <ul class="nav app-nav-links d-none lg:d-flex">
     <li class="nav-item"><a class="nav-link{{if eq .Active "dasbor"}} active{{end}}" href="/student"{{if eq .Active "dasbor"}} aria-current="page"{{end}}><svg width="16" height="16" aria-hidden="true"><use href="#i-dashboard"></use></svg>Dasbor</a></li>
     <li class="nav-item"><a class="nav-link{{if eq .Active "riwayat"}} active{{end}}" href="/student/history"{{if eq .Active "riwayat"}} aria-current="page"{{end}}><svg width="16" height="16" aria-hidden="true"><use href="#i-history"></use></svg>Riwayat</a></li>
-    <li class="nav-item"><a class="nav-link{{if eq .Active "profil"}} active{{end}}" href="/profile"{{if eq .Active "profil"}} aria-current="page"{{end}}><svg width="16" height="16" aria-hidden="true"><use href="#i-person"></use></svg>Profil</a></li>
   </ul>
   <div class="app-nav-actions">
-    <a class="btn btn-outline theme-primary d-none md:d-inline-flex" href="/join"><svg width="17" height="17" aria-hidden="true"><use href="#i-bolt"></use></svg>Gabung kuis</a>
+    <a class="btn btn-solid theme-primary d-none md:d-inline-flex" href="/join"><svg width="17" height="17" aria-hidden="true"><use href="#i-bolt"></use></svg>Gabung kuis</a>
     {{with .User}}
-    <div class="app-profile">
+    <a class="app-profile" href="/profile"{{if eq $.Active "profil"}} aria-current="page"{{end}} aria-label="Profil akun">
       <span class="app-avatar" aria-hidden="true">{{.Initials}}</span>
+      <span class="app-profile-label">Profil</span>
       <span class="app-profile-meta">
         <span class="app-profile-name">{{.FullName}}</span>
         <span class="app-profile-sub">{{.ClassLabel}}</span>
       </span>
-    </div>
+      <svg class="app-profile-chevron" width="14" height="14" aria-hidden="true"><use href="#i-chev-right"></use></svg>
+    </a>
     {{end}}
-    <form method="post" action="/logout" class="d-inline-flex">
+    <form method="post" action="/logout" class="d-none md:d-inline-flex">
       <input type="hidden" name="csrf_token" value="{{.CSRF}}">
       <button type="submit" class="btn app-icon-btn d-inline-flex" aria-label="Keluar" title="Keluar"><svg width="18" height="18" aria-hidden="true"><use href="#i-signout"></use></svg></button>
     </form>

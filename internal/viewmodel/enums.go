@@ -195,42 +195,79 @@ func (a AttemptState) Label() string {
 type ReviewMode string
 
 const (
-	ReviewQuestionsAndKey ReviewMode = "questions_and_key"
-	ReviewKeyOnly         ReviewMode = "key_only"
-	ReviewQuestionsOnly   ReviewMode = "questions_only"
-	ReviewAnswersOnly     ReviewMode = "answers_only"
+	ReviewQuestionsNoVerdict ReviewMode = "questions_no_verdict"
+	ReviewQuestionsNoAnswers ReviewMode = "questions_no_answers"
+	ReviewCorrectOnly        ReviewMode = "correct_only"
+	ReviewQuestionsWithKey   ReviewMode = "questions_with_key"
 )
 
 // Label returns the Indonesian display label.
 func (m ReviewMode) Label() string {
 	switch m {
-	case ReviewQuestionsAndKey:
-		return "Soal dan kunci jawaban"
-	case ReviewKeyOnly:
-		return "Hanya kunci jawaban"
-	case ReviewQuestionsOnly:
+	case ReviewQuestionsNoVerdict:
+		return "Soal dan jawaban siswa"
+	case ReviewQuestionsNoAnswers:
 		return "Hanya soal"
-	case ReviewAnswersOnly:
-		return "Jawaban siswa tanpa penilaian"
+	case ReviewCorrectOnly:
+		return "Hanya soal yang benar"
+	case ReviewQuestionsWithKey:
+		return "Soal dan kunci jawaban"
 	default:
 		return labelUnknown
 	}
 }
 
-// ShowsQuestions reports whether question bodies are visible in this mode.
-func (m ReviewMode) ShowsQuestions() bool { return m != ReviewKeyOnly }
-
-// ShowsKey reports whether the correct answer is visible in this mode.
-func (m ReviewMode) ShowsKey() bool {
-	return m == ReviewQuestionsAndKey || m == ReviewKeyOnly
+// Valid reports whether the value is one of the four closed review modes. The
+// authoring validation and the publish re-check call this predicate so the set
+// has one definition.
+func (m ReviewMode) Valid() bool {
+	switch m {
+	case ReviewQuestionsNoVerdict, ReviewQuestionsNoAnswers,
+		ReviewCorrectOnly, ReviewQuestionsWithKey:
+		return true
+	default:
+		return false
+	}
 }
 
-// ShowsVerdict reports whether correct/incorrect marks are visible.
-// ATT-152/R-18: the verdict (and its colour) appears only in
-// questions_and_key and questions_only; key_only and answers_only hide it.
-func (m ReviewMode) ShowsVerdict() bool {
-	return m == ReviewQuestionsAndKey || m == ReviewQuestionsOnly
+// ShowsQuestion reports whether question bodies and images are visible. All
+// four modes show the question; the predicate exists so a template states the
+// capability it renders instead of assuming it.
+func (m ReviewMode) ShowsQuestion() bool { return m.Valid() }
+
+// ShowsStudentAnswer reports whether the participant's own answer is visible:
+// every mode except questions_no_answers.
+func (m ReviewMode) ShowsStudentAnswer() bool {
+	switch m {
+	case ReviewQuestionsNoVerdict, ReviewCorrectOnly, ReviewQuestionsWithKey:
+		return true
+	default:
+		return false
+	}
 }
+
+// ShowsKey reports whether the correct answer is visible. Only the full record
+// shows the key (ATT-152/R-18).
+func (m ReviewMode) ShowsKey() bool { return m == ReviewQuestionsWithKey }
+
+// ShowsVerdict reports whether correct/incorrect marks (and with them the
+// answer box's colour wash) are visible. Only the full record shows a verdict;
+// the old questions_only value claimed one, which leaked right/wrong to a
+// screen the teacher had configured to hide it (ATT-152/R-18).
+func (m ReviewMode) ShowsVerdict() bool { return m == ReviewQuestionsWithKey }
+
+// ShowsEssayFeedback reports whether essay feedback and the essay score appear.
+func (m ReviewMode) ShowsEssayFeedback() bool { return m == ReviewQuestionsWithKey }
+
+// ShowsUnansweredCount reports whether the screen names the unanswered
+// positions. Modes that hide the verdict cannot explain a position list.
+func (m ReviewMode) ShowsUnansweredCount() bool {
+	return m == ReviewQuestionsNoVerdict || m == ReviewQuestionsWithKey
+}
+
+// OnlyCorrect reports whether the screen lists just the correctly answered
+// questions (essays excluded, positions preserved).
+func (m ReviewMode) OnlyCorrect() bool { return m == ReviewCorrectOnly }
 
 // EssayState is the grading state of one essay answer.
 type EssayState string
@@ -346,7 +383,7 @@ var (
 	AllQuestionTypes      = []QuestionType{QuestionSingle, QuestionMultiple, QuestionEssay}
 	AllParticipationState = []ParticipationState{ParticipationRegistered, ParticipationInProgress, ParticipationCompleted}
 	AllAttemptStates      = []AttemptState{AttemptInProgress, AttemptCompleted}
-	AllReviewModes        = []ReviewMode{ReviewQuestionsAndKey, ReviewKeyOnly, ReviewQuestionsOnly, ReviewAnswersOnly}
+	AllReviewModes        = []ReviewMode{ReviewQuestionsNoVerdict, ReviewQuestionsNoAnswers, ReviewCorrectOnly, ReviewQuestionsWithKey}
 	AllEssayStates        = []EssayState{EssayUngraded, EssayGraded}
 	AllJoinErrors         = []JoinError{JoinUnknownCode, JoinNotOpen, JoinWrongAudience, JoinAlreadyRegistered, JoinAnonymousNotAllowed}
 	AllSortOrders         = []SortOrder{SortNewest, SortOldest, SortNameAsc, SortNameDesc}

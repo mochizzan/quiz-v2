@@ -73,11 +73,34 @@ func registerPage(r PageRoute) {
 	pageRoutes = append(pageRoutes, r)
 }
 
-// RegisteredPages returns a defensive copy of the registry.
+// RegisteredPages returns a defensive copy of the registry, with each route's
+// render template resolved. Copying keeps the package-global registry
+// immutable while the resolved view is what the server and tests consume.
 func RegisteredPages() []PageRoute {
 	pages := make([]PageRoute, len(pageRoutes))
 	copy(pages, pageRoutes)
+	resolveTemplates(pages)
 	return pages
+}
+
+// resolveTemplates fills in Template for an ActForm POST that did not declare
+// one. A GET page names its template once; the POST that re-renders that same
+// page on a 422 (finish → s.render(route.Template, …)) reuses it, so the path
+// string cannot drift between the two. A POST whose form lives on a different
+// path than any GET (POST /attempt/:id/answer renders GET /attempt/:id) keeps
+// declaring its own Template explicitly.
+func resolveTemplates(routes []PageRoute) {
+	getTemplate := make(map[string]string, len(routes))
+	for _, route := range routes {
+		if route.Method == fiber.MethodGet && route.Template != "" {
+			getTemplate[route.Path] = route.Template
+		}
+	}
+	for i := range routes {
+		if routes[i].Template == "" && routes[i].ActForm != nil {
+			routes[i].Template = getTemplate[routes[i].Path]
+		}
+	}
 }
 
 // commandDeadline is OPS-100's request budget for a mutating command. A

@@ -26,9 +26,10 @@ var (
 	// ErrNotSubmitted means a result was requested for an unsubmitted attempt
 	// (ATT-151).
 	ErrNotSubmitted = errors.New("attempts: attempt not submitted")
-	// ErrAlreadyGraded means the essay answer already carries a score; grading
-	// is first-write-wins (ATT-225, INV-07).
-	ErrAlreadyGraded = errors.New("attempts: already graded")
+	// ErrGradeConflict means the essay changed between rendering the form and
+	// submitting it; the edit is rejected instead of silently overwriting
+	// (grading-history spec §4).
+	ErrGradeConflict = errors.New("attempts: grade changed")
 )
 
 // The closed flash keys this domain introduces (AT-37). Every key is
@@ -40,7 +41,7 @@ const (
 	FlashNoQuestions   = "no_questions"
 	FlashAnswerLocked  = "answer_locked"
 	FlashNotSubmitted  = "not_submitted"
-	FlashAlreadyGraded = "already_graded"
+	FlashGradeConflict = "grade_conflict"
 )
 
 // StartFlashKey maps a start error to the flash key PAR must redirect with

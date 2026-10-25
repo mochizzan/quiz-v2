@@ -207,10 +207,7 @@ func checkSettings(q PublishQuiz) (string, error) {
 	if !q.AllowRetake && q.MaxAttempts != 1 {
 		return FlashErrInvalidSettings, nil
 	}
-	switch viewmodel.ReviewMode(q.ReviewMode) {
-	case viewmodel.ReviewQuestionsAndKey, viewmodel.ReviewKeyOnly,
-		viewmodel.ReviewQuestionsOnly, viewmodel.ReviewAnswersOnly:
-	default:
+	if !viewmodel.ReviewMode(q.ReviewMode).Valid() {
 		return FlashErrInvalidSettings, nil
 	}
 

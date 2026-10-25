@@ -45,10 +45,12 @@ type StartResult struct {
 func Start(ctx context.Context, tx *sql.Tx, in StartInput) (StartResult, error) {
 	// (2) Lock the registration row for update. A row that is absent,
 	// soft-deleted, or pointed at another quiz rolls back with 404 (ATT-104
-	// step 2).
+	// step 2). Exactly one participant column is set (chk_reg_participant), so
+	// both are read as nullable and the ownership check below branches on
+	// which one is present.
 	var (
-		regStudentID int64
-		regAnonID    int64
+		regStudentID sql.NullInt64
+		regAnonID    sql.NullInt64
 		regQuizID    int64
 	)
 	err := tx.QueryRowContext(ctx, `
@@ -72,12 +74,12 @@ func Start(ctx context.Context, tx *sql.Tx, in StartInput) (StartResult, error) 
 	// registration's participant. registrations stores exactly one participant
 	// column, so exactly one input id must match.
 	switch {
-	case regStudentID > 0:
-		if in.StudentID == 0 || uint32(regStudentID) != in.StudentID {
+	case regStudentID.Valid:
+		if in.StudentID == 0 || uint32(regStudentID.Int64) != in.StudentID {
 			return StartResult{}, ErrNotFound
 		}
-	case regAnonID > 0:
-		if in.AnonymousParticipantID == 0 || uint32(regAnonID) != in.AnonymousParticipantID {
+	case regAnonID.Valid:
+		if in.AnonymousParticipantID == 0 || uint32(regAnonID.Int64) != in.AnonymousParticipantID {
 			return StartResult{}, ErrNotFound
 		}
 	default:

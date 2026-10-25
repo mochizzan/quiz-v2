@@ -144,6 +144,9 @@ func init() {
 		Method: "POST",
 		Path:   "/teacher/majors/:id",
 		Auth:   ClassTeacher,
+		// The rename form lives on the majors list (GET /teacher/majors), so a
+		// rejected rename re-renders that page rather than a path of its own.
+		Template: "pages/teacher/majors.html",
 		ActForm: func(x *Ctx) (viewmodel.PageData, Redirect, error) {
 			if err := catalogueRate(x); err != nil {
 				return viewmodel.PageData{}, Redirect{}, err

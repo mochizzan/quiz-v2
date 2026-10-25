@@ -3,6 +3,7 @@ package migrate
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"os"
 	"strings"
 	"sync"
@@ -123,9 +124,9 @@ func liveLedgerNames(t *testing.T, db *store.DB) []string {
 	return names
 }
 
-// TestApplyTwiceOnEmptyDatabase is schema verification A-01: the seven files
+// TestApplyTwiceOnEmptyDatabase is schema verification A-01: the nine files
 // run against an empty database twice, the second run changes nothing, and
-// the ledger afterwards holds exactly seven live rows with unique names.
+// the ledger afterwards holds exactly nine live rows with unique names.
 func TestApplyTwiceOnEmptyDatabase(t *testing.T) {
 	db := testDB(t)
 	emptyLedger(t, db)
@@ -136,8 +137,8 @@ func TestApplyTwiceOnEmptyDatabase(t *testing.T) {
 	if err != nil {
 		t.Fatalf("first apply: %v", err)
 	}
-	if len(first) != 7 {
-		t.Fatalf("first apply = %d migrations, want 7: %v", len(first), first)
+	if len(first) != 9 {
+		t.Fatalf("first apply = %d migrations, want 9: %v", len(first), first)
 	}
 
 	second, err := Apply(ctx, db)
@@ -149,8 +150,8 @@ func TestApplyTwiceOnEmptyDatabase(t *testing.T) {
 	}
 
 	names := liveLedgerNames(t, db)
-	if len(names) != 7 {
-		t.Fatalf("ledger holds %d live rows, want 7: %v", len(names), names)
+	if len(names) != 9 {
+		t.Fatalf("ledger holds %d live rows, want 9: %v", len(names), names)
 	}
 	seen := map[string]bool{}
 	for _, name := range names {
@@ -177,7 +178,7 @@ func TestBrokenFileLeavesNoLedgerRow(t *testing.T) {
 	if err != nil {
 		t.Fatalf("embeddedMigrations: %v", err)
 	}
-	// The broken file rides last so the seven good ones really do apply.
+	// The broken file rides last so the nine good ones really do apply.
 	files = append(files, broken)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
@@ -191,8 +192,8 @@ func TestBrokenFileLeavesNoLedgerRow(t *testing.T) {
 	if err == nil {
 		t.Fatal("applyAll succeeded on a broken file, want an error")
 	}
-	if len(applied) != 7 {
-		t.Fatalf("applied %d before the failure, want the 7 good files: %v", len(applied), applied)
+	if len(applied) != 9 {
+		t.Fatalf("applied %d before the failure, want the 9 good files: %v", len(applied), applied)
 	}
 
 	for _, name := range liveLedgerNames(t, db) {
@@ -200,14 +201,199 @@ func TestBrokenFileLeavesNoLedgerRow(t *testing.T) {
 			t.Errorf("ledger contains %q after its run failed", name)
 		}
 	}
-	if got := len(liveLedgerNames(t, db)); got != 7 {
-		t.Fatalf("ledger holds %d live rows after the failure, want 7", got)
+	if got := len(liveLedgerNames(t, db)); got != 9 {
+		t.Fatalf("ledger holds %d live rows after the failure, want 9", got)
 	}
 
 	// Recovery is fix-forward (§9.6): removing the broken file and re-running
 	// finishes the set with no ledger surgery.
-	if _, err := applyAll(ctx, conn, files[:7]); err != nil {
+	if _, err := applyAll(ctx, conn, files[:9]); err != nil {
 		t.Fatalf("re-run after the failure: %v", err)
+	}
+}
+
+// TestReviewModeSchema pins 0008's post-conditions on a migrated database: the
+// column default is the least-revealing mode, the four new values are accepted,
+// and every retired value is rejected by chk_quizzes_review_mode afterwards.
+// The old → new data mapping is a one-way UPDATE; replaying it in place would
+// mean dropping the live constraint, so the mapping itself is verified against
+// a scratch database instead of the shared test one.
+func TestReviewModeSchema(t *testing.T) {
+	db := testDB(t)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	if _, err := Apply(ctx, db); err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+
+	var def string
+	if err := db.QueryRowContext(ctx, `
+		SELECT COLUMN_DEFAULT FROM information_schema.COLUMNS
+		WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'quizzes' AND COLUMN_NAME = 'review_mode'`).
+		Scan(&def); err != nil {
+		t.Fatalf("read column default: %v", err)
+	}
+	// MariaDB 12.3 reports a string default quoted; the value is the same.
+	if def = strings.Trim(def, "'"); def != "questions_no_answers" {
+		t.Fatalf("review_mode default = %q, want questions_no_answers", def)
+	}
+
+	res, err := db.ExecContext(ctx, `
+		INSERT INTO accounts (full_name, email, password_hash, role, status, approved_at)
+		VALUES ('Guru Mode', 'mode@migrate.test', 'not-a-real-hash', 'teacher', 'active', UTC_TIMESTAMP())`)
+	if err != nil {
+		t.Fatalf("seed owner account: %v", err)
+	}
+	ownerID, err := res.LastInsertId()
+	if err != nil {
+		t.Fatalf("owner id: %v", err)
+	}
+	t.Cleanup(func() {
+		_, _ = db.ExecContext(context.Background(), "DELETE FROM quizzes WHERE owner_account_id = ?", ownerID)
+		_, _ = db.ExecContext(context.Background(), "DELETE FROM accounts WHERE id = ?", ownerID)
+	})
+
+	seed := func(title string, n int, mode string) error {
+		_, err := db.ExecContext(ctx, `
+			INSERT INTO quizzes (owner_account_id, title, invite_token, visibility, code, review_mode)
+			VALUES (?, ?, ?, 'public', ?, ?)`,
+			ownerID, title, fmt.Sprintf("mode-%d", n), fmt.Sprintf("91%04d", n), mode)
+		return err
+	}
+
+	for i, mode := range []string{
+		"questions_no_verdict", "questions_no_answers", "correct_only", "questions_with_key",
+	} {
+		if err := seed("mode "+mode, i+1, mode); err != nil {
+			t.Errorf("new mode %q rejected: %v", mode, err)
+		}
+	}
+	for i, mode := range []string{
+		"questions_and_key", "answers_only", "questions_only", "key_only",
+	} {
+		err := seed("old "+mode, i+11, mode)
+		if err == nil {
+			t.Errorf("retired mode %q is still accepted", mode)
+			continue
+		}
+		if !strings.Contains(err.Error(), "chk_quizzes_review_mode") {
+			t.Errorf("retired mode %q error = %v, want a CHECK violation", mode, err)
+		}
+	}
+}
+
+// TestReviewModeMigrationMapping proves 0008's data step remaps every retired
+// value, leaves rows the new set already contains alone, and fails closed on a
+// value it does not know.
+//
+// The test runs the file's real UPDATE statement — taken from the embedded
+// migration, with only the target table renamed — against a scratch table.
+// Re-running the whole file against the live quizzes table would mean dropping
+// chk_quizzes_review_mode first, and on the bind-mounted dev datadir a second
+// table rebuild of quizzes fails inside InnoDB with errno 194 before the test
+// could restore it. The constraint's post-conditions are pinned separately by
+// TestReviewModeSchema.
+func TestReviewModeMigrationMapping(t *testing.T) {
+	db := testDB(t)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	files, err := embeddedMigrations()
+	if err != nil {
+		t.Fatalf("embeddedMigrations: %v", err)
+	}
+	var target migration
+	for _, file := range files {
+		if strings.HasPrefix(file.name, "0008_") {
+			target = file
+			break
+		}
+	}
+	if target.name == "" {
+		t.Fatal("0008 migration is not embedded")
+	}
+	stmts, err := Statements(target.source)
+	if err != nil {
+		t.Fatalf("statements: %v", err)
+	}
+	var update string
+	for _, stmt := range stmts {
+		if strings.HasPrefix(stmt, "UPDATE quizzes SET review_mode = CASE") {
+			update = strings.Replace(stmt, "UPDATE quizzes ", "UPDATE review_mode_map ", 1)
+			break
+		}
+	}
+	if update == "" {
+		t.Fatalf("0008 has no review_mode mapping UPDATE; statements: %v", stmts)
+	}
+
+	const scratch = "review_mode_map"
+	if _, err := db.ExecContext(ctx, "DROP TABLE IF EXISTS "+scratch); err != nil {
+		t.Fatalf("drop scratch table: %v", err)
+	}
+	if _, err := db.ExecContext(ctx, `
+		CREATE TABLE `+scratch+` (
+			id int unsigned NOT NULL AUTO_INCREMENT,
+			title varchar(50) NOT NULL,
+			review_mode varchar(20) NOT NULL,
+			PRIMARY KEY (id)
+		) ENGINE=InnoDB`); err != nil {
+		t.Fatalf("create scratch table: %v", err)
+	}
+	t.Cleanup(func() {
+		_, _ = db.ExecContext(context.Background(), "DROP TABLE IF EXISTS "+scratch)
+	})
+
+	// Legacy values plus every value the new set already contains, so a replay
+	// that remapped current rows would be caught, plus an unknown value that
+	// must fail closed.
+	rows := []struct{ title, mode, want string }{
+		{"legacy-questions-and-key", "questions_and_key", "questions_with_key"},
+		{"legacy-answers-only", "answers_only", "questions_no_verdict"},
+		{"legacy-questions-only", "questions_only", "questions_no_answers"},
+		{"legacy-key-only", "key_only", "questions_no_answers"},
+		{"current-no-verdict", "questions_no_verdict", "questions_no_verdict"},
+		{"current-no-answers", "questions_no_answers", "questions_no_answers"},
+		{"current-correct-only", "correct_only", "correct_only"},
+		{"current-with-key", "questions_with_key", "questions_with_key"},
+		{"unknown", "mystery_mode", "questions_no_answers"},
+	}
+	for _, row := range rows {
+		if _, err := db.ExecContext(ctx,
+			"INSERT INTO "+scratch+" (title, review_mode) VALUES (?, ?)", row.title, row.mode); err != nil {
+			t.Fatalf("seed %s (%s): %v", row.title, row.mode, err)
+		}
+	}
+
+	// The UPDATE runs once for real and once more as a replay: a second pass
+	// must leave every value where the first pass put it.
+	for pass := 1; pass <= 2; pass++ {
+		if _, err := db.ExecContext(ctx, update); err != nil {
+			t.Fatalf("pass %d mapping UPDATE: %v", pass, err)
+		}
+		got := map[string]string{}
+		read, err := db.QueryContext(ctx, "SELECT title, review_mode FROM "+scratch)
+		if err != nil {
+			t.Fatalf("read mapped rows: %v", err)
+		}
+		for read.Next() {
+			var title, mode string
+			if err := read.Scan(&title, &mode); err != nil {
+				read.Close()
+				t.Fatalf("scan mapped row: %v", err)
+			}
+			got[title] = mode
+		}
+		err = read.Err()
+		read.Close()
+		if err != nil {
+			t.Fatalf("rows: %v", err)
+		}
+		for _, row := range rows {
+			if got[row.title] != row.want {
+				t.Errorf("pass %d: %s mapped to %q, want %q", pass, row.title, got[row.title], row.want)
+			}
+		}
 	}
 }
 

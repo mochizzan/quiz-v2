@@ -408,20 +408,22 @@ ATT-151. **`GET /attempt/:id/result`.**
 | Provenance | `submitted_at`, `graded_at`, `graded_by_account_id` are read, never written |
 | Idempotency | GET |
 
-ATT-152. **Review matrix.** The result page implements R-18 exactly; `show_score = false` is applied after the mode:
+ATT-152. **Review matrix.** The result page implements R-18 exactly; `show_score = false` is applied after the mode and can only hide more:
 
-| Mode | Question body | Student answer | Key | Verdict | Essay score + feedback |
-|---|---|---|---|---|---|
-| `questions_and_key` | yes | yes | yes | yes, with colour | yes, when graded |
-| `key_only` | no | no | objective key list only | no | no; essay rows omitted |
-| `questions_only` | yes | yes | no | yes, with colour | no |
-| `answers_only` | yes | yes | no | no, and no verdict colour | no |
+| Mode | Question | Student answer | Key | Verdict | Essay feedback | Essay score |
+|---|---|---|---|---|---|---|
+| `questions_no_verdict` | yes | yes | no | no | no | no |
+| `questions_no_answers` | yes | no | no | no | no | no |
+| `correct_only` | correct objective rows only, at their original positions | yes, on the surviving rows | no | no | no | no |
+| `questions_with_key` | yes | yes | yes | yes, with colour | yes, when graded | yes, when graded and `show_score` |
 
-ATT-153. **Row derivation.** Position, type label, body, image. The student answer is the selected bodies in `DerivedOptionOrder` joined with ", ", the essay text, or `—`. The key is the correct option bodies in `DerivedOptionOrder` joined with ", "; essays have no key. The verdict is derived from the stored `score`, never recomputed in the view: objective `score = 1` → correct; `score = 0` and answered → incorrect; no content → unanswered; essay `score IS NULL` → ungraded; otherwise graded. For objective rows the verdict is the per-row score (benar = 1, salah = 0); no duplicate numeral is printed. For essays the 0–100 numeral is printed only when graded and `show_score` is true. Feedback is printed only in `questions_and_key`, because it is teacher commentary attached to an answer that the other modes hide.
+`questions_no_answers` is the default for a new quiz: its rows reveal the question body and image, nothing else. `questions_with_key` is the only mode whose rows carry a key, a correct/incorrect verdict (and therefore the answer box's colour wash), or essay feedback and an essay score. `correct_only` drops every essay and every objective row whose stored verdict is not correct, but keeps the original `Position`, so "3, 7 and 12 right" stays readable; a zero-correct attempt shows "Tidak ada soal yang dijawab benar." in the answers section with no action. `questions_no_verdict` shows the question and the student's own answer as a record, with no grading language. The unanswered count is shown only in `questions_no_verdict` and `questions_with_key`. The matrix is implemented once in `buildResultRow` and pinned by `internal/attempts/result_visibility_test.go`, one case per mode.
 
-ATT-154. **Waiting and hidden scores.** A submitted attempt with `final_score IS NULL` shows "Menunggu penilaian" in the score slot and on every ungraded essay row; no percentage is shown and no average exists. With `show_score = false`, the score tile is omitted and every per-row essay numeral is suppressed, while verdicts permitted by the mode remain. A hidden score is never rendered as 0; where a student-facing score cell is structurally required (history), it renders `—` (R-18, INV-17). The teacher recap and results always show the true score.
+ATT-153. **Row derivation.** Position, type label, body, image. The student answer is the selected bodies in `DerivedOptionOrder` joined with ", ", the essay text, or `—`. The key is the correct option bodies in `DerivedOptionOrder` joined with ", "; essays have no key. The verdict is derived from the stored `score`, never recomputed in the view: objective `score = 1` → correct; `score = 0` and answered → incorrect; no content → unanswered; essay `score IS NULL` → ungraded; otherwise graded. For objective rows the verdict is the per-row score (benar = 1, salah = 0); no duplicate numeral is printed. For essays the 0–100 numeral is printed only when the mode shows essay feedback, the essay is graded, and `show_score` is true. Feedback is printed only in `questions_with_key`, because it is teacher commentary attached to an answer that the other modes hide.
 
-ATT-155. **Result chrome and actions.** Header: quiz title, attempt number label, submitted time in WIB, focus-loss count if greater than zero ("Tercatat N kali meninggalkan layar kuis."), mode label, and the score tile when permitted. Actions: `Kembali ke kuis` always; `Riwayat kuis` only for an authenticated student (anonymous participants have no history); `Tinjau jawaban` is omitted because this page is the review (`ReviewHref` is empty); `Coba lagi` is a POST form to PAR's start route, rendered only when the quiz is open, `allow_retake` is true, and ATT-102 leaves a remaining attempt. The button is a convenience; ATT-101 re-checks every condition. No duration, countdown, pass mark, or class average appears.
+ATT-154. **Waiting and hidden scores.** A submitted attempt with `final_score IS NULL` shows "Menunggu penilaian" in the score slot; an ungraded essay row carries the badge "Menunggu nilai" only in `questions_with_key`, the only mode that shows essay grading state. No percentage is shown and no average exists. With `show_score = false`, the score tile is omitted and every per-row essay numeral is suppressed, while the verdict that `questions_with_key` permits remains. A hidden score is never rendered as 0; where a student-facing score cell is structurally required (history), it renders `—` (R-18, INV-17). The teacher recap and results always show the true score.
+
+ATT-155. **Result chrome and actions.** The attempt top bar carries the attempt label, quiz title, student name and class, and — for an authenticated student only — one quiet back link `Kembali ke riwayat` with `arrow-left` to the per-quiz history page. The summary card carries the score tile when permitted (or the waiting state), the submitted time in WIB, attempts used, question count, the unanswered count when the mode names it, and the focus-loss sentence when the count is greater than zero. The answers section is headed `Telaah jawaban`, or `Soal yang dijawab benar` for `correct_only`, and names the mode underneath (`Tampilan hasil: <label>`). Actions: the top bar has only the back link; anonymous participants get none because they have no history surface, and the result page does not substitute a quiz-page link. For an authenticated student a closed quiz is 404 at the quiz page (PAR-088), so the top bar cannot fall back to it; the history link is the only route back. The footer carries only `Coba lagi`, a primary-styled link to the quiz page, rendered when the quiz is open, `allow_retake` is true, and ATT-102 leaves a remaining attempt; the footer is omitted entirely when that action is absent. `Tinjau jawaban` is omitted because this page is the review (`ReviewHref` no longer exists), and `Riwayat kuis` is omitted because it duplicated the back link. The template must not render an anchor with an empty `href`. `Coba lagi` is a convenience; ATT-101 re-checks every condition. No duration, countdown, pass mark, or class average appears.
 
 ### 5.7 Attempt beacons
 
@@ -490,7 +492,7 @@ ATT-171. **`GET /teacher/quizzes/:id/results`.**
 | Input | `state`, `class`, `q`, `page` |
 | Transaction | one read-only transaction for rows, counts, and the average |
 | Effects | none |
-| Postconditions | one row per submitted live attempt; in-progress attempts are not rows (ATT-176) |
+| Postconditions | one row per submitted live attempt; in-progress attempts are not rows (ATT-176). The header carries one back link, `Kembali ke detail kuis`, and one secondary action, `Nilai esai kuis ini`, scoped to this quiz as `/teacher/grading?quiz={id}` |
 | Errors | 404; invalid query values fall back to defaults, never 422 (R-21) |
 | Redirect | none |
 | Provenance | reads `submitted_at`, `final_score`, focus counts |
@@ -509,7 +511,7 @@ average = tenths / 10                              // percent, rendered with a c
 
 Nil when `n = 0`, rendered `—`. Examples: 7250 units over one attempt → 72,5%; 7250 over two → 36,3%. The average is not the mean of rounded per-row percentages and is not affected by the active tab or search.
 
-ATT-175. **Empty states.** No submitted attempts at all: title "Belum ada percobaan.", body "Percobaan siswa akan muncul di sini setelah mereka mengirim jawaban.", action "Buka detail kuis". Filters or search active with no match: title "Tidak ada percobaan yang cocok.", body "Coba kata kunci lain atau tampilkan semua percobaan.", action "Tampilkan semua" linking to the unfiltered page. The two states are distinct and are never shown together.
+ATT-175. **Empty states.** No submitted attempts at all: title "Belum ada percobaan.", body "Percobaan siswa akan muncul di sini setelah mereka mengirim jawaban.", no action — the page's `Kembali ke detail kuis` back link is the only navigation and the empty state must not repeat it. Filters or search active with no match: title "Tidak ada percobaan yang cocok.", body "Coba kata kunci lain atau tampilkan semua percobaan.", action "Tampilkan semua" linking to the unfiltered page. The two states are distinct and are never shown together.
 
 ATT-176. **Rows and order.** Flat list, one row per submitted attempt: student name, class label, attempt number, submitted time in WIB, score, focus count, and `Rekap` link to `/teacher/recap/{attemptID}`. Order: `submitted_at` descending, then attempt id ascending. There is no group header and no clustering by student; "grouped by student" in the frontend contract is satisfied by the repeated student column, not by a second sort key. In-progress attempts are excluded because a results row has a submission time; the monitor is the live view for them. Page size 10; `page` clamps to 1..pages; an empty result is page 1.
 
@@ -529,7 +531,7 @@ ATT-181. **`GET /teacher/quizzes/:id/monitor`.**
 | Input | none |
 | Transaction | one read-only transaction for rows, progress, and the generated timestamp |
 | Effects | none |
-| Postconditions | one row per live registration, including participants who have not started |
+| Postconditions | one row per live registration, including participants who have not started. The page carries one back link, `Kembali ke detail kuis`, and no sibling results or grading action (DESIGN §7) |
 | Errors | 404 for foreign/unknown; 500 only for store failure |
 | Redirect | none; not-on-air is a state, not an error |
 | Provenance | `generated_at` = server now in UTC; rows read only |
@@ -553,9 +555,9 @@ ATT-183. **Order.** In-progress rows first, then completed, then registered; wit
 
 ATT-184. **Progress rail.** `registered` = row count; `in_progress` and `completed` = row state counts; `answered` = sum of row `answered`; `total` = `registered × question count`. Percent = `floor(answered × 100 / total)`, clamped, 0 when total is 0. The rail is derived from the same rows, so it cannot disagree with the table.
 
-ATT-185. **Columns.** Registration identity (name, initials, class), state, answered/total, focus count, last seen, and the attempt link when an attempt exists. There is **no score column, no start-time column, and no current-question column**: score is not part of the SSE participant payload, a start time would be a second timestamp with no monitor meaning, and no current-question column exists (R-25). The student's name is not clickable to a recap; the row links to the recap only through the attempt action.
+ATT-185. **Columns.** Registration identity (name, initials, class), state, answered/total, focus count, last seen, and the attempt link when an attempt exists. **Product decision 2026-10-25:** the monitor also keeps the `Skor` (final score) and `Mulai (WIB)` (attempt start) columns; both are page-only and are never carried by the SSE payload (ATT-198). Because the live event cannot refresh them, the client reloads the page when a row gains an attempt, changes state, or a late essay grade changes the score. No current-question column exists (R-25). The student's name is not clickable to a recap; the row links to the recap only through the attempt action.
 
-ATT-186. **Empty states.** Zero registrations on an open quiz: "Belum ada peserta" / "Peserta yang bergabung akan muncul di sini secara langsung." with "Kembali ke kuis". Owned draft/closed: "Kuis tidak sedang berlangsung" / "Monitor hanya tersedia selama kuis dibuka. Setelah ditutup, gunakan halaman hasil untuk melihat rekap." with "Kembali ke kuis" and a results link. A `<noscript>` meta refresh every 15 seconds is the no-JS fallback; with JS the page uses ATT-191.
+ATT-186. **Empty states.** Zero registrations on an open quiz: "Belum ada peserta" / "Peserta yang bergabung akan muncul di sini secara langsung.", with no action — the quiet back link at the top of the page is the only navigation. Owned draft/closed: "Kuis tidak sedang berlangsung" / "Monitor hanya tersedia selama kuis dibuka. Setelah ditutup, gunakan halaman hasil untuk melihat rekap.", with no action. A `<noscript>` meta refresh every 15 seconds is the no-JS fallback; with JS the page uses ATT-191.
 
 ATT-187. **One builder.** The monitor page and the SSE snapshot call the same derivation (ATT-182–ATT-184). The stream's snapshot is the monitor model minus `StreamHref`; if the two ever disagree, the stream is wrong, not the page.
 
@@ -621,28 +623,28 @@ ATT-201. **`GET /teacher/grading`.**
 | Field | Rule |
 |---|---|
 | Actor | an active teacher |
-| Authorization | rows are ungraded essays of quizzes owned by the session account only (INV-26) |
+| Authorization | rows are essays of quizzes owned by the session account only (INV-26), split into the pending tab and the graded history tab |
 | Preconditions | none |
-| Input | `quiz`, `class`, `q`, `page` |
+| Input | `state` (`pending` default, `graded`), `quiz`, `class`, `q`, `page` |
 | Transaction | one read-only transaction for rows, counts, and the today count |
 | Effects | none |
-| Postconditions | one row per ungraded essay of a submitted attempt; never an objective answer |
+| Postconditions | one row per essay of a submitted attempt in the active tab; never an objective answer. The pending tab lists ungraded essays; `state=graded` lists the assessment history with score and graded/edited labels. An invalid `state` is the pending default, never 422. When `quiz` resolves to an owned quiz the page carries one back link, `Kembali ke hasil kuis`, to that quiz's results page, first in reading order; unscoped it carries none, because it is a top-level destination (DESIGN §7) |
 | Errors | invalid filters fall back to defaults; no 404 for an empty queue |
 | Redirect | none |
 | Provenance | reads `submitted_at`, `graded_at`, `graded_by_account_id` |
 | Idempotency | GET |
 
-ATT-202. **Row predicate and search.** An answer is in the queue iff: the question is live and `type = 'essay'`, the answer is live with `score IS NULL` and `graded_at IS NULL`, its attempt is live with `submitted_at IS NOT NULL`, its registration is live, and its quiz is live and owned by the session teacher. `quiz` filters by owned quiz id; `class` uses ATT-172's Roman grade; `q` (trimmed, lowercased, ≤100 runes) matches the student display name, the quiz title, or the question prompt as a substring with escaped wildcards. Filters combine with AND before pagination.
+ATT-202. **Row predicate and search.** Pending: the question is live and `type = 'essay'`, the answer is live with `score IS NULL` and `graded_at IS NULL`, its attempt is live with `submitted_at IS NOT NULL`, its registration is live, and its quiz is live and owned by the session teacher. Graded: the same joins with `score IS NOT NULL AND graded_at IS NOT NULL`. `quiz` filters by owned quiz id; `class` uses ATT-172's Roman grade; `q` (trimmed, lowercased, ≤100 runes) matches the student display name, the quiz title, or the question prompt as a substring with escaped wildcards, and on the graded tab also the stored feedback. Filters combine with AND before pagination and keep the active `state`.
 
-ATT-203. **Counts.** `Pending` = all ungraded essays across owned quizzes, ignoring the queue filters. `GradedToday` = answers with `graded_by_account_id = session teacher` and `graded_at` in the current WIB calendar day, converted to a half-open UTC interval, also ignoring filters. Both are stable while paging and are not tab counts. Objective auto-scores have `graded_by_account_id = NULL` and are therefore never counted as teacher grading.
+ATT-203. **Counts.** `Pending` = all ungraded essays across owned quizzes, ignoring the queue filters. `Graded` = all graded essays across owned quizzes, also ignoring filters. `GradedToday` = answers with `graded_by_account_id = session teacher` and `graded_at` in the current WIB calendar day, converted to a half-open UTC interval, also ignoring filters; because `graded_at` is the first-grade instant and an edit preserves it, re-grading never inflates this count. The three values are stable while paging and are not tab counts. Objective auto-scores have `graded_by_account_id = NULL` and are therefore never counted as teacher grading.
 
-ATT-204. **Order, pagination, empty.** Order: attempt `submitted_at` descending, then answer id ascending. Page size 20 (R-21); `page` clamps to 1..pages. Nothing pending at all: "Tidak ada esai yang menunggu penilaian." / "Esai yang dikirim siswa akan muncul di sini." Filters active with no match: "Tidak ada esai yang cocok dengan filter." / "Coba kata kunci lain atau tampilkan semua esai." with "Tampilkan semua".
+ATT-204. **Order, pagination, empty.** Pending order: attempt `submitted_at` descending, then answer id ascending. Graded order: `attempt_answers.updated_at` descending, then answer id ascending, so the most recently assessed or edited essay leads. Page size 20 (R-21); `page` clamps to 1..pages. Nothing pending at all: "Tidak ada esai yang menunggu penilaian." / "Esai yang dikirim siswa akan muncul di sini." Nothing graded at all: "Belum ada esai yang dinilai." / "Esai yang sudah dinilai akan muncul di sini." Filters active with no match in either tab: "Tidak ada esai yang cocok dengan filter." / "Coba kata kunci lain atau tampilkan semua esai." with "Tampilkan semua" pointing at the active tab.
 
 ATT-205. **Waiting label.** `RelativeShort(now - submitted_at)`; when it returns "baru saja", render "Baru dikirim"; otherwise "Menunggu " + the value ("Menunggu 2 jam", "Menunggu 3 hari"). WIB is used for the day boundary only; the label is a duration, not a clock time.
 
-ATT-206. **Row content.** Student name, class label, quiz title, question excerpt (first 120 runes plus "…" when longer), waiting label, and a link to `/teacher/grading/{answerID}`. There is no score column because the row is by definition ungraded. The row is keyed by answer id.
+ATT-206. **Row content.** Student name, class label, quiz title, question excerpt (first 120 runes plus "…" when longer), and a link to `/teacher/grading/{answerID}` carrying the active tab and filters. Pending rows show the waiting label. Graded rows show a score pill whose tone comes from the whole-percent score and whose numeral is the one-decimal value (`85,5`), plus `Dinilai 24 Okt 2026` and, only when the answer was edited after its first grade, `Diubah 25 Okt 2026`. The row is keyed by answer id.
 
-ATT-207. **No graded tab.** Graded essays are not listed, not counted in `Pending`, and have no filter. A graded answer remains reachable by direct URL for read-only review (ATT-214). The current fixture's `graded` tab and 10-per-page size are replaced by this rule (§12 D3).
+ATT-207. **History tab, not a route.** `state=graded` is the assessment history: graded essays listed, counted in `Graded` but never in `Pending`, with the same filters. The route surface is unchanged. A graded answer is also reachable by direct URL, where it is editable (ATT-214). This supersedes the earlier no-graded-tab rule and D3 (§12); the grading-history spec (`2026-10-25-teacher-grading-history.md`) is authoritative.
 
 ### 5.13 Grade one essay — read
 
@@ -653,20 +655,20 @@ ATT-211. **`GET /teacher/grading/:answerID`.**
 | Actor | the quiz owner teacher |
 | Authorization | foreign answer, foreign quiz, or missing → 404 |
 | Preconditions | live essay answer; its attempt is submitted and live; registration and quiz live. An objective answer or an in-progress attempt is 404 (not a gradable resource) |
-| Input | none |
+| Input | `state`, `quiz`, `class`, `q` (the queue chrome's filters; `page` is not needed for the detail) |
 | Transaction | one read-only transaction for the queue page, the selected detail, and context |
 | Effects | none |
-| Postconditions | the same template as the queue with `Selected` filled; a graded answer renders read-only |
+| Postconditions | the same template as the queue with `Selected` filled; a graded answer renders an enabled, prefilled edit form |
 | Errors | 404 only |
 | Redirect | none |
-| Provenance | reads `graded_at`, `graded_by_account_id`; never writes |
+| Provenance | reads `graded_at`, `graded_by_account_id`, `grading_version`, `updated_at`; never writes |
 | Idempotency | GET |
 
-ATT-212. **Detail content.** Question body and image, the student's essay text, attempt header (student, class, quiz, attempt number, submitted time), current score and feedback when graded, and the essay state (`ungraded`/`graded`). The score value is shown at up to one decimal (`85,5`), never rounded to a whole percent. The queue is rendered with the selected row highlighted; `NextHref` is the next ungraded answer in ATT-204 order, or empty when none.
+ATT-212. **Detail content.** Question body and image, the student's essay text, attempt header (student, class, quiz, attempt number, submitted time), current score and feedback when graded, and the essay state (`ungraded`/`graded`). The score value is shown at up to one decimal (`85,5`), never rounded to a whole percent, and the form field round-trips that same one-decimal string. A graded detail also shows `Dinilai <first grade>` and, when edited, `Diubah <last change>`. The queue is rendered with the selected row highlighted; `NextHref` is the next answer in the active tab's order (pending or graded), or empty when there is no other row. `Action` is the current detail path plus the active query, so the POST returns to the same tab.
 
 ATT-213. **No suggested score.** `Suggested` is always nil. There is no essay auto-grader, no keyword model, and no model-derived number; showing a suggestion would be an invented rule (ATT-004). The current fixture's fixed `suggestedEssayScore` is demo data and must not ship (§12 D10).
 
-ATT-214. **Read-only graded state.** When `score IS NOT NULL`, the page shows the stored score and feedback, disables the form, and shows "Sudah dinilai". There is no edit or re-grade control (R-07). The answer remains visible so a teacher can audit a score they or a colleague entered; it is never re-queued.
+ATT-214. **Editable graded state.** When `score IS NOT NULL`, the page shows the stored score and feedback in an enabled form and keeps the "Sudah dinilai" badge. The owning teacher may change the score or feedback at any time; there is no same-day window and no original-grader restriction, because a quiz has exactly one owner (INV-26). The form carries the rendered `grading_version` as a hidden `version` field; a stale or missing token is a `grade_conflict` (ATT-225), never a silent overwrite. There is no revision log: the row keeps the first-grade instant in `graded_at` and the last change in `updated_at`.
 
 ### 5.14 Grade one essay — write
 
@@ -677,27 +679,27 @@ ATT-221. **`POST /teacher/grading/:answerID`.**
 | Actor | the quiz owner teacher |
 | Authorization | foreign/missing/objective/in-progress → 404 |
 | CSRF | required |
-| Preconditions | live essay answer of a submitted live attempt; `score IS NULL` |
-| Input | `score` (0–100, one decimal, comma or dot) and optional `feedback` |
-| Transaction | lock the attempt for update → lock the answer for update → re-check ungraded → update → recompute final (ATT-223) |
-| Effects | the answer gets a 0–1 score, feedback, `graded_by_account_id`, `graded_at`; `final_score` is recomputed from all slots |
-| Postconditions | the answer leaves the queue; the result page and results row show the score; the student sees it only if `show_score` |
-| Errors | 422 validation; 303 conflict when already graded; 404; 500 |
-| Redirect | 303 to `/teacher/grading?flash=graded` (key `graded`, "Nilai esai tersimpan.") |
-| Provenance | `graded_by_account_id = session teacher`, `graded_at = now`; feedback is stored verbatim |
-| Idempotency | first-write-wins: a retry is a conflict, not a silent success (ATT-227) |
+| Preconditions | live essay answer of a submitted live attempt; first grade (`score IS NULL`) or an existing grade to edit |
+| Input | `score` (0–100, one decimal, comma or dot), optional `feedback`, and the hidden `version` token |
+| Transaction | lock the attempt for update → lock the answer for update → check the version → guarded update → recompute final (ATT-223) |
+| Effects | first grade sets the 0–1 score, feedback, `graded_by_account_id`, `graded_at`, and increments `grading_version`; an edit changes score/feedback/actor and increments `grading_version` but preserves `graded_at`; `final_score` is recomputed from all slots |
+| Postconditions | a first grade leaves the pending queue and enters the history; an edit stays in the history and moves to its front by `updated_at`; the result page, results row, and recap show the new score; the student sees it only if `show_score` |
+| Errors | 422 validation; 303 `grade_conflict` for a stale/missing/malformed version or a lost first-grade race; 404; 500 |
+| Redirect | 303 to `/teacher/grading?state=graded` when the POST carried `state=graded`, otherwise `/teacher/grading`, with flash `graded` ("Nilai esai tersimpan.") |
+| Provenance | `graded_by_account_id = session teacher` on every write; `graded_at = now` on the first grade only and preserved on edits; `grading_version` increments on every write; feedback is stored verbatim |
+| Idempotency | version-guarded: a retry that reuses a consumed version is a conflict, not a silent second write (ATT-227) |
 
 ATT-222. **Validation.** `score` is required: trim, accept one optional decimal separator `,` or `.`, at most one digit after it, numeric value 0–100 inclusive. Normalize the comma to a dot, convert `percent × 100` to 4-dp units (`85,5 → 0.8550`), never store 0–100. Empty → field `score` "Nilai wajib diisi." Out of range or malformed → "Nilai harus antara 0 dan 100." `feedback` is trimmed for emptiness, stored verbatim when non-empty, and must be ≤ 1000 characters → "Umpan balik maksimal 1000 karakter." A failure re-renders the detail with 422, the submitted score string and feedback, and the stored values everywhere else; it writes nothing.
 
-ATT-223. **Transaction.** (1) Lock the attempt row; verify submitted, live, owned, and registration live. (2) Lock the answer row; verify live, essay, and `score IS NULL`. (3) `UPDATE attempt_answers SET score=?, feedback=?, graded_by_account_id=?, graded_at=? WHERE id=? AND score IS NULL`; zero rows affected → conflict. (4) Read all live slots' scores and units in the same transaction and compute ATT-143; if every slot is scored, update `quiz_attempts.final_score`; otherwise leave it NULL. (5) Commit. The attempt lock serializes two essays of the same attempt, so they cannot race the final recompute.
+ATT-223. **Transaction.** (1) Lock the attempt row; verify submitted, live, owned, and registration live. (2) Lock the answer row; verify live, essay, and the score/`graded_at` pair. (3) Parse `version`: a malformed value is a conflict. For a first grade the token must be absent or 0; for an edit it must equal the stored `grading_version`. (4) First grade: `UPDATE attempt_answers SET score=?, feedback=?, graded_by_account_id=?, graded_at=?, grading_version=grading_version+1 WHERE id=? AND score IS NULL`; edit: the same without `graded_at`, guarded by `grading_version=? AND score IS NOT NULL`. Zero rows affected → conflict. (5) Read all live slots' scores and units in the same transaction and compute ATT-143; if every slot is scored, update `quiz_attempts.final_score`; otherwise leave it NULL. (6) Commit. The attempt lock serializes two writes to one attempt, and the version guard serializes two edit forms that rendered the same state.
 
-ATT-224. **Final-score effect.** The first grade that completes the last ungraded essay sets `final_score` in the same transaction; there is no separate finalize step and no route that sets it directly. A grade on an attempt whose final is already set is impossible (all slots were scored); if it happens, the recompute still runs and is idempotent. Objective slots already carry 0/1 from submit and are not re-evaluated during grading.
+ATT-224. **Final-score effect.** The first grade that completes the last ungraded essay sets `final_score` in the same transaction; an edit of an already-scored slot also recomputes it in that transaction, so a changed score immediately changes the result. There is no separate finalize step and no route that sets `final_score` directly. The recompute is idempotent and reads every live slot, so two essays of one attempt cannot lose a score. Objective slots already carry 0/1 from submit and are not re-evaluated during grading.
 
-ATT-225. **Conflict copy.** Already graded → rollback, 303 to `/teacher/grading/{answerID}` with error flash `already_graded`: "Esai ini sudah dinilai dan tidak dapat diubah." The page then shows the stored score read-only. There is no override path, no "force" parameter, and no second grader identity change (R-07).
+ATT-225. **Conflict copy.** A stale, missing, or malformed version, or a lost first-grade race → rollback, 303 to `/teacher/grading/{answerID}` with error flash `grade_conflict`: "Nilai sudah diubah di tempat lain." / "Muat ulang halaman untuk melihat nilai terbaru." The page then renders the current stored score in its edit form. There is no override path and no "force" parameter; the teacher reloads and decides again. `already_graded` is retired.
 
-ATT-226. **Grading provenance.** `graded_by_account_id` is the acting teacher (INV-03: a teacher account), `graded_at` is server now UTC. The pair is written once. `chk_answers_grading` is satisfied because score and graded_at are both non-null. `feedback` is optional and may be empty; an empty feedback is stored `NULL`, not `""`, so "no feedback" has one representation.
+ATT-226. **Grading provenance.** `graded_by_account_id` is the acting teacher (INV-03: a teacher account). `graded_at` is server now UTC on the first grade; an edit preserves it, so it remains the first-grade instant. `updated_at` (the row's automatic timestamp) records the last change and drives `Edited` and history ordering. `grading_version` starts at 0 and increments on every grade and re-grade. `chk_answers_grading` is satisfied because score and graded_at are both non-null. `feedback` is optional and may be empty; an empty feedback is stored `NULL`, not `""`, so "no feedback" has one representation.
 
-ATT-227. **First-write-wins and retries.** Two concurrent posts: the attempt lock serializes them; the first commits; the second observes a non-null score and takes the conflict path. A network retry after a lost response therefore shows "already graded" rather than silently succeeding; this is deliberate, because a silent second write could mask a different score from another tab. The queue reflects the first commit only.
+ATT-227. **Version guard and retries.** Two concurrent posts on the same answer serialize on the attempt lock; the first advances `grading_version`, and the second — whether a first grade that lost the race or an edit carrying the old token — takes the `grade_conflict` path without writing. A network retry after a lost response therefore cannot silently overwrite a newer grade; this is deliberate, because the teacher must see the current value before deciding again. The history reflects the committed writes only.
 
 ATT-228. **Score edge cases.** 100 → 1.0000; 0 → 0.0000 (a valid grade, not "missing"); 85,5 → 0.8550; "85.55" → 422 (two decimals); "-1" → 422; "1e2" → 422; " 85 " → 85. An essay scored 0 still counts as graded and can complete the final score. A blank essay is gradeable like any other (R-07).
 
@@ -747,7 +749,7 @@ ATT-245. **List matrix.** One row per list, matching the command rules:
 |---|---|---|---|---|
 | Dashboard | top scores (≤5), recent (≤5), most/least (3 each) | ATT-162–ATT-164 | — | per card (ATT-162–ATT-164) |
 | Results | submitted attempts | state/class/q; submitted desc, id asc | 10 | ATT-175 |
-| Grading queue | ungraded essays | quiz/class/q; submitted desc, answer id asc | 20 | ATT-204 |
+| Grading queue | pending or graded essays | `state`, quiz/class/q; pending submitted desc, graded updated desc | 20 | ATT-204 |
 | Monitor | live registrations | none; state rank, name, registration id | — | ATT-186 |
 | Recap | all slots | derived question order | — | n/a |
 | Attempt nav | all slots | derived question order | — | n/a |
@@ -756,7 +758,7 @@ ATT-246. **Visibility.** A student sees only their own attempt; an anonymous par
 
 ATT-247. **Read-model provenance.** Results rows read `quiz_attempts` + `registrations` + participant identity; grading rows read `attempt_answers` + `questions` + `quiz_attempts`; the monitor reads registrations + the selected attempt + `focus_loss_events`; the recap reads slots + selections + questions/options. No read model copies a stored aggregate that a write does not maintain: `final_score` is the only stored aggregate and ATT-143/ATT-223 maintain it. Counts and averages are computed per request.
 
-ATT-248. **Search fields.** Results searches only the display name. Grading searches display name, quiz title, and question prompt, because a grader looks for any of the three. Neither searches class labels, because class is a structured filter. Search is case-insensitive under `utf8mb4_unicode_ci`; the escaped wildcard rule is shared. A one-character search is allowed; an empty search is no filter.
+ATT-248. **Search fields.** Results searches only the display name. Grading searches display name, quiz title, and question prompt, because a grader looks for any of the three; the graded tab also searches stored feedback, so a teacher can find an earlier comment. Neither searches class labels, because class is a structured filter. Search is case-insensitive under `utf8mb4_unicode_ci`; the escaped wildcard rule is shared. A one-character search is allowed; an empty search is no filter.
 
 ATT-249. **No N+1.** Results and grading load their rows with joins for student, class, quiz title, and question excerpt; the monitor loads all registrations and selected attempts in two queries (rows, focus counts) or one joined query; the recap loads all slots and selections in two queries. A page may not issue one query per row.
 
@@ -774,7 +776,7 @@ ATT-INV-05. An objective score is exactly 0 or 1 and is computed at submit from 
 
 ATT-INV-06. `final_score` is null until every live slot is scored, then equals ATT-143; it is never stored on 0–100 and never manually overridden (INV-15, R-07).
 
-ATT-INV-07. A graded answer is never re-graded; `score IS NULL` is the write guard and a second grade is a state conflict (first-write-wins).
+ATT-INV-07. A graded answer changes only through the owning teacher's version-guarded edit; `grading_version` is the write guard and a stale token is a state conflict. `graded_at` is written once, on the first grade, and never rewritten.
 
 ATT-INV-08. A submitted attempt accepts no answer write, no score re-computation at submit, and no beacon write; only essay grading may change its `final_score` (R-10).
 
@@ -822,11 +824,11 @@ ATT-271. **Deadlock avoidance.** The global order is registration → quiz → a
 
 ATT-272. **Unique keys as backstops.** `uq_attempt_number` catches a start that bypassed the registration lock; `uq_answers_slot` catches a duplicate slot (never written after start); `uq_selection` is satisfied by replace-all because old rows are soft-deleted with a distinct timestamp. A duplicate-key error is retried only where ATT-108 says so; elsewhere it is 500 with rollback, because it signals a bug, not a user conflict.
 
-ATT-273. **Idempotency table.** Start: same attempt id, no new row. Answer: same content, no write; different content, last commit wins. Submit: first write wins, later calls redirect without writes. Beacon progress: same end state. Beacon focus: not idempotent by design. Grade: first write wins, later calls conflict. All GETs are idempotent.
+ATT-273. **Idempotency table.** Start: same attempt id, no new row. Answer: same content, no write; different content, last commit wins. Submit: first write wins, later calls redirect without writes. Beacon progress: same end state. Beacon focus: not idempotent by design. Grade: a first grade is version-guarded from 0; edits are version-guarded from the rendered counter, so a replayed form conflicts instead of overwriting. All GETs are idempotent.
 
 ATT-274. **Answer vs submit.** Both lock the attempt row first. If submit wins, the answer sees `submitted_at` and returns the conflict redirect; if the answer wins, submit's slot locks see the new selection and score it. There is no window in which a submitted attempt has an unscored objective slot, because scoring and `submitted_at` commit together (ATT-144).
 
-ATT-275. **Grade vs grade.** Two teachers cannot grade the same answer concurrently because ownership is single and the attempt lock serializes; even the same teacher in two tabs produces one success and one `already_graded` conflict. The final score is recomputed from the locked slots, so two different essays of one attempt cannot lose a score.
+ATT-275. **Grade vs grade.** Ownership is single, so only the owner can grade, but that teacher may have two tabs or two devices. The attempt lock serializes the writes and `grading_version` decides: one succeeds and the other gets a `grade_conflict` rather than silently overwriting a newer score. The final score is recomputed from the locked slots, so two different essays of one attempt cannot lose a score.
 
 ATT-276. **Beacon vs submit.** A progress update after submit returns 204 without writing (ATT-160); a focus insert after submit also returns 204 without inserting. A beacon that commits just before submit is preserved; submit does not clear focus events.
 
@@ -880,17 +882,17 @@ ATT-290. **Cross-cutting tests.** AT-36 pins determinism, AT-37 pins copy, AT-38
 
 ## 12. Open questions and schema deltas
 
-ATT-291. **Numbering and schema deltas.** The spawn brief called this section §11; contract §7 mandates open questions as §12 and traceability as §11, and this document follows the contract. No schema delta is required: ATT needs no column, table, index, or constraint beyond migrations 0003–0005. `graded_by_account_id = NULL` already means "system-graded", so no auto-graded flag is needed, and no `status`, `started_at`, `last_seen`, `option_order`, `position` on answers, `counted`, `focus_loss_count`, or `points` is assumed (R-25, INV-25).
+ATT-291. **Numbering and schema deltas.** The spawn brief called this section §11; contract §7 mandates open questions as §12 and traceability as §11, and this document follows the contract. The original design needed no schema delta beyond migrations 0003–0005; the grading-history rework added `migrations/0009_grading_version.up.sql` (`attempt_answers.grading_version SMALLINT UNSIGNED NOT NULL DEFAULT 0`). `graded_by_account_id = NULL` already means "system-graded", so no auto-graded flag is needed, and no `status`, `started_at`, `last_seen`, `option_order`, `position` on answers, `counted`, `focus_loss_count`, or `points` is assumed (R-25, INV-25).
 
 ATT-293. **D1 — client autosave (resolved).** The product owner directed event-driven autosave instead of a Save button: an objective answer posts as soon as its selection changes, an essay posts after a pause in typing, and `nav=autosave` is answered `204 No Content` so the question page is not reloaded (ATT-125). There is no timer and no save-status indicator. The POST targets a hidden iframe because `static/js/app.js` may not use fetch/XHR/beacons; a browser without JavaScript still saves through the ordinary prev/next/review POST. R-09 and ATT-018 follow this rule; the old 450 ms polling block is gone. Impact: client and answer transport only; no server rule or schema change.
 
 ATT-294. **D2 — results tabs.** The fixture exposes `in_progress|completed` and includes in-progress rows. Recommendation: implement `waiting|graded`, exclude in-progress from rows, keep the two header metrics (ATT-171–ATT-178). Impact: results page and fixture; monitor remains the live view.
 
-ATT-295. **D3 — grading queue.** The fixture has a `graded` tab and 10 rows per page. Recommendation: ungraded-only, 20 per page, graded answers reachable only by direct read-only URL (ATT-201–ATT-214). Impact: queue template, fixture, and page size.
+ATT-295. **D3 — grading queue (resolved 2026-10-25).** The fixture's `graded` tab returns as the history tab `state=graded`; the default remains the 20-per-page pending tab, and graded answers are editable there and by direct URL. This supersedes the earlier "ungraded-only, read-only direct URL" recommendation; the authoritative contract is `2026-10-25-teacher-grading-history.md`. Impact: queue template, fixture, detail form, and the `grading_version` column.
 
-ATT-296. **D4 — monitor columns and counts.** The fixture shows score and start time and sets a completed row's answered count to the total. Recommendation: drop both columns, use ATT-241 for every state, and show `last_seen` (ATT-182–ATT-185). Impact: monitor template and fixture; SSE cannot keep dropped fields truthful.
+ATT-296. **D4 — monitor columns and counts.** The fixture shows score and start time and sets a completed row's answered count to the total. **Resolved 2026-10-25:** keep both page-only columns (ATT-185) and reload the page on structural, state, and score changes; use ATT-241 for the answered count in every state. Impact: monitor template, live client, and fixture.
 
-ATT-297. **D5 — result review link.** The result template renders `ReviewHref` to the pre-submit review, which redirects back to the result, a loop. Recommendation: `ReviewHref` is empty on the result page and the review route redirects to the result when submitted (ATT-131, ATT-155). Impact: template only.
+ATT-297. **D5 — result review link (resolved 2026-10-25).** The pre-submit review redirects to the result once the attempt is submitted, so a link from the result to the review would loop. The result page is itself the post-submit review: the `Tinjau jawaban` anchor and `AttemptResult.ReviewHref` are removed, and `GET /attempt/:id/review` keeps its 303 to the result when `submitted_at IS NOT NULL` (ATT-131, ATT-146, ATT-155). The template must not render an anchor with an empty `href`. Impact: template and view model only.
 
 ATT-298. **D6 — 422 on answer POST.** The route is registered with an `Action` (PRG only), so it cannot re-render a 422. Recommendation: convert it to a full handler that validates, writes, or re-renders the question page with `FieldErrors` (ATT-122, ATT-126). Impact: route registration and handler; no schema.
 
@@ -944,9 +946,9 @@ AT-12. Grade completes final: grading the essay in AT-11 at 50 → stored `0.500
 
 AT-13. Double submit: two POSTs in parallel → one `submitted_at`, one set of scores, both responses 303 to the result; the second produces no flash and no additional write.
 
-AT-14. Result access: the owner student gets 200; the owner teacher, another student, and an unknown id get 404; an anonymous owner gets 200 and no "Riwayat kuis" link.
+AT-14. Result access: the owner student gets 200; the owner teacher, another student, and an unknown id get 404; an anonymous owner gets 200 with no history link; an authenticated owner's top bar carries one `Kembali ke riwayat` link, and the page contains no `href=""`.
 
-AT-15. Review matrix: `questions_and_key` renders body, answer, key, verdict, and a graded essay's score/feedback; `key_only` renders the objective key list and no essay row; `questions_only` renders body/answer and no key; `answers_only` is identical to `questions_only` with no verdict badge and no verdict colour.
+AT-15. Review matrix: `questions_no_verdict` renders the body and the student's answer with no key, verdict, colour, essay feedback, or essay score; `questions_no_answers` renders the body and image only; `correct_only` renders only the correctly answered objective rows at their original positions and no essay; `questions_with_key` renders the body, answer, key, verdict badge and colour, and a graded essay's score and feedback. `questions_no_answers` is the default for a new quiz.
 
 AT-16. Hidden and waiting scores: `show_score = false` removes the score tile and every essay numeral while keeping permitted verdicts; a hidden score renders `—` where a cell exists and never `0%`; a waiting attempt renders "Menunggu penilaian".
 
@@ -974,13 +976,13 @@ AT-27. SSE diff: a new registration emits `participant.added` with the full row;
 
 AT-28. SSE reconnect: disconnect and reconnect → a fresh `snapshot`, no replay of missed events; sending `Last-Event-ID` changes nothing; a mid-stream registration cancellation produces a fresh `snapshot`.
 
-AT-29. Grading queue: 3 ungraded essays → 3 rows, newest submission first, answer id ascending on ties; page size 20; no graded tab; `Pending` ignores filters; `GradedToday` counts only this teacher's grades in the WIB day; objective answers never appear.
+AT-29. Grading queue: 3 ungraded essays → 3 rows on the pending tab, newest submission first, answer id ascending on ties; page size 20; `state=graded` lists graded essays ordered by `updated_at` descending with a one-decimal score pill and graded/edited labels; `Pending` and `Graded` ignore filters; `GradedToday` counts only this teacher's first grades in the WIB day; re-grading does not inflate it; objective answers never appear.
 
-AT-30. Grade read: an objective answer → 404; an in-progress essay → 404; a graded essay → 200 with the stored score, read-only form, and "Sudah dinilai"; `Suggested` is nil.
+AT-30. Grade read: an objective answer → 404; an in-progress essay → 404; a graded essay → 200 with the stored score, an enabled form prefilled with `85,5`, a hidden `version` token, `Dinilai` (and `Diubah` after an edit), and "Sudah dinilai"; `Suggested` is nil.
 
 AT-31. Grade write: posting `85,5` stores `0.8550`, sets `graded_by_account_id` to the teacher and `graded_at` to now, recomputes the final if it completes the set, and redirects 303 to the queue with `flash=graded`.
 
-AT-32. First write wins: a second POST for the same answer with `90` returns 303 to the detail with `already_graded`, keeps `0.8550`, and leaves `graded_by_account_id` unchanged.
+AT-32. Version guard: a second POST for the same answer with `90` but no version (or a stale version) returns 303 to the detail with `grade_conflict`, keeps the stored score and `graded_by_account_id`, and does not advance `grading_version`; a POST carrying the current version edits the score, preserves `graded_at`, increments the counter, and recomputes the final.
 
 AT-33. Grade validation: blank, `101`, `85.55`, `NaN`, and a 1001-character feedback each return 422, preserve the entered values, and write nothing; `0` is accepted and stored `0.0000`.
 
@@ -990,11 +992,11 @@ AT-35. Recap order: with shuffle on, the recap positions match the student's ren
 
 AT-36. Determinism: with a frozen clock and identical rows, two calls to each list (results, grading, monitor, dashboard) produce byte-identical order and content; no tie is left to the database's default order.
 
-AT-37. Copy: every new key in this document matches exactly, including `answer_locked`, `attempt_limit`, `no_questions`, `not_submitted`, `already_graded`, the field errors, and the two empty-state pairs; no bare TBD remains.
+AT-37. Copy: every new key in this document matches exactly, including `answer_locked`, `attempt_limit`, `no_questions`, `not_submitted`, `grade_conflict`, the field errors, and the empty-state pairs; no bare TBD remains.
 
-AT-38. No schema delta: `migrations/0003`–`0005` are unchanged; a grep of ATT rules finds no column outside those files; `graded_by_account_id = NULL` is the only system-grader marker.
+AT-38. Schema: migrations 0003–0005 are unchanged; the grading-history rework adds only `0009_grading_version.up.sql`, whose column defaults to 0 and increments on every grade; `graded_by_account_id = NULL` remains the only system-grader marker.
 
 AT-39. 404 policy: every foreign or soft-deleted attempt, answer, quiz, stream, and recap returns 404, never 403; the only 403s in this domain are CSRF failure and beacon same-origin failure (and the owner's `must_change_password` stream gate).
 
-ATT-311. **Definition of done.** This file owns all 15 ATT routes, the start rule, every score/order/count derivation, and every copy string it introduces. It cites R-01–R-25 and INV-01–INV-30 where they bind; it introduces no schema change; and every open item carries a recommended default and an impact, so an implementer never has to ask a question.
+ATT-311. **Definition of done.** This file owns all 15 ATT routes, the start rule, every score/order/count derivation, and every copy string it introduces. It cites R-01–R-25 and INV-01–INV-30 where they bind; its only schema change is the grading-history migration 0009 recorded above; and every open item carries a recommended default and an impact, so an implementer never has to ask a question.
 

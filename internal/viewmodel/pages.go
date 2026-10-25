@@ -28,8 +28,12 @@ type ResetPasswordPage struct {
 	Token string
 }
 
-// ChangePasswordPage is the signed-in password change form.
-type ChangePasswordPage struct{}
+// ChangePasswordPage is the signed-in password change form. BackHref is the
+// caller's own account screen: /profile for a student, /teacher/profile for a
+// teacher, so the form never sends one role through the other's chrome.
+type ChangePasswordPage struct {
+	BackHref string
+}
 
 // PendingPage is the teacher approval holding screen.
 type PendingPage struct {
@@ -142,6 +146,13 @@ type ProfilePage struct {
 	Majors     []MajorRef
 }
 
+// TeacherProfilePage is the teacher's own account screen (IDN-C23). A teacher
+// has no class or major, so the read model is the account row alone.
+type TeacherProfilePage struct {
+	FullName string
+	Email    string
+}
+
 // QuizIntro is /quiz/:id: the pre-flight screen for one quiz.
 type QuizIntro struct {
 	Quiz          QuizCard
@@ -197,7 +208,9 @@ type AttemptReview struct {
 	BackHref   string
 }
 
-// AttemptResult is the post-submit score and review screen.
+// AttemptResult is the post-submit score and review screen. HistoryHref is
+// empty for an anonymous participant: they have no history screen, and the
+// quiz page is closed to a closed quiz, so the trailing slot renders nothing.
 type AttemptResult struct {
 	Header       AttemptHeader
 	SubmittedAt  *LocalTime
@@ -209,8 +222,6 @@ type AttemptResult struct {
 	ModeLabel    string
 	Rows         []ResultRow
 	Unanswered   []int
-	QuizHref     string
-	ReviewHref   string
 	HistoryHref  string
 	FocusLoss    int
 	AttemptsUsed int
@@ -318,9 +329,7 @@ type QuizDetail struct {
 	DeleteAction         *CardAction
 	ResultsHref          string
 	MonitorHref          string
-	EditHref             string
 	AddQuestionHref      string
-	GradingHref          string
 	Empty                EmptyState
 	RandomizeQuestions   bool
 	RandomizeAnswers     bool
@@ -375,17 +384,19 @@ type ResultsRow struct {
 	RecapHref   string
 }
 
-// QuizResults is /teacher/quizzes/:id/results.
+// QuizResults is /teacher/quizzes/:id/results. GradingHref is this quiz's
+// scoped slice of the essay queue, never the whole-school queue.
 type QuizResults struct {
-	Quiz       QuizRef
-	Counts     ResultsCounts
-	Rows       List[ResultsRow]
-	Pagination Pagination
-	Tabs       []FilterTab
-	Query      QueryState
-	Empty      EmptyState
-	BackHref   string
-	ReviewMode ReviewMode
+	Quiz        QuizRef
+	Counts      ResultsCounts
+	Rows        List[ResultsRow]
+	Pagination  Pagination
+	Tabs        []FilterTab
+	Query       QueryState
+	Empty       EmptyState
+	BackHref    string
+	GradingHref string
+	ReviewMode  ReviewMode
 }
 
 // ---- Monitor --------------------------------------------------------------
@@ -431,22 +442,23 @@ type ParticipantRow struct {
 	Anonymous      bool
 }
 
-// MonitorPage is /teacher/quizzes/:id/monitor, open quizzes only.
+// MonitorPage is /teacher/quizzes/:id/monitor, open quizzes only. The page is a
+// drill-down with a back link and no header actions: results is one click back
+// through the quiz detail hub (DESIGN §7).
 type MonitorPage struct {
 	Quiz        QuizRef
 	Progress    MonitorProgress
 	Rows        []ParticipantRow
 	StreamHref  string
 	QuizHref    string
-	ResultsHref string
-	GradingHref string
 	GeneratedAt LocalTime
 	Empty       EmptyState
 }
 
 // ---- Grading --------------------------------------------------------------
 
-// GradingRow is one ungraded essay in the queue.
+// GradingRow is one essay in the queue. The pending tab fills WaitingLabel;
+// the graded tab fills Score/ScoreLabel and the graded/edited dates instead.
 type GradingRow struct {
 	AnswerID        int64
 	StudentName     string
@@ -455,13 +467,19 @@ type GradingRow struct {
 	QuestionExcerpt string
 	WaitingSince    LocalTime
 	WaitingLabel    string
+	Score           *Score
+	ScoreLabel      string
+	GradedLabel     string
+	EditedLabel     string
 	Href            string
 }
 
-// GradingCounts is the queue header strip.
+// GradingCounts is the queue header strip. All three ignore the active filters
+// and the active tab (ATT-203).
 type GradingCounts struct {
 	Pending     int
 	GradedToday int
+	Graded      int
 }
 
 // GradingQueue is the left pane of the grading screen.
@@ -500,25 +518,37 @@ type EssayAnswer struct {
 	State         EssayState
 	Score         *Score
 	Feedback      string
+	// GradedAt is the first-grade instant and never changes on an edit;
+	// UpdatedAt is the last change. Edited reports that the two differ.
+	GradedAt  *LocalTime
+	UpdatedAt *LocalTime
+	Edited    bool
+	// Version is the optimistic-concurrency token the edit form submits.
+	Version int
 }
 
-// GradingDetail is the right pane when an essay is selected.
+// GradingDetail is the right pane when an essay is selected. ScoreInput is the
+// one-decimal form value ("85,5") so a stored grade round-trips unchanged.
 type GradingDetail struct {
-	Answer    EssayAnswer
-	Attempt   AttemptHeader
-	Suggested *Score
-	Score     *Score
-	Feedback  string
-	Context   []GradingContextRow
-	Action    string
-	BackHref  string
-	NextHref  string
+	Answer     EssayAnswer
+	Attempt    AttemptHeader
+	Suggested  *Score
+	Score      *Score
+	ScoreInput string
+	Feedback   string
+	Context    []GradingContextRow
+	Action     string
+	BackHref   string
+	NextHref   string
 }
 
 // GradingPage is one template serving both /teacher/grading and the detail.
+// BackHref is the quiz that scoped the queue via ?quiz=, resolved to its results
+// page; it is empty on the unscoped queue, which is a top-level nav destination.
 type GradingPage struct {
 	Queue    GradingQueue
 	Selected *GradingDetail
+	BackHref string
 }
 
 // RecapAttempt is the attempt identity on the teacher recap.
@@ -681,8 +711,9 @@ type TeachersPage struct {
 
 // ErrorPage is the branded 404/500 screen.
 type ErrorPage struct {
-	Code     int
-	Title    string
-	Message  string
-	HomeHref string
+	Code                int
+	Title               string
+	Message             string
+	HomeHref            string
+	ShowSecondaryAction bool
 }

@@ -19,10 +19,10 @@
     </nav>
   </div>
 
-  <div class="row g-4">
+  <div class="row g-7">
     <div class="col-12 lg:col-8">
       <section class="card" aria-labelledby="major-list-title">
-        <div class="p-4">
+        <div class="p-7">
           <div class="row-between">
             <div>
               <h2 class="section-title" id="major-list-title">Daftar jurusan</h2>
@@ -71,7 +71,7 @@
           </table>
         </div>
         {{else}}
-        <div class="p-4 pt-0">
+        <div class="p-7 pt-0">
           {{template "partials/empty-state.html" .Data.Empty}}
         </div>
         {{end}}
@@ -84,12 +84,12 @@
         <p class="page-sub mt-2">Nama yang sama tidak dapat dipakai dua kali.</p>
         <form method="post" action="{{.Data.CreateAction}}" data-validate>
           <input type="hidden" name="csrf_token" value="{{.CSRF}}">
-          <div class="mt-3">
+          <div class="mt-4">
             <label class="form-label" for="major-new-name">Nama jurusan <span class="required" aria-hidden="true">*</span></label>
             <input class="form-control" type="text" id="major-new-name" name="name" minlength="2" maxlength="40" placeholder="Misalnya IPA" required>
             <p class="field-help">Mengubah nama jurusan ikut memperbarui kelas siswa, peserta anonim, dan sasaran kuis.</p>
           </div>
-          <button class="btn btn-solid theme-primary w-100 mt-3" type="submit">
+          <button class="btn btn-solid theme-primary w-100 mt-4" type="submit">
             <svg width="18" height="18" aria-hidden="true"><use href="#i-plus"></use></svg>
             Tambah jurusan
           </button>

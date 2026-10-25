@@ -189,7 +189,10 @@ func diffMonitorSnapshot(prev, next monitorSnapshotData) (snapshot bool, added, 
 }
 
 // participantChanged is the ATT-194 update subset: attempt_id, answered, total,
-// state, focus_loss, last_seen. Identity labels are deliberately absent.
+// state, focus_loss, last_seen. Identity labels are deliberately absent. A
+// score change is also a change even though the payload never carries the
+// score: grading preserves attempt.updated_at, so this signal is the only way
+// an open monitor learns that the page-only Skor column needs a reload.
 func participantChanged(old, next participantSnapshot) bool {
 	if !sameAttemptID(old.AttemptID, next.AttemptID) {
 		return true
@@ -198,7 +201,17 @@ func participantChanged(old, next participantSnapshot) bool {
 		old.State != next.State || old.FocusLoss != next.FocusLoss {
 		return true
 	}
+	if !sameScore(old.Score, next.Score) {
+		return true
+	}
 	return !old.LastSeen.Equal(next.LastSeen)
+}
+
+func sameScore(a, b *viewmodel.Score) bool {
+	if a == nil || b == nil {
+		return a == nil && b == nil
+	}
+	return a.Percent == b.Percent
 }
 
 func sameAttemptID(a, b *int64) bool {

@@ -18,13 +18,20 @@ services:
     # 127.0.0.1:3306, see the foundation plan §1) can reach the container.
     ports:
       - "127.0.0.1:3306:3306"
+    # Bind mount so the schema and every answer survive `docker compose down`
+    # and are inspectable on the host (var/mysql, git-ignored). The image seeds
+    # MARIADB_* only while this directory is empty.
     volumes:
-      - dbdata:/var/lib/mysql
+      - ./var/mysql:/var/lib/mysql
     healthcheck:
       test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
       interval: 5s
       timeout: 5s
       retries: 12
+      # A fresh bind-mounted datadir on Windows (virtiofs) initialises in tens
+      # of seconds, longer than interval x retries; without the grace period the
+      # container would be marked unhealthy mid-init and `up` would abort.
+      start_period: 90s
   # One-shot schema and seed runner. A non-zero exit stops the deployment:
   # compose never starts the app, and the operator sees the reason instead of a
   # server whose every page is a 500.
@@ -43,7 +50,8 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - uploads:/app/uploads
+      # Uploaded images live on the host too, so a rebuild keeps them.
+      - ./uploads:/app/uploads
     depends_on:
       db:
         condition: service_healthy
@@ -55,6 +63,3 @@ services:
       timeout: 5s
       retries: 12
       start_period: 10s
-volumes:
-  dbdata:
-  uploads:

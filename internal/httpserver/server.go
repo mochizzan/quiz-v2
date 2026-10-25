@@ -121,7 +121,7 @@ func NewWithDeps(cfg config.Config, deps Deps) (*fiber.App, error) {
 
 	// GET /uploads/:name serves authoring's question images from disk. It is
 	// registered here rather than through registerPage because it is an asset
-	// route, not a screen, so it does not affect the 72-screen pin (contract §6).
+	// route, not a screen, so it does not affect the 74-screen pin (contract §6).
 	app.Get("/uploads/:name", srv.serveUpload)
 
 	// Catch-all, registered LAST so it only sees requests no route claimed.

@@ -192,11 +192,9 @@ func ValidateSettings(form url.Values) (SettingsValues, *apperr.Error) {
 	}
 
 	mode := viewmodel.ReviewMode(strings.TrimSpace(form.Get("review_mode")))
-	switch mode {
-	case viewmodel.ReviewQuestionsAndKey, viewmodel.ReviewKeyOnly,
-		viewmodel.ReviewQuestionsOnly, viewmodel.ReviewAnswersOnly:
+	if mode.Valid() {
 		out.ReviewMode = mode
-	default:
+	} else {
 		fields["review_mode"] = MsgReviewModeInvalid
 	}
 

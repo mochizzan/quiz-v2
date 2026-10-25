@@ -8,10 +8,6 @@
       <h1 class="h1">Peserta anonim</h1>
       <p class="page-sub">Peserta yang bergabung tanpa akun, dikenali lewat cookie peserta.</p>
     </div>
-    <a class="btn btn-outline theme-primary" href="/teacher/students">
-      <svg width="18" height="18" aria-hidden="true"><use href="#i-users"></use></svg>
-      Daftar siswa
-    </a>
   </div>
 
   <div class="tabs-scroll">
@@ -27,15 +23,15 @@
     Peserta tanpa akun diidentifikasi lewat cookie peserta; baris ini tidak terhubung ke akun siswa.
   </div>
 
-  <section class="card p-4" aria-labelledby="anonymous-filter-title">
+  <section class="card p-7" aria-labelledby="anonymous-filter-title">
     <h2 class="section-title" id="anonymous-filter-title">Cari peserta</h2>
-    <form class="d-flex flex-wrap align-items-end gap-3 mt-3" method="get" action="/teacher/anonymous">
+    <form class="d-flex flex-wrap align-items-end gap-5 mt-4" method="get" action="/teacher/anonymous">
       <div class="flex-grow-1">
         <label class="form-label" for="anonymous-search">Nama peserta</label>
         <input class="form-control" type="search" id="anonymous-search" name="q" value="{{.Data.Query.Q}}" placeholder="Cari nama">
       </div>
       <div class="d-flex flex-wrap gap-2">
-        <button class="btn btn-solid theme-primary" type="submit">
+        <button class="btn btn-outline theme-primary" type="submit">
           <svg width="18" height="18" aria-hidden="true"><use href="#i-search"></use></svg>
           Cari
         </button>
@@ -45,7 +41,7 @@
   </section>
 
   <section class="card" aria-labelledby="anonymous-list-title">
-    <div class="p-4">
+    <div class="p-7">
       <div class="row-between">
         <div>
           <h2 class="section-title" id="anonymous-list-title">Daftar peserta anonim</h2>
@@ -55,7 +51,7 @@
     </div>
 
     {{if .Data.Rows.Empty}}
-    <div class="p-4 pt-0">
+    <div class="p-7 pt-0">
       {{template "partials/empty-state.html" .Data.Empty}}
     </div>
     {{else}}
@@ -92,7 +88,7 @@
         </tbody>
       </table>
     </div>
-    <div class="p-4 pt-3">
+    <div class="p-7 pt-5">
       {{template "partials/pagination.html" .Data.Pagination}}
     </div>
     {{end}}

@@ -357,7 +357,10 @@ func (s *Service) Results(ctx context.Context, in ResultsInput) (viewmodel.QuizR
 			Tabs:       resultsTabs(quiz.ID, state, class, classOn, search, len(filtered), waiting, graded),
 			Query:      viewmodel.QueryState{Q: search, Tab: state},
 			BackHref:   quizPath(quiz.ID),
-			ReviewMode: quiz.ReviewMode,
+			// The header action is this quiz's slice of the essay queue, not the
+			// whole-school /teacher/grading the shared nav points at.
+			GradingHref: "/teacher/grading?quiz=" + strconv.FormatInt(quiz.ID, 10),
+			ReviewMode:  quiz.ReviewMode,
 		}
 		if tenths, ok := AverageTenths(finals); ok {
 			avg := viewmodel.NewAverage(float64(tenths) / 10)
@@ -504,14 +507,15 @@ func resultsValues(state string, class int, classOn bool, search string) url.Val
 	return values
 }
 
+// resultsEmpty carries an action only for the filtered-empty list: a quiz with
+// no attempt yet has nothing to do here except go back, and the back link above
+// the heading is already that destination (DESIGN §8).
 func resultsEmpty(quizID int64, submitted int) viewmodel.EmptyState {
 	if submitted == 0 {
 		return viewmodel.EmptyState{
 			Title: "Belum ada percobaan.",
 			Body:  "Percobaan siswa akan muncul di sini setelah mereka mengirim jawaban.",
 			Icon:  "quiz",
-			Action: actionPtr(viewmodel.Primary("Buka detail kuis",
-				"/teacher/quizzes/"+strconv.FormatInt(quizID, 10))),
 		}
 	}
 	return viewmodel.EmptyState{
@@ -533,6 +537,12 @@ type MonitorInput struct {
 // participantSnapshot is one live registration's derived row (ATT-182). The
 // monitor page and the SSE stream both read this shape; the stream is the
 // monitor model minus StreamHref (ATT-187).
+//
+// Score and StartedAt are page-only: the monitor keeps the score and attempt
+// start columns by product decision (against ATT-185), so they are rendered
+// once from the server and refreshed by a reload. They never enter the SSE
+// payload (ATT-198). participantChanged still treats a score change as a change
+// so an open monitor learns that a late essay grade is ready.
 type participantSnapshot struct {
 	RegistrationID int64
 	AttemptID      *int64
@@ -544,6 +554,8 @@ type participantSnapshot struct {
 	Total          int
 	FocusLoss      int
 	LastSeen       time.Time
+	StartedAt      time.Time
+	Score          *viewmodel.Score
 	Anonymous      bool
 }
 
@@ -569,8 +581,6 @@ func (s *Service) MonitorPage(ctx context.Context, in MonitorInput) (viewmodel.M
 			Quiz:        snap.QuizRef,
 			Progress:    snap.Progress,
 			QuizHref:    quizPath(snap.QuizRef.ID),
-			ResultsHref: resultsPath(snap.QuizRef.ID),
-			GradingHref: "/teacher/grading",
 			GeneratedAt: viewmodel.NewLocalTime(snap.GeneratedAt),
 		}
 		if snap.State == viewmodel.QuizOpen {
@@ -579,7 +589,7 @@ func (s *Service) MonitorPage(ctx context.Context, in MonitorInput) (viewmodel.M
 			for i := range snap.Rows {
 				row := snap.Rows[i]
 				lastSeen := viewmodel.NewLocalTime(row.LastSeen)
-				out.Rows = append(out.Rows, viewmodel.ParticipantRow{
+				mapped := viewmodel.ParticipantRow{
 					RegistrationID: row.RegistrationID,
 					AttemptID:      row.AttemptID,
 					StudentName:    row.Name,
@@ -589,23 +599,30 @@ func (s *Service) MonitorPage(ctx context.Context, in MonitorInput) (viewmodel.M
 					Answered:       row.Answered,
 					Total:          row.Total,
 					FocusLoss:      row.FocusLoss,
+					Score:          row.Score,
 					UpdatedAt:      &lastSeen,
 					Anonymous:      row.Anonymous,
-				})
+				}
+				if !row.StartedAt.IsZero() {
+					started := viewmodel.NewLocalTime(row.StartedAt)
+					mapped.StartedAt = &started
+				}
+				out.Rows = append(out.Rows, mapped)
 			}
+			// The empty branches carry no action: the back link above the
+			// heading already leads to the quiz, and a second control for the
+			// same destination is the duplicate this screen must not have.
 			out.Empty = viewmodel.EmptyState{
-				Title:  "Belum ada peserta",
-				Body:   "Peserta yang bergabung akan muncul di sini secara langsung.",
-				Icon:   "users",
-				Action: actionPtr(viewmodel.Outline("Kembali ke kuis", quizPath(snap.QuizRef.ID))),
+				Title: "Belum ada peserta",
+				Body:  "Peserta yang bergabung akan muncul di sini secara langsung.",
+				Icon:  "users",
 			}
 			return nil
 		}
 		out.Empty = viewmodel.EmptyState{
-			Title:  "Kuis tidak sedang berlangsung",
-			Body:   "Monitor hanya tersedia selama kuis dibuka. Setelah ditutup, gunakan halaman hasil untuk melihat rekap.",
-			Icon:   "clock",
-			Action: actionPtr(viewmodel.Primary("Kembali ke kuis", quizPath(snap.QuizRef.ID))),
+			Title: "Kuis tidak sedang berlangsung",
+			Body:  "Monitor hanya tersedia selama kuis dibuka. Setelah ditutup, gunakan halaman hasil untuk melihat rekap.",
+			Icon:  "clock",
 		}
 		return nil
 	})
@@ -700,9 +717,12 @@ func loadMonitorSnapshot(ctx context.Context, tx *sql.Tx, quizID, accountID int6
 		number       int
 		submittedAt  sql.NullTime
 		updatedAt    time.Time
+		createdAt    time.Time
+		finalScore   sql.NullFloat64
 	}
 	attemptRows, err := tx.QueryContext(ctx, `
-		SELECT att.id, att.registration_id, att.attempt_no, att.submitted_at, att.updated_at
+		SELECT att.id, att.registration_id, att.attempt_no, att.submitted_at,
+		       att.updated_at, att.created_at, att.final_score
 		FROM quiz_attempts att
 		JOIN registrations r ON r.id = att.registration_id AND r.deleted_at = ?
 		WHERE r.quiz_id = ? AND att.deleted_at = ?
@@ -717,7 +737,8 @@ func loadMonitorSnapshot(ctx context.Context, tx *sql.Tx, quizID, accountID int6
 	byRegistration := map[int64][]attemptRow{}
 	for attemptRows.Next() {
 		var row attemptRow
-		if err := attemptRows.Scan(&row.id, &row.registration, &row.number, &row.submittedAt, &row.updatedAt); err != nil {
+		if err := attemptRows.Scan(&row.id, &row.registration, &row.number, &row.submittedAt,
+			&row.updatedAt, &row.createdAt, &row.finalScore); err != nil {
 			return monitorSnapshotData{}, internal(err)
 		}
 		byRegistration[row.registration] = append(byRegistration[row.registration], row)
@@ -831,6 +852,11 @@ func loadMonitorSnapshot(ctx context.Context, tx *sql.Tx, quizID, accountID int6
 			row.Answered = hits[att.id]
 			row.FocusLoss = focus[att.id]
 			row.LastSeen = att.updatedAt
+			row.StartedAt = att.createdAt
+			if att.finalScore.Valid {
+				score := viewmodel.NewScoreFromRatio(att.finalScore.Float64)
+				row.Score = &score
+			}
 			if att.submittedAt.Valid {
 				row.State = viewmodel.ParticipationCompleted
 			} else {
@@ -881,9 +907,11 @@ func participationRank(state viewmodel.ParticipationState) int {
 
 // ---- Grading queue --------------------------------------------------------
 
-// GradingQueueInput is GET /teacher/grading material.
+// GradingQueueInput is GET /teacher/grading material. StateRaw selects the
+// pending queue (default) or the graded history tab.
 type GradingQueueInput struct {
 	AccountID int64
+	StateRaw  string
 	QuizRaw   string
 	ClassRaw  string
 	QueryRaw  string
@@ -907,19 +935,38 @@ type gradingItem struct {
 	quizID      int64
 	quizTitle   string
 	prompt      string
+	feedback    sql.NullString
 	submittedAt time.Time
+	score       sql.NullFloat64
+	gradedAt    sql.NullTime
+	updatedAt   time.Time
+	href        string
 }
 
-// GradingQueue implements ATT-201…ATT-206. Pending and GradedToday ignore the
-// filters (ATT-203); the rows apply them before pagination (ATT-202).
+// gradingState is the queue tab. Only the exact value "graded" leaves the
+// pending default; a typo or an old link never 422s (ATT-240).
+func gradingState(raw string) string {
+	if strings.TrimSpace(raw) == "graded" {
+		return "graded"
+	}
+	return "pending"
+}
+
+// GradingQueue implements the queue read (grading-history spec §2): the pending
+// tab is the ATT-201…ATT-206 screen, the graded tab is the assessment history.
+// Counts ignore the filters (ATT-203); the rows apply them before pagination.
 func (s *Service) GradingQueue(ctx context.Context, in GradingQueueInput) (viewmodel.GradingPage, error) {
 	var out viewmodel.GradingPage
 	err := s.readTx(ctx, func(tx *sql.Tx) error {
-		queue, _, err := buildGradingQueue(ctx, tx, in)
+		queue, _, _, err := buildGradingQueue(ctx, tx, in)
 		if err != nil {
 			return err
 		}
-		out = viewmodel.GradingPage{Queue: queue}
+		back, err := gradingBackHref(ctx, tx, in)
+		if err != nil {
+			return err
+		}
+		out = viewmodel.GradingPage{Queue: queue, BackHref: back}
 		return nil
 	})
 	if err != nil {
@@ -928,21 +975,27 @@ func (s *Service) GradingQueue(ctx context.Context, in GradingQueueInput) (viewm
 	return out, nil
 }
 
-// GradingDetail implements ATT-211…ATT-214: the queue, the selected essay,
-// and the attempt context in one read-only transaction. A graded answer is
-// valid here even though it is never queued (ATT-207, ATT-214).
+// GradingDetail implements the detail read (ATT-211…ATT-214, grading-history
+// spec §3): the queue, the selected essay, and the attempt context in one
+// read-only transaction. A graded answer is editable by the owner.
 func (s *Service) GradingDetail(ctx context.Context, in GradingDetailInput) (viewmodel.GradingPage, error) {
 	var out viewmodel.GradingPage
 	err := s.readTx(ctx, func(tx *sql.Tx) error {
-		queue, all, err := buildGradingQueue(ctx, tx, in.GradingQueueInput)
+		queue, all, values, err := buildGradingQueue(ctx, tx, in.GradingQueueInput)
 		if err != nil {
 			return err
 		}
-		detail, err := loadGradingDetail(ctx, tx, in.AccountID, in.AnswerID, all)
+		detailHref := hrefWith(gradingAnswerPath(in.AnswerID), values)
+		queueHref := hrefWith("/teacher/grading", values)
+		detail, err := loadGradingDetail(ctx, tx, in.AccountID, in.AnswerID, all, detailHref, queueHref)
 		if err != nil {
 			return err
 		}
-		out = viewmodel.GradingPage{Queue: queue, Selected: detail}
+		back, err := gradingBackHref(ctx, tx, in.GradingQueueInput)
+		if err != nil {
+			return err
+		}
+		out = viewmodel.GradingPage{Queue: queue, Selected: detail, BackHref: back}
 		return nil
 	})
 	if err != nil {
@@ -951,27 +1004,46 @@ func (s *Service) GradingDetail(ctx context.Context, in GradingDetailInput) (vie
 	return out, nil
 }
 
-// buildGradingQueue loads every ungraded essay of the teacher's quizzes once,
+// buildGradingQueue loads the active tab's essays of the teacher's quizzes once,
 // derives the counts and the filtered page, and returns the full ordered list
-// so the detail route can compute NextHref without a second query.
-func buildGradingQueue(ctx context.Context, tx *sql.Tx, in GradingQueueInput) (viewmodel.GradingQueue, []gradingItem, error) {
-	all, err := loadGradingItems(ctx, tx, in.AccountID)
+// plus the normalized query so the detail route can build links without a
+// second read.
+func buildGradingQueue(ctx context.Context, tx *sql.Tx, in GradingQueueInput) (viewmodel.GradingQueue, []gradingItem, url.Values, error) {
+	state := gradingState(in.StateRaw)
+	graded := state == "graded"
+
+	pendingCount, err := countGradingItems(ctx, tx, in.AccountID, false)
 	if err != nil {
-		return viewmodel.GradingQueue{}, nil, err
+		return viewmodel.GradingQueue{}, nil, nil, err
+	}
+	gradedCount, err := countGradingItems(ctx, tx, in.AccountID, true)
+	if err != nil {
+		return viewmodel.GradingQueue{}, nil, nil, err
+	}
+	all, err := loadGradingItems(ctx, tx, in.AccountID, graded)
+	if err != nil {
+		return viewmodel.GradingQueue{}, nil, nil, err
 	}
 
 	now, err := nowT(ctx, tx)
 	if err != nil {
-		return viewmodel.GradingQueue{}, nil, err
+		return viewmodel.GradingQueue{}, nil, nil, err
 	}
 	gradedToday, err := countGradedToday(ctx, tx, in.AccountID, now)
 	if err != nil {
-		return viewmodel.GradingQueue{}, nil, err
+		return viewmodel.GradingQueue{}, nil, nil, err
 	}
 
 	search := normalizeSearch(in.QueryRaw)
 	class, classOn := parseRomanClass(in.ClassRaw)
 	quizID, quizOn := parsePositiveID(in.QuizRaw)
+	values := gradingValues(state, search, class, classOn, quizID, quizOn)
+
+	// Every item carries its own detail link so rows and the next link keep the
+	// active tab and filters.
+	for i := range all {
+		all[i].href = hrefWith(gradingAnswerPath(all[i].answerID), values)
+	}
 
 	filtered := make([]gradingItem, 0, len(all))
 	for i := range all {
@@ -984,6 +1056,9 @@ func buildGradingQueue(ctx context.Context, tx *sql.Tx, in GradingQueueInput) (v
 		}
 		if search != "" {
 			haystack := strings.ToLower(item.studentName + "\n" + item.quizTitle + "\n" + item.prompt)
+			if graded {
+				haystack += "\n" + strings.ToLower(item.feedback.String)
+			}
 			if !strings.Contains(haystack, search) {
 				continue
 			}
@@ -996,27 +1071,54 @@ func buildGradingQueue(ctx context.Context, tx *sql.Tx, in GradingQueueInput) (v
 	for i := range filtered {
 		item := filtered[i]
 		submitted := viewmodel.NewLocalTime(item.submittedAt)
-		rows = append(rows, viewmodel.GradingRow{
+		row := viewmodel.GradingRow{
 			AnswerID:        item.answerID,
 			StudentName:     item.studentName,
 			ClassLabel:      item.classLabel,
 			QuizTitle:       item.quizTitle,
 			QuestionExcerpt: excerpt(item.prompt),
 			WaitingSince:    submitted,
-			WaitingLabel:    waitingLabel(submitted, nowLocal),
-			Href:            gradingAnswerPath(item.answerID),
-		})
+			Href:            item.href,
+		}
+		if graded {
+			units := ScoreUnits(item.score.Float64)
+			score := viewmodel.Score{Percent: DisplayPercent(units)}
+			row.Score = &score
+			row.ScoreLabel = TenthsValue(ScoreTenths(units))
+			if item.gradedAt.Valid {
+				gradedAt := viewmodel.NewLocalTime(item.gradedAt.Time)
+				row.GradedLabel = "Dinilai " + gradedAt.Short()
+				if item.updatedAt.After(item.gradedAt.Time) {
+					row.EditedLabel = "Diubah " + viewmodel.NewLocalTime(item.updatedAt).Short()
+				}
+			}
+		} else {
+			row.WaitingLabel = waitingLabel(submitted, nowLocal)
+		}
+		rows = append(rows, row)
 	}
 
 	list := viewmodel.NewList(rows, parsePage(in.PageRaw), gradingPerPage)
 	queue := viewmodel.GradingQueue{
-		Counts:     viewmodel.GradingCounts{Pending: len(all), GradedToday: gradedToday},
+		Counts: viewmodel.GradingCounts{
+			Pending:     pendingCount,
+			GradedToday: gradedToday,
+			Graded:      gradedCount,
+		},
 		Rows:       list,
-		Pagination: viewmodel.NewPagination("/teacher/grading", gradingValues(in, search, class, classOn, quizID, quizOn), list.Page, list.PerPage, list.Total),
-		Query:      viewmodel.QueryState{Q: search},
+		Pagination: viewmodel.NewPagination("/teacher/grading", values, list.Page, list.PerPage, list.Total),
+		Tabs:       gradingTabs(state, search, class, classOn, quizID, quizOn, pendingCount, gradedCount),
+		Query:      viewmodel.QueryState{Q: search, Tab: state},
 	}
+	reset := hrefWith("/teacher/grading", gradingValues(state, "", 0, false, 0, false))
 	switch {
-	case len(all) == 0:
+	case state == "graded" && gradedCount == 0:
+		queue.Empty = viewmodel.EmptyState{
+			Title: "Belum ada esai yang dinilai.",
+			Body:  "Esai yang sudah dinilai akan muncul di sini.",
+			Icon:  "grade",
+		}
+	case state == "pending" && pendingCount == 0:
 		queue.Empty = viewmodel.EmptyState{
 			Title: "Tidak ada esai yang menunggu penilaian.",
 			Body:  "Esai yang dikirim siswa akan muncul di sini.",
@@ -1027,18 +1129,64 @@ func buildGradingQueue(ctx context.Context, tx *sql.Tx, in GradingQueueInput) (v
 			Title:  "Tidak ada esai yang cocok dengan filter.",
 			Body:   "Coba kata kunci lain atau tampilkan semua esai.",
 			Icon:   "search",
-			Action: actionPtr(viewmodel.Outline("Tampilkan semua", "/teacher/grading")),
+			Action: actionPtr(viewmodel.Outline("Tampilkan semua", reset)),
 		}
 	}
-	return queue, all, nil
+	return queue, all, values, nil
 }
 
-func loadGradingItems(ctx context.Context, tx *sql.Tx, accountID int64) ([]gradingItem, error) {
-	rows, err := tx.QueryContext(ctx, `
-		SELECT aa.id, aa.attempt_id, aa.question_id,
-		       COALESCE(a.full_name, ap.display_name),
-		       COALESCE(COALESCE(s.grade_level, ap.grade_level), 0), mj.name,
-		       z.id, z.title, qq.prompt, att.submitted_at
+// gradingTabs is the pending/history switch. Both links keep the active
+// filters; the counts ignore them (ATT-203).
+func gradingTabs(state, search string, class int, classOn bool, quizID int64, quizOn bool, pending, graded int) []viewmodel.FilterTab {
+	return []viewmodel.FilterTab{
+		{
+			Label:  "Menunggu",
+			Href:   hrefWith("/teacher/grading", gradingValues("pending", search, class, classOn, quizID, quizOn)),
+			Active: state == "pending",
+			Count:  pending,
+		},
+		{
+			Label:  "Sudah dinilai",
+			Href:   hrefWith("/teacher/grading", gradingValues("graded", search, class, classOn, quizID, quizOn)),
+			Active: state == "graded",
+			Count:  graded,
+		},
+	}
+}
+
+// gradingBackHref is the scoped breadcrumb on the grading screen. A ?quiz=
+// filter that resolves to a live quiz the acting teacher owns has a results page
+// as its parent screen; the unscoped queue is a top-level nav destination and
+// gets no back link (DESIGN §7).
+//
+// Ownership reuses loadOwnedQuiz, the owner/deleted predicate loadGradingItems
+// applies in its own query, so the breadcrumb can never point at a quiz the
+// queue itself filtered out. An unowned or missing id is simply no breadcrumb:
+// the queue keeps its existing 200-with-an-empty-list behaviour rather than
+// turning a filter into a 404.
+func gradingBackHref(ctx context.Context, tx *sql.Tx, in GradingQueueInput) (string, error) {
+	quizID, quizOn := parsePositiveID(in.QuizRaw)
+	if !quizOn {
+		return "", nil
+	}
+	quiz, err := loadOwnedQuiz(ctx, tx, quizID, in.AccountID)
+	if errors.Is(err, ErrNotFound) {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	// A draft has no results page (Results 404s it), so it cannot be a parent.
+	if quiz.State == viewmodel.QuizDraft {
+		return "", nil
+	}
+	return resultsPath(quiz.ID), nil
+}
+
+// gradingJoin is the shared ownership/identity join. The bound parameters are
+// the eight live sentinels, the owner account, and the answer sentinel, in that
+// order (gradingArgs).
+const gradingJoin = `
 		FROM attempt_answers aa
 		JOIN quiz_attempts att ON att.id = aa.attempt_id AND att.deleted_at = ?
 		JOIN registrations r ON r.id = att.registration_id AND r.deleted_at = ?
@@ -1048,11 +1196,40 @@ func loadGradingItems(ctx context.Context, tx *sql.Tx, accountID int64) ([]gradi
 		LEFT JOIN accounts a ON a.id = s.account_id AND a.deleted_at = ?
 		LEFT JOIN anonymous_participants ap ON ap.id = r.anonymous_participant_id AND ap.deleted_at = ?
 		LEFT JOIN majors mj ON mj.id = COALESCE(s.major_id, ap.major_id) AND mj.deleted_at = ?
-		WHERE aa.deleted_at = ? AND aa.score IS NULL AND aa.graded_at IS NULL
-		  AND att.submitted_at IS NOT NULL
-		ORDER BY att.submitted_at DESC, aa.id ASC`,
+		WHERE aa.deleted_at = ? AND att.submitted_at IS NOT NULL AND `
+
+// gradingPredicate is the one place pending and graded diverge.
+func gradingPredicate(graded bool) string {
+	if graded {
+		return "aa.score IS NOT NULL AND aa.graded_at IS NOT NULL"
+	}
+	return "aa.score IS NULL AND aa.graded_at IS NULL"
+}
+
+func gradingArgs(accountID int64) []any {
+	return []any{
 		store.LiveAt, store.LiveAt, store.LiveAt, accountID, store.LiveAt,
 		store.LiveAt, store.LiveAt, store.LiveAt, store.LiveAt, store.LiveAt,
+	}
+}
+
+// loadGradingItems loads every essay of the teacher's quizzes in the active
+// state once. Pending keeps the submission order; graded is the assessment
+// history, most recently assessed or edited first.
+func loadGradingItems(ctx context.Context, tx *sql.Tx, accountID int64, graded bool) ([]gradingItem, error) {
+	order := "att.submitted_at DESC, aa.id ASC"
+	if graded {
+		order = "aa.updated_at DESC, aa.id ASC"
+	}
+	rows, err := tx.QueryContext(ctx, `
+		SELECT aa.id, aa.attempt_id, aa.question_id,
+		       COALESCE(a.full_name, ap.display_name),
+		       COALESCE(COALESCE(s.grade_level, ap.grade_level), 0), mj.name,
+		       z.id, z.title, qq.prompt, aa.feedback, att.submitted_at,
+		       aa.score, aa.graded_at, aa.updated_at`+gradingJoin+
+		gradingPredicate(graded)+`
+		ORDER BY `+order,
+		gradingArgs(accountID)...,
 	)
 	if err != nil {
 		return nil, internal(err)
@@ -1068,7 +1245,8 @@ func loadGradingItems(ctx context.Context, tx *sql.Tx, accountID int64) ([]gradi
 		)
 		if err := rows.Scan(&item.answerID, &item.attemptID, &item.questionID,
 			&name, &item.grade, &mj, &item.quizID, &item.quizTitle,
-			&item.prompt, &item.submittedAt); err != nil {
+			&item.prompt, &item.feedback, &item.submittedAt,
+			&item.score, &item.gradedAt, &item.updatedAt); err != nil {
 			return nil, internal(err)
 		}
 		if !name.Valid {
@@ -1082,6 +1260,19 @@ func loadGradingItems(ctx context.Context, tx *sql.Tx, accountID int64) ([]gradi
 		return nil, internal(err)
 	}
 	return out, nil
+}
+
+// countGradingItems counts one state across every owned quiz, ignoring the
+// queue filters (ATT-203).
+func countGradingItems(ctx context.Context, tx *sql.Tx, accountID int64, graded bool) (int, error) {
+	var count int
+	err := tx.QueryRowContext(ctx, `SELECT COUNT(*)`+gradingJoin+gradingPredicate(graded),
+		gradingArgs(accountID)...,
+	).Scan(&count)
+	if err != nil {
+		return 0, internal(err)
+	}
+	return count, nil
 }
 
 func countGradedToday(ctx context.Context, tx *sql.Tx, accountID int64, now time.Time) (int, error) {
@@ -1106,8 +1297,14 @@ func startOfWIBDay(now time.Time) time.Time {
 	return time.Date(local.Year(), local.Month(), local.Day(), 0, 0, 0, 0, viewmodel.WIB).UTC()
 }
 
-func gradingValues(in GradingQueueInput, search string, class int, classOn bool, quizID int64, quizOn bool) url.Values {
+// gradingValues is the normalized query shared by pagination, tabs and detail
+// links. Pending is the default and is omitted; `page` is added only by
+// NewPagination.
+func gradingValues(state, search string, class int, classOn bool, quizID int64, quizOn bool) url.Values {
 	values := url.Values{}
+	if state == "graded" {
+		values.Set("state", state)
+	}
 	if search != "" {
 		values.Set("q", search)
 	}
@@ -1120,11 +1317,20 @@ func gradingValues(in GradingQueueInput, search string, class int, classOn bool,
 	return values
 }
 
+// hrefWith appends a non-empty query to a path.
+func hrefWith(base string, values url.Values) string {
+	if enc := values.Encode(); enc != "" {
+		return base + "?" + enc
+	}
+	return base
+}
+
 // loadGradingDetail loads one essay plus everything the attempt context needs.
 // Objective answers and in-progress attempts are not gradable resources and
 // answer 404 (ATT-211). The prompt, image, saved answer, and every context row
 // come from loadResultData, so the detail and the recap share one derivation.
-func loadGradingDetail(ctx context.Context, tx *sql.Tx, accountID, answerID int64, pending []gradingItem) (*viewmodel.GradingDetail, error) {
+// active is the current tab's list, used for the next link.
+func loadGradingDetail(ctx context.Context, tx *sql.Tx, accountID, answerID int64, active []gradingItem, detailHref, queueHref string) (*viewmodel.GradingDetail, error) {
 	var (
 		attemptID   int64
 		questionID  int64
@@ -1142,6 +1348,9 @@ func loadGradingDetail(ctx context.Context, tx *sql.Tx, accountID, answerID int6
 		name        sql.NullString
 		grade       sql.NullInt64
 		major       sql.NullString
+		gradedAt    sql.NullTime
+		updatedAt   time.Time
+		version     int
 	)
 	err := tx.QueryRowContext(ctx, `
 		SELECT aa.attempt_id, aa.question_id,
@@ -1150,7 +1359,8 @@ func loadGradingDetail(ctx context.Context, tx *sql.Tx, accountID, answerID int6
 		       z.randomize_questions, z.randomize_options,
 		       r.deleted_at = ?,
 		       COALESCE(a.full_name, ap.display_name),
-		       COALESCE(COALESCE(s.grade_level, ap.grade_level), 0), mj.name
+		       COALESCE(COALESCE(s.grade_level, ap.grade_level), 0), mj.name,
+		       aa.graded_at, aa.updated_at, aa.grading_version
 		FROM attempt_answers aa
 		JOIN quiz_attempts att ON att.id = aa.attempt_id AND att.deleted_at = ?
 		JOIN registrations r ON r.id = att.registration_id
@@ -1166,7 +1376,7 @@ func loadGradingDetail(ctx context.Context, tx *sql.Tx, accountID, answerID int6
 		answerID, store.LiveAt,
 	).Scan(&attemptID, &questionID, &attemptNo, &seed, &submittedAt, &createdAt,
 		&quizID, &quizTitle, &allowRetake, &maxAttempts, &randomQ, &randomO,
-		&regLive, &name, &grade, &major)
+		&regLive, &name, &grade, &major, &gradedAt, &updatedAt, &version)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -1232,20 +1442,25 @@ func loadGradingDetail(ctx context.Context, tx *sql.Tx, accountID, answerID int6
 			AttemptNo:   attemptNo,
 			MaxAttempts: EffectiveMaxAttempts(allowRetake, maxAttempts),
 		},
-		Action:   gradingAnswerPath(answerID),
-		BackHref: "/teacher/grading",
-		NextHref: nextPendingHref(answerID, pending),
+		Action:   detailHref,
+		BackHref: queueHref,
+		NextHref: nextGradingHref(answerID, active),
+	}
+	if cur.score.Valid != gradedAt.Valid {
+		return nil, integrity("answer %d has an inconsistent score/graded_at pair (ATT-254)", answerID)
 	}
 	if cur.score.Valid {
 		units := ScoreUnits(cur.score.Float64)
 		score := viewmodel.Score{Percent: DisplayPercent(units)}
 		detail.Answer.Score = &score
 		detail.Answer.State = viewmodel.EssayGraded
-		// The frozen template has no dedicated score readout: the waiting line
-		// is the only place the stored value can appear, so it carries the
-		// one-decimal form ATT-212 requires.
-		detail.Answer.WaitingLabel = "Dinilai " + TenthsLabel(ScoreTenths(units))
+		detail.Answer.WaitingLabel = ""
 		detail.Score = &score
+		detail.ScoreInput = TenthsValue(ScoreTenths(units))
+		detail.Answer.GradedAt = viewmodel.Ptr(viewmodel.NewLocalTime(gradedAt.Time))
+		detail.Answer.UpdatedAt = viewmodel.Ptr(viewmodel.NewLocalTime(updatedAt))
+		detail.Answer.Edited = updatedAt.After(gradedAt.Time)
+		detail.Answer.Version = version
 	}
 	if cur.feedback.Valid {
 		detail.Answer.Feedback = cur.feedback.String
@@ -1281,23 +1496,23 @@ func essayText(text sql.NullString) string {
 	return text.String
 }
 
-// nextPendingHref is the "Lewati" target: the next answer in ATT-204 order,
-// wrapping to the head of the queue, or "" when the queue has no other row.
-// A graded answer opened by direct URL points at the first pending essay.
-func nextPendingHref(answerID int64, pending []gradingItem) string {
-	if len(pending) == 0 {
+// nextGradingHref is the "Lewati"/"Berikutnya" target: the next answer in the
+// active tab's order, wrapping to its head, or "" when the tab has no other
+// row. Each item already carries the active filters in its href.
+func nextGradingHref(answerID int64, active []gradingItem) string {
+	if len(active) == 0 {
 		return ""
 	}
-	for i := range pending {
-		if pending[i].answerID != answerID {
+	for i := range active {
+		if active[i].answerID != answerID {
 			continue
 		}
-		if len(pending) < 2 {
+		if len(active) < 2 {
 			return ""
 		}
-		return gradingAnswerPath(pending[(i+1)%len(pending)].answerID)
+		return active[(i+1)%len(active)].href
 	}
-	return gradingAnswerPath(pending[0].answerID)
+	return active[0].href
 }
 
 // gradingAnswerPath is the direct grading detail URL.
@@ -1308,18 +1523,36 @@ func gradingAnswerPath(id int64) string {
 // ---- Grade write ----------------------------------------------------------
 
 // GradeInput is POST /teacher/grading/:answerID material. AccountID is the
-// acting teacher (ATT-226).
+// acting teacher (ATT-226); VersionRaw is the optimistic-concurrency token the
+// detail form rendered (grading-history spec §4).
 type GradeInput struct {
 	AccountID   int64
 	AnswerID    int64
 	ScoreRaw    string
 	FeedbackRaw string
+	VersionRaw  string
 }
 
-// GradeEssay implements ATT-221…ATT-228. Validation runs before any lock; the
-// transaction then takes the attempt lock, then the answer lock, so two grades
-// of one attempt serialize (ATT-270, ATT-275). The final score is recomputed
-// from every live slot in the same transaction (ATT-223).
+// parseGradeVersion reads the version field. An absent field is legal for a
+// first grade (old link) but never for an edit; a malformed value is never
+// legal. MySQL stores it as SMALLINT UNSIGNED.
+func parseGradeVersion(raw string) (version int, present, ok bool) {
+	s := strings.TrimSpace(raw)
+	if s == "" {
+		return 0, false, true
+	}
+	n, err := strconv.Atoi(s)
+	if err != nil || n < 0 || n > 65535 {
+		return 0, true, false
+	}
+	return n, true, true
+}
+
+// GradeEssay implements ATT-221…ATT-228 plus the re-grade rules of the
+// grading-history spec §4. Validation runs before any lock; the transaction
+// then takes the attempt lock, then the answer lock, so two grades of one
+// attempt serialize (ATT-270, ATT-275). The final score is recomputed from
+// every live slot in the same transaction (ATT-223).
 func (s *Service) GradeEssay(ctx context.Context, in GradeInput) error {
 	units, feedback, err := validateGrade(in)
 	if err != nil {
@@ -1394,14 +1627,15 @@ func (s *Service) GradeEssay(ctx context.Context, in GradeInput) error {
 			questionID int64
 			score      sql.NullFloat64
 			gradedAt   sql.NullTime
+			version    int
 		)
 		err = tx.QueryRowContext(ctx, `
-			SELECT question_id, score, graded_at
+			SELECT question_id, score, graded_at, grading_version
 			FROM attempt_answers
 			WHERE id = ? AND attempt_id = ? AND deleted_at = ?
 			FOR UPDATE`,
 			in.AnswerID, attemptID, store.LiveAt,
-		).Scan(&questionID, &score, &gradedAt)
+		).Scan(&questionID, &score, &gradedAt, &version)
 		if errors.Is(err, sql.ErrNoRows) {
 			return ErrNotFound
 		}
@@ -1409,8 +1643,8 @@ func (s *Service) GradeEssay(ctx context.Context, in GradeInput) error {
 			return internal(err)
 		}
 
-		// The resource must be a live essay before "already graded" is even a
-		// candidate: an objective answer is not a gradable resource (ATT-221).
+		// The resource must be a live essay before an edit is even a candidate:
+		// an objective answer is not a gradable resource (ATT-221).
 		var qtype string
 		err = tx.QueryRowContext(ctx, `
 			SELECT type FROM questions WHERE id = ? AND deleted_at = ?`,
@@ -1425,8 +1659,24 @@ func (s *Service) GradeEssay(ctx context.Context, in GradeInput) error {
 		if qtype != "essay" {
 			return ErrNotFound
 		}
-		if score.Valid || gradedAt.Valid {
-			return &Conflict{Flash: FlashAlreadyGraded, Err: ErrAlreadyGraded}
+		if score.Valid != gradedAt.Valid {
+			return integrity("answer %d has an inconsistent score/graded_at pair (ATT-254)", in.AnswerID)
+		}
+
+		// The version token is the stale-form guard. A first grade accepts an
+		// absent field as 0 (a tab opened before the deploy); an edit always
+		// requires the exact stored counter.
+		submittedVersion, versionPresent, versionOK := parseGradeVersion(in.VersionRaw)
+		if !versionOK {
+			return &Conflict{Flash: FlashGradeConflict, Err: ErrGradeConflict}
+		}
+		graded := score.Valid
+		if graded {
+			if !versionPresent || submittedVersion != version {
+				return &Conflict{Flash: FlashGradeConflict, Err: ErrGradeConflict}
+			}
+		} else if versionPresent && submittedVersion != 0 {
+			return &Conflict{Flash: FlashGradeConflict, Err: ErrGradeConflict}
 		}
 
 		now, err := nowT(ctx, tx)
@@ -1437,13 +1687,30 @@ func (s *Service) GradeEssay(ctx context.Context, in GradeInput) error {
 		if feedback != nil {
 			feedbackArg = *feedback
 		}
-		res, err := tx.ExecContext(ctx, `
-			UPDATE attempt_answers
-			SET score = ?, feedback = ?, graded_by_account_id = ?, graded_at = ?
-			WHERE id = ? AND score IS NULL AND deleted_at = ?`,
-			float64(units)/float64(scoreScale), feedbackArg, in.AccountID, now,
-			in.AnswerID, store.LiveAt,
-		)
+		scoreArg := float64(units) / float64(scoreScale)
+		var res sql.Result
+		if graded {
+			// Re-grade: graded_at and the first-grade instant are preserved;
+			// updated_at records the edit and the version advances.
+			res, err = tx.ExecContext(ctx, `
+				UPDATE attempt_answers
+				SET score = ?, feedback = ?, graded_by_account_id = ?,
+				    grading_version = grading_version + 1
+				WHERE id = ? AND score IS NOT NULL AND grading_version = ?
+				  AND deleted_at = ?`,
+				scoreArg, feedbackArg, in.AccountID,
+				in.AnswerID, version, store.LiveAt,
+			)
+		} else {
+			res, err = tx.ExecContext(ctx, `
+				UPDATE attempt_answers
+				SET score = ?, feedback = ?, graded_by_account_id = ?, graded_at = ?,
+				    grading_version = grading_version + 1
+				WHERE id = ? AND score IS NULL AND deleted_at = ?`,
+				scoreArg, feedbackArg, in.AccountID, now,
+				in.AnswerID, store.LiveAt,
+			)
+		}
 		if err != nil {
 			return internal(err)
 		}
@@ -1452,7 +1719,7 @@ func (s *Service) GradeEssay(ctx context.Context, in GradeInput) error {
 			return internal(err)
 		}
 		if affected == 0 {
-			return &Conflict{Flash: FlashAlreadyGraded, Err: ErrAlreadyGraded}
+			return &Conflict{Flash: FlashGradeConflict, Err: ErrGradeConflict}
 		}
 		return recomputeFinal(ctx, tx, uint32(attemptID))
 	})

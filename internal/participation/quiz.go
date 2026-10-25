@@ -128,6 +128,22 @@ func lockRegistration(ctx context.Context, tx *sql.Tx, id int64) error {
 	return nil
 }
 
+// refusalPath is the redirect target for a refused participation command, chosen
+// so the flash it carries is actually rendered. A student has no intro page once
+// the quiz leaves the open state (PAR-088), so a closed-quiz refusal lands on the
+// history surface: the per-quiz page when a registration exists, otherwise the
+// history list (the per-quiz page is a 404 without a registration, PAR-155).
+// Anonymous viewers keep the intro, which stays readable on a closed quiz.
+func refusalPath(actor Actor, quiz quizRow, hasReg bool) string {
+	if !actor.IsStudent() || viewmodel.QuizState(quiz.State) == viewmodel.QuizOpen {
+		return quizPath(uint32(quiz.ID))
+	}
+	if hasReg {
+		return historyPath(uint32(quiz.ID))
+	}
+	return "/student/history"
+}
+
 // quizIntroModel builds the PAR-091 model inside the caller's read snapshot.
 func (s *Service) quizIntroModel(ctx context.Context, tx *sql.Tx, actor Actor, quiz quizRow, reg registrationRow, hasReg bool, ticket *ticket) (viewmodel.QuizIntro, error) {
 	questionCount, err := liveQuestionCount(ctx, tx, quiz.ID)
@@ -247,7 +263,7 @@ func (s *Service) quizIntroModel(ctx context.Context, tx *sql.Tx, actor Actor, q
 	case lastDone != nil:
 		action := viewmodel.Outline("Lihat hasil", attemptResultPath(uint32(lastDone.ID)))
 		out.Primary = &action
-	case hasReg:
+	case hasReg && actor.IsStudent():
 		action := viewmodel.Outline("Riwayat", historyPath(uint32(quiz.ID)))
 		out.Primary = &action
 	}
@@ -255,7 +271,7 @@ func (s *Service) quizIntroModel(ctx context.Context, tx *sql.Tx, actor Actor, q
 	if out.CanCancel {
 		action := viewmodel.Danger("Batalkan pendaftaran", "/quiz/"+itoa(uint64(quiz.ID))+"/cancel")
 		out.Secondary = &action
-	} else if hasReg && inProgress == nil && lastDone != nil {
+	} else if actor.IsStudent() && hasReg && inProgress == nil && lastDone != nil {
 		action := viewmodel.Outline("Riwayat", historyPath(uint32(quiz.ID)))
 		if out.Primary == nil || out.Primary.Href != action.Href {
 			out.Secondary = &action
@@ -301,7 +317,11 @@ func (s *Service) QuizIntro(ctx context.Context, in QuizIntroInput) (viewmodel.Q
 			return &Redirect{Path: "/teacher/quizzes/" + itoa(uint64(quiz.ID))}
 
 		case actor.IsStudent():
-			if viewmodel.QuizState(quiz.State) == viewmodel.QuizDraft {
+			// PAR-088: a student has no entry page for a draft or a closed
+			// quiz, registered or not. A closed quiz stays reachable through
+			// the per-quiz history page, which is where an attempt that was
+			// in progress at closing time resumes (ATT-104 step 4).
+			if viewmodel.QuizState(quiz.State) != viewmodel.QuizOpen {
 				return apperr.NotFoundf().WithRule("PAR-088")
 			}
 			reg, hasReg, err := readStudentRegistration(ctx, tx, quiz.ID, int64(actor.StudentID))
@@ -309,9 +329,6 @@ func (s *Service) QuizIntro(ctx context.Context, in QuizIntroInput) (viewmodel.Q
 				return err
 			}
 			if !hasReg {
-				if viewmodel.QuizState(quiz.State) != viewmodel.QuizOpen {
-					return apperr.NotFoundf().WithRule("PAR-088")
-				}
 				if !eligible(quiz, actor.GradeLevel, actor.MajorID) {
 					return apperr.NotFoundf().WithRule("PAR-088")
 				}
@@ -372,7 +389,7 @@ func (s *Service) Register(ctx context.Context, in RegisterInput) (Result, error
 		if _, hasReg, err := readStudentRegistration(ctx, tx, quiz.ID, int64(actor.StudentID)); err != nil {
 			return err
 		} else if hasReg {
-			res = Result{Path: quizPath(uint32(quiz.ID)), Flash: FlashAlreadyRegistered}
+			res = Result{Path: refusalPath(actor, quiz, true), Flash: FlashAlreadyRegistered}
 			return nil
 		}
 		if viewmodel.QuizState(quiz.State) != viewmodel.QuizOpen {
@@ -440,7 +457,7 @@ func (s *Service) Cancel(ctx context.Context, in CancelInput) (Result, error) {
 			return err
 		}
 		if viewmodel.QuizState(quiz.State) != viewmodel.QuizOpen {
-			res = Result{Path: quizPath(uint32(quiz.ID)), Flash: FlashNotOpen}
+			res = Result{Path: refusalPath(actor, quiz, true), Flash: FlashNotOpen}
 			return nil
 		}
 		byReg, err := readAttemptsByRegistration(ctx, tx, []int64{reg.ID})
@@ -448,7 +465,7 @@ func (s *Service) Cancel(ctx context.Context, in CancelInput) (Result, error) {
 			return err
 		}
 		if len(byReg[reg.ID]) > 0 {
-			res = Result{Path: quizPath(uint32(quiz.ID)), Flash: FlashCancelBlocked}
+			res = Result{Path: refusalPath(actor, quiz, true), Flash: FlashCancelBlocked}
 			return nil
 		}
 		if _, err := tx.ExecContext(ctx, `
@@ -510,7 +527,7 @@ func (s *Service) StartAttempt(ctx context.Context, in StartQuizInput) (Result, 
 		}
 		if !hasReg {
 			if actor.IsStudent() {
-				res = Result{Path: quizPath(uint32(quiz.ID)), Flash: FlashNotRegistered}
+				res = Result{Path: refusalPath(actor, quiz, false), Flash: FlashNotRegistered}
 				return nil
 			}
 			return apperr.NotFoundf().WithRule("PAR-079")
@@ -534,7 +551,7 @@ func (s *Service) StartAttempt(ctx context.Context, in StartQuizInput) (Result, 
 		}
 
 		if viewmodel.QuizState(quiz.State) != viewmodel.QuizOpen {
-			res = Result{Path: quizPath(uint32(quiz.ID)), Flash: FlashNotOpen}
+			res = Result{Path: refusalPath(actor, quiz, true), Flash: FlashNotOpen}
 			return nil
 		}
 		if actor.IsStudent() {

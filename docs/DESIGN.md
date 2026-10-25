@@ -452,6 +452,49 @@ nav links centre-left, search and utilities right. The active nav item shows
 `#121721` text on a `#E2E7EC` pill with a coral underline marker; inactive
 items are `#687182`.
 
+Account access is a utility, not a task destination, and exactly one control
+owns it per width: the avatar pill is the only route to the profile screen
+from `lg` (1024px) up, and the drawer's account row — avatar, name, class or
+role, chevron — is the only route below `lg`. The task nav never carries a
+"Profil" item beside it. The pill always names itself: `Profil` until `xl`
+(1280px), then the person's name and role.
+
+Sign-out obeys the same rule through a swap: the drawer's labelled button
+below `md` (768px), the top-bar icon from `md` up — the drawer is the only
+copy reachable while it covers the bar on a phone.
+
+### Page navigation and action hierarchy
+
+Every screen answers "where am I going back to?" and "what is the one action
+here?" in the same places.
+
+**Back is navigation, never a button.** One idiom: `link-quiet` with a 16px
+`arrow-left`, first element in the page's reading order and above the `h1`,
+labelled with its destination ("Kembali ke daftar kuis", never a bare
+"Kembali"). Attempt screens have no page header: the result screen puts its
+quiet link in the attempt top bar's trailing slot, while the live question and
+review screens keep it in the question-navigation row, so leaving during an
+attempt is never a permanently visible header action. An in-flow contextual
+link that sits beside a directional button keeps `link-quiet` but drops the
+arrow, so it does not read as a second "previous". A header action that points
+at the same URL as the back link is removed: one destination, one affordance.
+
+**A detail screen is the hub for its drill-downs.** A quiz's detail screen is the hub for results and monitor: each drill-down opens from it, carries one quiet back link to it, and offers at most one job control of its own.
+
+**Acting is a button, in three tiers.**
+
+| Tier | Class | Use |
+| :--- | :--- | :--- |
+| Primary | `btn btn-solid theme-primary` | The one action the screen region exists for: save, submit, create, next. |
+| Secondary | `btn btn-outline theme-primary` | Every other action: cancel, filter submit, secondary header actions, row actions. |
+| Destructive | `btn btn-outline theme-danger` | Delete, sign-out, destructive confirmation. |
+
+Row actions add `btn-sm`; an inline copy button beside a code or URL field is
+always `btn-sm`, so the same job never changes size between screens. A button
+never navigates and a link never submits. Copy is sentence case and uses the
+product's Indonesian vocabulary consistently: "Ubah" (not "Edit"), "Simpan",
+"Batal", "Hapus", "Kembali ke …".
+
 ### Stat tile
 White card, `18px` radius, `20px` padding. A `32px` large figure in
 `text-primary`, a `13px` label in `text-secondary`, an icon badge on a muted
@@ -516,12 +559,16 @@ defect.
 | :--- | :--- |
 | Loading | Server-rendered first paint; a skeleton placeholder only on a filter swap, with `aria-busy="true"`. |
 | Ready | The populated surface. |
-| Empty | A white card with a calm message and one primary action. |
+| Empty | A white card with a calm message and, when there is one, a single primary action; where the only available destination is the page's own back link, the action is omitted rather than duplicated. |
 | Error | A `danger` alert with a retry action; the previous content stays visible. |
 | Saving | A spinner inside the control, which is disabled, plus `role="status"`. |
 | Saved | Automatic answers save silently — the live answered count is the confirmation; an explicit fallback save shows a brief success toast. Never a permanent state marker. |
 | Stale | A persistent `warning` banner explaining that live updates stopped. |
 | Offline / no-JS | A `warning` banner naming exactly what is unavailable. |
+
+The monitor and results screens apply this rule to their empty states: the
+message stays, and no action is rendered when the only destination would repeat
+the back link above it.
 
 ## 9. Responsive behavior
 
