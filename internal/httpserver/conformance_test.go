@@ -18,7 +18,7 @@ import (
 )
 
 // conformance_test.go is the whole-frontend gate for the typed-data build. It
-// pins the exact 74-route surface from the design contract, renders every GET
+// pins the exact 78-route surface from the design contract, renders every GET
 // page and exercises every POST action, and walks the template/CSS/JS sources
 // for the design bans. TestMain (server_test.go) chdirs to the repository root,
 // so ./templates and ./static resolve correctly.
@@ -51,8 +51,8 @@ type route struct{ method, path string }
 
 func r(method, path string) route { return route{method: method, path: path} }
 
-// contractRoutes is the exact 77-entry surface from the design contract:
-// public/auth 18, student 9, attempt 6, teacher core/authoring 18, grading 4,
+// contractRoutes is the exact 78-entry surface from the design contract:
+// public/auth 18, student 9, attempt 6, teacher core/authoring 19, grading 4,
 // management 17, error 5.
 var contractRoutes = []route{
 	// Public and auth (18).
@@ -87,7 +87,7 @@ var contractRoutes = []route{
 	r("GET", "/attempt/:id/result"),
 	r("POST", "/attempt/:id/beacon"),
 
-	// Teacher core + authoring + monitor (18).
+	// Teacher core + authoring + monitor (19).
 	r("GET", "/teacher"),
 	r("GET", "/teacher/quizzes"),
 	r("GET", "/teacher/quizzes/new"),
@@ -98,6 +98,7 @@ var contractRoutes = []route{
 	r("POST", "/teacher/quizzes/:id/close"),
 	r("POST", "/teacher/quizzes/:id/delete"),
 	r("GET", "/teacher/quizzes/:id/results"),
+	r("GET", "/teacher/quizzes/:id/export.xlsx"),
 	r("GET", "/teacher/quizzes/:id/questions/new"),
 	r("POST", "/teacher/quizzes/:id/questions"),
 	r("GET", "/teacher/quizzes/:id/questions/:qid"),
@@ -165,7 +166,7 @@ func walkTemplates(t *testing.T) map[string]string {
 	return files
 }
 
-// TestRouteSurface pins the exact 77 method+path pairs. Membership equality is
+// TestRouteSurface pins the exact 78 method+path pairs. Membership equality is
 // used, not slice order, because registration order is an implementation detail
 // (server.go sorts a copy).
 func TestRouteSurface(t *testing.T) {
@@ -177,8 +178,8 @@ func TestRouteSurface(t *testing.T) {
 		}
 		want[key] = true
 	}
-	if len(want) != 81 {
-		t.Fatalf("contract fixture = %d routes, want 81", len(want))
+	if len(want) != 82 {
+		t.Fatalf("contract fixture = %d routes, want 82", len(want))
 	}
 
 	seen := map[string]int{}

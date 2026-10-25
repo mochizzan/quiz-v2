@@ -5,12 +5,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/gofiber/fiber/v3"
 
 	"quiz-v2/internal/apperr"
 	"quiz-v2/internal/attempts"
+	"quiz-v2/internal/export"
 	"quiz-v2/internal/viewmodel"
 )
 
@@ -183,6 +186,79 @@ func teacherStream(x *Ctx) error {
 	return err
 }
 
+// exportContentType is the only media type the export route emits.
+const exportContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+// teacherExport serves GET /teacher/quizzes/:id/export.xlsx (spec §9). The
+// route runs as HandlerCtx because the response is a file, not a page: the
+// pipeline has already resolved the teacher and the route class, and the
+// handler makes the one ownership decision through the export read model.
+//
+// The workbook is built completely before any header or byte is written, so a
+// failed read or build is the normal error page and never a partial download.
+func teacherExport(x *Ctx) error {
+	accountID, err := teacherActor(x)
+	if err != nil {
+		return x.server.respondError(x.c, apperr.From(attemptTeacherError(err)))
+	}
+	quizID := x.IntParam("id")
+	data, err := attemptService(x).Export(x.Context(), attempts.ExportInput{
+		QuizID:    quizID,
+		AccountID: accountID,
+	})
+	if err != nil {
+		return x.server.respondError(x.c, apperr.From(attemptTeacherError(err)))
+	}
+	workbook, err := export.Build(data, x.UploadsDir())
+	if err != nil {
+		return x.server.respondError(x.c, apperr.From(attemptTeacherError(err)))
+	}
+
+	x.c.Set("Content-Type", exportContentType)
+	x.c.Set("Content-Disposition", `attachment; filename="`+exportFilename(quizID, data.Quiz.Title)+`"`)
+	x.c.Set("Cache-Control", "no-store")
+	return x.c.Send(workbook)
+}
+
+// exportFilename is the download name: kuis-<id>-<slug>.xlsx. Both parts are
+// generated here, so the header can never carry a quote, newline, or
+// non-ASCII byte from the quiz title.
+func exportFilename(quizID int64, title string) string {
+	return "kuis-" + strconv.FormatInt(quizID, 10) + "-" + exportSlug(title) + ".xlsx"
+}
+
+// exportSlug lowercases the ASCII letters and digits of a title and collapses
+// every run of other bytes into one hyphen. Leading and trailing runs are
+// dropped; a title with no ASCII alphanumeric falls back to "kuis".
+func exportSlug(title string) string {
+	var b strings.Builder
+	b.Grow(len(title))
+	gap := false
+	for i := 0; i < len(title); i++ {
+		c := title[i]
+		switch {
+		case c >= 'a' && c <= 'z', c >= '0' && c <= '9':
+			if gap && b.Len() > 0 {
+				b.WriteByte('-')
+			}
+			gap = false
+			b.WriteByte(c)
+		case c >= 'A' && c <= 'Z':
+			if gap && b.Len() > 0 {
+				b.WriteByte('-')
+			}
+			gap = false
+			b.WriteByte(c + ('a' - 'A'))
+		default:
+			gap = b.Len() > 0
+		}
+	}
+	if b.Len() == 0 {
+		return "kuis"
+	}
+	return b.String()
+}
+
 // init registers the teacher overview, results, monitor and stream routes.
 func init() {
 	registerPage(PageRoute{
@@ -232,6 +308,13 @@ func init() {
 			}
 			return x.Page(title, "kuis", results), nil
 		},
+	})
+
+	registerPage(PageRoute{
+		Method:     "GET",
+		Path:       "/teacher/quizzes/:id/export.xlsx",
+		Auth:       ClassOwnerTeacher,
+		HandlerCtx: teacherExport,
 	})
 
 	registerPage(PageRoute{

@@ -4,13 +4,19 @@ Status: decided 2026-10-25. This file is the single contract for the parallel
 implementation waves. Where it conflicts with an older spec, this file wins and
 the older spec must be corrected in the same change.
 
+Amended 2026-10-25: the results header allows the `Unduh XLSX` action beside
+the grading action; see `2026-10-25-quiz-xlsx-export-design.md`.
+
 Repo: `D:\Project\Mother\quiz-v2`. Build: `go build ./...`, `go test ./...`.
 
 ## 0. Invariants
 
-- **74 registered routes stay 74.** No new route path. `conformance_test.go`
-  pins the surface; a scoped grading queue reuses `GET /teacher/grading?quiz=<id>`,
-  which the domain already parses (`gradingQueueInput`, `routes_teacher_grading.go:24-32`).
+- **The route surface stays fixed for this rework.** No new route path here.
+  `conformance_test.go` pins the surface; a scoped grading queue reuses
+  `GET /teacher/grading?quiz=<id>`, which the domain already parses
+  (`gradingQueueInput`, `routes_teacher_grading.go:24-32`). The separate XLSX
+  export spec adds `GET /teacher/quizzes/:id/export.xlsx`; that spec owns the
+  new pin.
 - **Palette**: only the 24 hexes in `docs/DESIGN.md` §2.1. No new hex, ever.
 - **Classes**: only the existing vocabulary. New component classes go in
   `templates/partials/ui-style.html` or the page's own `{{define "partials/page-style"}}`.
@@ -190,13 +196,14 @@ that carry a back link and one job control, nothing else.**
 
 ### 3.2 `templates/pages/teacher/results.html`
 
-- Header: back link `Kembali ke detail kuis` (unchanged) + exactly one
-  secondary action, `Nilai esai kuis ini` → `/teacher/grading?quiz={{.Quiz.ID}}`.
-  Replace the hardcoded `:90`.
+- Header: back link `Kembali ke detail kuis` (unchanged) + two secondary
+  actions: `Nilai esai kuis ini` → `{{.GradingHref}}` and `Unduh XLSX` →
+  `{{.ExportHref}}`. Replace the hardcoded `:90`. The export action is defined
+  in `2026-10-25-quiz-xlsx-export-design.md`.
 - Remove the empty-state action `Buka detail kuis` (`:151`) when zero attempts —
   it duplicates the back link. Keep `Tampilkan semua` for a filtered-empty list.
-- `internal/viewmodel/pages.go` `QuizResults`: add a `GradingHref string` so the
-  template stops hardcoding a URL.
+- `internal/viewmodel/pages.go` `QuizResults`: carry `GradingHref` and
+  `ExportHref` strings so the template hardcodes neither URL.
 
 ### 3.3 `templates/pages/teacher/monitor.html`
 
