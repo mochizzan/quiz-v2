@@ -86,6 +86,96 @@ func init() {
 
 	registerPage(PageRoute{
 		Method:   "GET",
+		Path:     "/profile/password",
+		Template: "pages/student/change-password.html",
+		Nav:      "profil",
+		Auth:     ClassStudent,
+		Load: func(x *Ctx) (viewmodel.PageData, error) {
+			back := "/profile"
+			return x.Page("Ganti kata sandi", "profil", viewmodel.ChangePasswordPage{BackHref: back}), nil
+		},
+	})
+	registerPage(PageRoute{
+		Method: "POST",
+		Path:   "/profile/password",
+		Auth:   ClassStudent,
+		ActForm: func(x *Ctx) (viewmodel.PageData, Redirect, error) {
+			sess, serr := identitySession(x)
+			if serr != nil {
+				return viewmodel.PageData{}, Redirect{}, serr
+			}
+			svc := identityService(x)
+			bucket := identity.ChangePasswordKey(sess.AccountID)
+			if err := identityRate(x, bucket, identity.ChangePasswordLimit); err != nil {
+				return viewmodel.PageData{}, Redirect{}, err
+			}
+			err := svc.ChangePassword(x.c.Context(), sess.AccountID, sess.ID, identity.ChangePasswordInput{
+				Current: x.RawValue("current_password"),
+				New:     x.RawValue("new_password"),
+				Confirm: x.RawValue("password_confirm"),
+			})
+			switch {
+			case err == nil:
+				x.Limiter().Clear(bucket)
+				return viewmodel.PageData{}, identityRedirect("/profile", identity.FlashPasswordReset), nil
+			case errors.Is(err, identity.ErrSessionGone):
+				return viewmodel.PageData{}, Redirect{}, x.SeeOther("/login", identity.FlashSessionExpired)
+			}
+			if fields, ok := identity.FieldErrorsOf(err); ok {
+				return x.Page("Ganti kata sandi", "profil", viewmodel.ChangePasswordPage{BackHref: "/profile"}),
+					Redirect{}, apperr.Validationf(fields)
+			}
+			return viewmodel.PageData{}, Redirect{}, identityFailure(err)
+		},
+	})
+
+	registerPage(PageRoute{
+		Method:   "GET",
+		Path:     "/teacher/profile/password",
+		Template: "pages/teacher/change-password.html",
+		Nav:      "profil",
+		Auth:     ClassTeacher,
+		Load: func(x *Ctx) (viewmodel.PageData, error) {
+			back := "/teacher/profile"
+			return x.Page("Ganti kata sandi", "profil", viewmodel.ChangePasswordPage{BackHref: back}), nil
+		},
+	})
+	registerPage(PageRoute{
+		Method: "POST",
+		Path:   "/teacher/profile/password",
+		Auth:   ClassTeacher,
+		ActForm: func(x *Ctx) (viewmodel.PageData, Redirect, error) {
+			sess, serr := identitySession(x)
+			if serr != nil {
+				return viewmodel.PageData{}, Redirect{}, serr
+			}
+			svc := identityService(x)
+			bucket := identity.ChangePasswordKey(sess.AccountID)
+			if err := identityRate(x, bucket, identity.ChangePasswordLimit); err != nil {
+				return viewmodel.PageData{}, Redirect{}, err
+			}
+			err := svc.ChangePassword(x.c.Context(), sess.AccountID, sess.ID, identity.ChangePasswordInput{
+				Current: x.RawValue("current_password"),
+				New:     x.RawValue("new_password"),
+				Confirm: x.RawValue("password_confirm"),
+			})
+			switch {
+			case err == nil:
+				x.Limiter().Clear(bucket)
+				return viewmodel.PageData{}, identityRedirect("/teacher/profile", identity.FlashPasswordReset), nil
+			case errors.Is(err, identity.ErrSessionGone):
+				return viewmodel.PageData{}, Redirect{}, x.SeeOther("/login", identity.FlashSessionExpired)
+			}
+			if fields, ok := identity.FieldErrorsOf(err); ok {
+				return x.Page("Ganti kata sandi", "profil", viewmodel.ChangePasswordPage{BackHref: "/teacher/profile"}),
+					Redirect{}, apperr.Validationf(fields)
+			}
+			return viewmodel.PageData{}, Redirect{}, identityFailure(err)
+		},
+	})
+
+	registerPage(PageRoute{
+		Method:   "GET",
 		Path:     "/auth/pending",
 		Template: "pages/auth/pending.html",
 		Auth:     ClassPublic,

@@ -73,6 +73,7 @@ var contractRoutes = []route{
 	r("GET", "/student/history"),
 	r("GET", "/student/history/:quizID"),
 	r("GET", "/profile"), r("POST", "/profile"),
+	r("GET", "/profile/password"), r("POST", "/profile/password"),
 	r("GET", "/quiz/:id"),
 	r("POST", "/quiz/:id/register"),
 	r("POST", "/quiz/:id/cancel"),
@@ -129,6 +130,7 @@ var contractRoutes = []route{
 	r("GET", "/teacher/teachers"),
 	r("POST", "/teacher/teachers/:id/approve"),
 	r("GET", "/teacher/profile"), r("POST", "/teacher/profile"),
+	r("GET", "/teacher/profile/password"), r("POST", "/teacher/profile/password"),
 
 	// Error pages (5; the 404 catch-all is additionally tested below).
 	r("GET", "/error/403"),
@@ -175,8 +177,8 @@ func TestRouteSurface(t *testing.T) {
 		}
 		want[key] = true
 	}
-	if len(want) != 77 {
-		t.Fatalf("contract fixture = %d routes, want 77", len(want))
+	if len(want) != 81 {
+		t.Fatalf("contract fixture = %d routes, want 81", len(want))
 	}
 
 	seen := map[string]int{}

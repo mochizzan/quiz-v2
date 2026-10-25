@@ -133,7 +133,7 @@ func TestTeacherProfilePageRenders(t *testing.T) {
 	// Security panel: password change is an outline link (it navigates), and
 	// the only submit in that card is the destructive logout button.
 	for _, want := range []string{
-		`class="btn btn-outline theme-primary" href="/change-password"`,
+		`class="btn btn-outline theme-primary" href="/teacher/profile/password"`,
 		`class="btn btn-outline theme-danger w-100"`,
 		`action="/logout"`,
 	} {
@@ -188,7 +188,7 @@ func TestStudentProfilePageRenders(t *testing.T) {
 	if !strings.Contains(html, `name="full_name" value="`+name+`"`) {
 		t.Error("student profile must echo the current name")
 	}
-	if !strings.Contains(html, `class="btn btn-outline theme-primary" href="/change-password"`) {
+	if !strings.Contains(html, `class="btn btn-outline theme-primary" href="/profile/password"`) {
 		t.Error("student profile must link to /change-password as an outline link")
 	}
 	// Class and major are teacher-owned, so they render read-only.
