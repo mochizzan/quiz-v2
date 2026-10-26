@@ -347,6 +347,9 @@ func TestQuizDetailSaveOrderVisibilityContract(t *testing.T) {
 			if settings == nil {
 				t.Fatal("settings form is missing")
 			}
+			if !hasHTMLAttr(settings, "data-dirty-form") {
+				t.Error("settings form must opt into the dirty-form save flow")
+			}
 			settingsSave := findHTMLNode(settings, func(n *html.Node) bool {
 				return n.Data == "button" && htmlAttr(n, "type") == "submit"
 			})
@@ -356,11 +359,34 @@ func TestQuizDetailSaveOrderVisibilityContract(t *testing.T) {
 			if hasHTMLAttr(settingsSave, "hidden") {
 				t.Error("settings save button must stay visible")
 			}
+			if !hasHTMLAttr(settingsSave, "data-dirty-submit") {
+				t.Error("settings save button must carry data-dirty-submit")
+			}
 			if hasHTMLAttr(settingsSave, "data-save-order") {
 				t.Error("save-order hook leaked into the settings form")
 			}
 			if text := htmlNodeText(settingsSave); !strings.Contains(text, "Simpan pengaturan") {
 				t.Errorf("settings save label = %q, want Simpan pengaturan", text)
+			}
+
+			retake := findHTMLNode(settings, func(n *html.Node) bool {
+				return n.Data == "input" && htmlAttr(n, "name") == "allow_retake"
+			})
+			if retake == nil || !hasHTMLAttr(retake, "data-retake-toggle") {
+				t.Error("allow_retake switch must carry data-retake-toggle")
+			}
+			attempts := findHTMLNode(settings, func(n *html.Node) bool {
+				return n.Data == "input" && htmlAttr(n, "name") == "max_attempts"
+			})
+			if attempts == nil {
+				t.Fatal("max_attempts field is missing")
+			}
+			row := attempts.Parent
+			for row != nil && !(row.Data == "div" && hasHTMLClass(row, "field-row")) {
+				row = row.Parent
+			}
+			if row == nil || !hasHTMLAttr(row, "data-retake-field") {
+				t.Error("max_attempts field-row must carry data-retake-field")
 			}
 
 			status := findHTMLNode(doc, func(n *html.Node) bool {

@@ -386,3 +386,59 @@ func TestProfilePagesRenderPhotoOrInitials(t *testing.T) {
 		})
 	}
 }
+
+// TestStudentDashboardQuizCardRendersTeacherAvatar pins AVT-083 on the student
+// dashboard: each of the three quiz lists renders the owning teacher's badge
+// through the shared avatar partial — a photo when the account has one, the
+// initials when it does not. The card is the only badge on the screen, so a
+// template that drops .TeacherAvatar fails both variants on every list.
+func TestStudentDashboardQuizCardRendersTeacherAvatar(t *testing.T) {
+	surfaces := []struct {
+		name string
+		list func(viewmodel.QuizCard) viewmodel.StudentDashboard
+	}{
+		{"live", func(c viewmodel.QuizCard) viewmodel.StudentDashboard {
+			return viewmodel.StudentDashboard{GreetingName: "Ayu", DateLine: "Senin", Live: []viewmodel.QuizCard{c}}
+		}},
+		{"ready", func(c viewmodel.QuizCard) viewmodel.StudentDashboard {
+			return viewmodel.StudentDashboard{GreetingName: "Ayu", DateLine: "Senin", Ready: []viewmodel.QuizCard{c}}
+		}},
+		{"latest", func(c viewmodel.QuizCard) viewmodel.StudentDashboard {
+			return viewmodel.StudentDashboard{GreetingName: "Ayu", DateLine: "Senin", Latest: []viewmodel.QuizCard{c}}
+		}},
+	}
+
+	card := func(a viewmodel.Avatar) viewmodel.QuizCard {
+		return viewmodel.QuizCard{
+			ID: 7, Href: "/quiz/7", Title: "Ulangan Bab 3", TeacherName: "Ayu Lestari",
+			TeacherAvatar: a, QuestionCount: 10, State: viewmodel.QuizOpen,
+			Primary: viewmodel.Primary("Mulai kuis", "/quiz/7"),
+		}
+	}
+
+	for _, s := range surfaces {
+		t.Run(s.name, func(t *testing.T) {
+			render := func(a viewmodel.Avatar) string {
+				return renderPage(t, "pages/student/dashboard.html", viewmodel.PageData{
+					Base: viewmodel.Base{Title: "Dasbor siswa"},
+					Data: s.list(card(a)),
+				})
+			}
+
+			t.Run("photo", func(t *testing.T) {
+				badges := avatarBadges(render(photoAvatar("app-avatar--sm")))
+				if len(badges) != 1 {
+					t.Fatalf("avatar badges = %d, want exactly the one card badge", len(badges))
+				}
+				checkPhotoBadge(t, badges[0], "app-avatar--sm")
+			})
+			t.Run("initials", func(t *testing.T) {
+				badges := avatarBadges(render(initialsAvatar("app-avatar--sm")))
+				if len(badges) != 1 {
+					t.Fatalf("avatar badges = %d, want exactly the one card badge", len(badges))
+				}
+				checkInitialsBadge(t, badges[0], "app-avatar--sm")
+			})
+		})
+	}
+}

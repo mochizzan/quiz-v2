@@ -48,6 +48,14 @@
           <a class="{{.Class}}" href="{{.Href}}"{{if .Current}} aria-current="step"{{end}} aria-label="Soal {{.Position}}{{if .Answered}}, sudah dijawab{{else}}, belum dijawab{{end}}">{{.Position}}</a>
           {{end}}
         </div>
+        {{/* DESIGN §7 keeps leaving as navigation inside the navigator, so it
+             is never a permanently visible header action and never sits beside
+             a directional button. The rule above separates it from the pills so
+             it cannot read as a second "previous". */}}
+        <a class="link-quiet attempt-exit" href="{{.Data.QuizHref}}">
+          <svg width="16" height="16" aria-hidden="true"><use href="#i-arrow-left"></use></svg>
+          Kembali ke kuis
+        </a>
       </nav>
 
       <form method="post" action="{{.Data.AnswerHref}}" data-attempt-form>
@@ -93,22 +101,22 @@
         </div>
 
         <div class="attempt-footer mt-7">
-          {{/* Exit lives with the "go elsewhere, don't commit" cluster (prev).
-               Answers save themselves on change via app.js; prev/next also
-               commit whatever is currently on the form, so a browser without
-               JavaScript still records an answer before leaving the question. */}}
+          {{/* Prev/next are submit buttons, not links: each commits whatever is
+               currently on the form, so a browser without JavaScript still
+               records an answer before leaving the question. The exit link
+               deliberately lives in the navigator instead of beside them — this
+               bar is sticky at the thumb on phones, where an accidental press
+               leaves the attempt (DESIGN §7). */}}
           {{if .Data.PrevHref}}
           <div class="group">
             <button type="submit" class="btn btn-outline theme-primary" name="nav" value="prev">
               <svg width="18" height="18" aria-hidden="true"><use href="#i-arrow-left"></use></svg>
               Sebelumnya
             </button>
-            <a class="link-quiet align-self-center" href="{{.Data.QuizHref}}">Kembali ke kuis</a>
           </div>
           {{else}}
           <div class="group">
             <button type="button" class="btn btn-outline theme-primary" disabled>Sebelumnya</button>
-            <a class="link-quiet align-self-center" href="{{.Data.QuizHref}}">Kembali ke kuis</a>
           </div>
           {{end}}
 

@@ -387,11 +387,16 @@ type QuizRef struct {
 
 // QuizCard is one row/card in any quiz list (teacher or student).
 type QuizCard struct {
-	ID            int64
-	Href          string
-	Title         string
-	Description   string
-	TeacherName   string
+	ID          int64
+	Href        string
+	Title       string
+	Description string
+	TeacherName string
+	// TeacherAvatar is the owning teacher's photo, or their initials when the
+	// account has none. It is filled by the reads that own the accounts join;
+	// a reader that never joins it leaves the zero value and the card renders
+	// initials from TeacherName (AVT-083).
+	TeacherAvatar Avatar
 	QuestionCount int
 	State         QuizState
 	Visibility    Visibility

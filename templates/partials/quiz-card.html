@@ -1,16 +1,23 @@
 {{define "partials/quiz-card.html"}}{{with .}}<article class="quiz-card">
-  <div class="quiz-card-top">
-    <div class="min-w-0">
-      <span class="eyebrow">{{.TeacherName}}</span>
+  {{/* Reading order is what the student scans for: the quiz title first, then
+       who is teaching it. The byline carries the teacher's photo (or their
+       initials when the account has none) beside their name, so a card is
+       recognisable before any of its copy is read (AVT-083). */}}
+  <div class="quiz-card-head">
+    <div class="quiz-card-top">
       <h2 class="quiz-title"><a href="{{.Href}}">{{.Title}}</a></h2>
+      {{/* One badge: the viewer's participation when the two already know each
+           other, the quiz lifecycle otherwise (new-to-you cards). */}}
+      {{if .Participation}}
+      <span class="{{.Participation.BadgeClass}}">{{.StatusLabel}}</span>
+      {{else}}
+      <span class="{{.State.BadgeClass}}">{{.State.Label}}</span>
+      {{end}}
     </div>
-    {{/* One badge: the viewer's participation when the two already know each
-         other, the quiz lifecycle otherwise (new-to-you cards). */}}
-    {{if .Participation}}
-    <span class="{{.Participation.BadgeClass}}">{{.StatusLabel}}</span>
-    {{else}}
-    <span class="{{.State.BadgeClass}}">{{.State.Label}}</span>
-    {{end}}
+    <div class="quiz-teacher">
+      {{template "partials/avatar.html" .TeacherAvatar}}
+      <span class="quiz-teacher-name">{{.TeacherName}}</span>
+    </div>
   </div>
   {{if .Description}}<p class="quiz-desc text-truncate-2">{{.Description}}</p>{{end}}
   <div class="quiz-meta">
