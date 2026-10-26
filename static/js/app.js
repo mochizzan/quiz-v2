@@ -41,6 +41,25 @@ document.addEventListener("DOMContentLoaded", () => {
     syncVisibility();
   }
 
+  // ---- Quiz settings: attempts follow the retake toggle --------------------
+  // The server already ignores max_attempts while allow_retake is off
+  // (AUT-005), so the number field is hidden and disabled until the toggle
+  // asks for it. Without JavaScript both stay visible; the saved value is
+  // unchanged either way.
+  const retakeToggle = document.querySelector("[data-retake-toggle]");
+  const retakeField = document.querySelector("[data-retake-field]");
+  if (retakeToggle && retakeField) {
+    const syncRetake = () => {
+      const allowed = retakeToggle.checked;
+      retakeField.hidden = !allowed;
+      retakeField.querySelectorAll("input, select").forEach((field) => {
+        field.disabled = !allowed;
+      });
+    };
+    retakeToggle.addEventListener("change", syncRetake);
+    syncRetake();
+  }
+
   // ---- Question type editor ------------------------------------------------
   const typeInputs = document.querySelectorAll("[data-question-type]");
   const objectiveBlock = document.querySelector("[data-objective-only]");

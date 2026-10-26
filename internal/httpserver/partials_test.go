@@ -405,10 +405,19 @@ func TestEveryPartialSubContracts(t *testing.T) {
 			`.AudienceText`, `{{if .Code}}`, `.CodeText`,
 			`.Participation.BadgeClass`, `.StatusLabel`, `.AttemptText`,
 			`{{with .Primary}}`, `{{with .Secondary}}`,
+			// The byline: the teacher's name next to their photo-or-initials
+			// badge, rendered through the shared partial (AVT-083).
+			`.TeacherName`, `.TeacherAvatar`, `partials/avatar.html`,
 		} {
 			if !strings.Contains(body, want) {
 				t.Errorf("quiz-card.html missing %q", want)
 			}
+		}
+		// The title leads the card and the byline follows it, so the card reads
+		// "what is this, who teaches it" rather than the teacher's name sitting
+		// above the title as an eyebrow.
+		if strings.Index(body, `class="quiz-title"`) > strings.Index(body, `.TeacherName`) {
+			t.Error("quiz-card.html must lead with the title, then the teacher byline")
 		}
 	})
 

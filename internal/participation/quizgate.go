@@ -20,13 +20,16 @@ import (
 )
 
 // quizColumns is the column list every quiz scan agrees on. The owner name is
-// joined for the teacher label every participant surface shows; the target
-// major's name is joined for the audience label (F-§6.3). Missing owners or a
-// deleted major leave the strings empty rather than failing the page.
+// joined for the teacher label every participant surface shows, and the owner's
+// stored avatar name rides along in the same join so a card can render the
+// photo without a second query (AVT-083); the target major's name is joined for
+// the audience label (F-§6.3). Missing owners or a deleted major leave the
+// strings empty rather than failing the page.
 const quizColumns = `q.id, q.owner_account_id, q.title, q.description, q.visibility, q.state, q.code,
 	q.invite_token, q.target_grade, q.target_major_id, q.starts_at, q.ends_at,
 	q.allow_retake, q.max_attempts, q.show_score, q.review_mode, q.published_at,
-	q.created_at, COALESCE(a.full_name, ''), COALESCE(m.name, '')`
+	q.created_at, COALESCE(a.full_name, ''), COALESCE(a.avatar_name, ''),
+	COALESCE(m.name, '')`
 
 // quizFrom is the FROM clause every quiz loader shares: owner for the label,
 // target major for the audience.
@@ -34,8 +37,9 @@ const quizFrom = ` FROM quizzes q` +
 	` LEFT JOIN accounts a ON a.id = q.owner_account_id` +
 	` LEFT JOIN majors m ON m.id = q.target_major_id`
 
-// quizRow is one live quizzes row plus the owning teacher's display name.
-// Nullable columns stay sql.Null* everywhere (data contract R-15).
+// quizRow is one live quizzes row plus the owning teacher's display name and
+// stored photo name. Nullable columns stay sql.Null* everywhere (data contract
+// R-15).
 type quizRow struct {
 	ID          int64
 	OwnerID     int64
@@ -56,8 +60,11 @@ type quizRow struct {
 	PublishedAt sql.NullTime
 	CreatedAt   time.Time
 
-	TeacherName     string
-	TargetMajorName string
+	TeacherName string
+	// TeacherAvatarName is accounts.avatar_name for the owning teacher ("" when
+	// they have no photo); viewmodel.NewAvatar maps it to a URL or initials.
+	TeacherAvatarName string
+	TargetMajorName   string
 }
 
 func scanQuiz(row interface{ Scan(...any) error }) (quizRow, error) {
@@ -67,7 +74,7 @@ func scanQuiz(row interface{ Scan(...any) error }) (quizRow, error) {
 		&q.Code, &q.InviteToken, &q.TargetGrade, &q.TargetMajor,
 		&q.StartsAt, &q.EndsAt, &q.AllowRetake, &q.MaxAttempts,
 		&q.ShowScore, &q.ReviewMode, &q.PublishedAt, &q.CreatedAt,
-		&q.TeacherName, &q.TargetMajorName,
+		&q.TeacherName, &q.TeacherAvatarName, &q.TargetMajorName,
 	)
 	return q, err
 }

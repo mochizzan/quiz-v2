@@ -174,6 +174,11 @@ func init() {
 			if err != nil {
 				return viewmodel.PageData{}, err
 			}
+			// The share card copies this link into messages students receive,
+			// so it must carry the request's own origin, not just the path.
+			if detail.InviteURL != "" {
+				detail.InviteURL = x.c.BaseURL() + detail.InviteURL
+			}
 			title := "Detail kuis"
 			if detail.Quiz.Title != "" {
 				title = detail.Quiz.Title

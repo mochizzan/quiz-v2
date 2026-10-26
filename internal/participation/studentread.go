@@ -512,8 +512,9 @@ func (s *Service) buildStudentHistoryDetail(actor Actor, quiz quizRow, records [
 }
 
 // studentQuizCard is the shared card base for the three dashboard lists. It
-// carries the quiz identity, current labels, schedule, and the normalized
-// attempt cap; the caller adds participation and one primary action.
+// carries the quiz identity, the teacher's byline (name plus photo-or-initials),
+// current labels, schedule, and the normalized attempt cap; the caller adds
+// participation and one primary action.
 func (s *Service) studentQuizCard(quiz quizRow, questionCount int) viewmodel.QuizCard {
 	limit, normalised := maxAttemptsFor(quiz)
 	if normalised {
@@ -525,6 +526,7 @@ func (s *Service) studentQuizCard(quiz quizRow, questionCount int) viewmodel.Qui
 		Title:         quiz.Title,
 		Description:   quiz.Description,
 		TeacherName:   quiz.TeacherName,
+		TeacherAvatar: viewmodel.NewAvatar(quiz.TeacherAvatarName, quiz.TeacherName, "app-avatar--sm"),
 		QuestionCount: questionCount,
 		State:         viewmodel.QuizState(quiz.State),
 		Visibility:    viewmodel.Visibility(quiz.Visibility),

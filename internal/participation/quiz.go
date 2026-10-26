@@ -189,6 +189,7 @@ func (s *Service) quizIntroModel(ctx context.Context, tx *sql.Tx, actor Actor, q
 		Title:         quiz.Title,
 		Description:   quiz.Description,
 		TeacherName:   quiz.TeacherName,
+		TeacherAvatar: viewmodel.NewAvatar(quiz.TeacherAvatarName, quiz.TeacherName, "app-avatar--sm"),
 		QuestionCount: questionCount,
 		State:         viewmodel.QuizState(quiz.State),
 		Visibility:    viewmodel.Visibility(quiz.Visibility),

@@ -655,7 +655,7 @@
         </div>
 
         {{if $editable}}
-        <form class="settings-form" method="post" action="/teacher/quizzes/{{.Quiz.ID}}" data-validate>
+        <form class="settings-form" method="post" action="/teacher/quizzes/{{.Quiz.ID}}" data-validate data-dirty-form>
           <input type="hidden" name="csrf_token" value="{{$.CSRF}}">
 
           <div class="switch-row">
@@ -684,11 +684,11 @@
               <p class="field-help">Siswa dapat mengulang sampai batas percobaan.</p>
             </div>
             <span class="switch theme-primary">
-              <input type="checkbox" id="setting-allow-retake" name="allow_retake" value="1" role="switch" switch{{if .Settings.AllowRetake}} checked{{end}}>
+              <input type="checkbox" id="setting-allow-retake" name="allow_retake" value="1" role="switch" switch data-retake-toggle{{if .Settings.AllowRetake}} checked{{end}}>
             </span>
           </div>
 
-          <div class="field-row">
+          <div class="field-row" data-retake-field>
             <label class="form-label" for="setting-max-attempts">Batas percobaan</label>
             <input class="form-control setting-number" type="number" id="setting-max-attempts" name="max_attempts" value="{{.Settings.MaxAttempts}}" min="1" max="10" step="1" inputmode="numeric" aria-describedby="setting-max-attempts-help">
             <p class="field-help" id="setting-max-attempts-help">Dipakai saat percobaan ulang diizinkan.</p>
@@ -714,7 +714,7 @@
             </span>
           </div>
 
-          <button class="btn btn-outline theme-primary w-100 mt-4" type="submit">
+          <button class="btn btn-outline theme-primary w-100 mt-4" type="submit" data-dirty-submit>
             <svg width="16" height="16" aria-hidden="true"><use href="#i-check"></use></svg>
             Simpan pengaturan
           </button>

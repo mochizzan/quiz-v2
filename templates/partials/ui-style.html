@@ -107,10 +107,27 @@ a:focus-visible { outline: var(--bs-focus-ring); outline-offset: var(--bs-focus-
   height: 100%;
 }
 .quiz-card.is-muted { background: var(--bs-bg-2); }
+/* The head groups the title, badge, and teacher byline so the card reads
+   "what is this, who teaches it" in one tight block; the card's own 16 px gap
+   then separates that from the description, meta, and actions. */
+.quiz-card-head { display: flex; flex-direction: column; gap: 8px; }
 .quiz-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
-.quiz-title { margin: 0; font-size: 16px; font-weight: 700; line-height: 1.35; }
+.quiz-title { flex: 1 1 auto; min-width: 0; margin: 0; font-size: 16px; font-weight: 700; line-height: 1.35; }
 .quiz-title a { color: var(--bs-fg-body); text-decoration: none; }
 .quiz-title a:hover { color: var(--bs-primary-base); text-decoration: underline; text-underline-offset: .18em; }
+/* The byline pairs the 28 px badge (photo or initials, AVT-083) with a
+   truncating name so a long teacher name clips instead of pushing the badge. */
+.quiz-teacher { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.quiz-teacher-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--bs-fg-2);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 18px;
+}
 .quiz-desc { margin: 0; color: var(--bs-fg-2); font-size: 13px; line-height: 1.55; }
 .quiz-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; color: var(--bs-fg-2); font-size: 12px; }
 .quiz-meta span { display: inline-flex; align-items: center; gap: 5px; }
@@ -610,6 +627,10 @@ a:focus-visible { outline: var(--bs-focus-ring); outline-offset: var(--bs-focus-
 .question-nav a.is-answered { background: var(--bs-info-bg); color: var(--bs-info-fg); }
 .question-nav a.is-current { background: var(--bs-primary-base); color: var(--bs-primary-contrast); }
 .question-nav a:hover { box-shadow: inset 0 0 0 2px rgba(18, 23, 33, .14); }
+/* Leaving the attempt is navigation, so it sits under the navigator's rule
+   rather than beside Sebelumnya/Selanjutnya (DESIGN §7). The rule plus the
+   gap already above it keeps the exit from reading as one more pill. */
+.attempt-exit { align-self: flex-start; padding-top: 14px; border-top: 1px solid var(--bs-border-subtle); }
 .attempt-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
 .attempt-footer .group { display: flex; flex-wrap: wrap; gap: 8px; }
 /* Phone: the question-flow action bar is sticky bottom (DESIGN §9, safe-area).
