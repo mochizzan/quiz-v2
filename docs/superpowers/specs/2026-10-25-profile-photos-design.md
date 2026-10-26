@@ -653,7 +653,7 @@ render and fetch is an operational 404, not a state the UI models.
 | Surface | Model / query | Notes |
 |---|---|---|
 | Both navbars + both drawers | `CurrentUser` | replaces the initials badge |
-| `GET /profile`, `GET /teacher/profile` | `CurrentUser` | header card doubles as the preview |
+| `GET /profile`, `GET /teacher/profile` | `CurrentUser` | the photo card doubles as the identity anchor and the preview |
 | `GET /teacher/students` roster | `StudentRow` + `a.avatar_name` | 28 px, before the name |
 | `GET /teacher/students/:id` | `StudentForm` | header; the new-student form has no avatar |
 | `GET /teacher/teachers` directory | `TeacherRow` | active rows; pending rows keep initials |
@@ -697,20 +697,36 @@ stays urlencoded and untouched.
 
 **AVT-091.** Fields: file input (`name="photo"`,
 `accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif"`), help
-`Foto dipotong persegi dan diperkecil otomatis. Maksimal 200 MB.`, submit
-`Unggah foto`. The file input must have an accessible label; no `data-validate` or
-client-side size check.
+`Foto dipotong persegi dan diperkecil otomatis. Maksimal 200 MB. Anda dapat mengatur posisi dan zoom sebelum mengunggah.`, submit
+`Unggah foto`. The file input must have an accessible label; no `data-validate`.
+The page module may pre-check type, the 200 MB request cap, the 64 MiB
+WebP/HEIC source guard, and the 50 MP / 16,000 px ceiling so a doomed upload
+fails before the transfer (AVT-093). Those checks are advisory: the server's
+sniff, cap, and decode remain authoritative.
 
 **AVT-092.** Removing a photo is a second, separate urlencoded form posting
 `/profile/photo/remove`, rendered only when a photo exists. Its button is
 `Hapus foto` and it carries the same CSRF token.
 
-**AVT-093.** No client-side crop or preview in v1. The photo appears after the
-redirect. Every user-fixable failure is a `303` back to the profile with a flash;
-the file input is never repopulated, which is the same limitation authoring
-already documents. Transport-level garbage (malformed multipart, missing
-boundary) keeps the generic `422` form-invalid page. An over-cap request gets the
-413 page, not a flash, because the server has not read the form.
+**AVT-093.** The v1 rule "no client-side crop or preview" is superseded.
+`static/js/photo-editor.js`, loaded only on the two profile pages through
+`partials/page-script`, may decode the chosen file locally and show a square
+crop preview with a dark surround and a rule-of-thirds grid. The user can pan
+with pointer drag or the arrow keys and zoom with the slider, the mouse wheel,
+or `+`/`-`; `0` and `Atur ulang` restore the centred 1× view. On submit the
+module exports the chosen square as a JPEG into the same `photo` field, so the
+server still performs the authoritative decode, EXIF fix, crop, and WebP
+encode and no new endpoint or network call exists.
+
+The preview is an enhancement, not a contract. A file the browser cannot draw
+(HEIC outside Safari) falls back to the raw multipart upload with a status
+note; a corrupt JPEG/PNG is refused inline with the `photo-unreadable` copy.
+With JavaScript off, the browser submits the original file and the server
+centre-crops it exactly as before. Every server-fixable failure is still a
+`303` back to the profile with a flash; the file input is never repopulated.
+Transport-level garbage (malformed multipart, missing boundary) keeps the
+generic `422` form-invalid page. An over-cap request gets the 413 page, not a
+flash, because the server has not read the form.
 
 **AVT-094.** Copy, Indonesian, reused verbatim by handlers and tests:
 
@@ -733,6 +749,15 @@ as today. The 413 page copy is `Berkas terlalu besar. Maksimal 200 MB.` from
 **AVT-095.** The form works with JavaScript off: it is a plain multipart POST. The
 `accept` attribute is an upload-dialog hint only; the server decides by magic
 bytes.
+
+**AVT-096.** The profile page never offers an action before it can do anything.
+`Unggah foto` and `Batal` are hidden until a file is selected, and the
+name/email form's `Simpan perubahan` row is hidden while every field still
+equals the server-rendered value. The check is client-side enhancement only:
+`static/js/app.js` hides the rows after load and compares against
+`defaultValue`/`defaultChecked`, so autofill is not mistaken for a pristine
+form. A `422` re-render adds `data-dirty-open` and keeps the save row visible,
+and a browser without JavaScript keeps both rows visible and usable.
 
 ## 10. Failure modes
 

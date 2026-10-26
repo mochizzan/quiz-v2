@@ -1,0 +1,328 @@
+{{define "partials/photo-style.html"}}
+/* Profile photo card (DESIGN §7): the account anchor on the left, the pick
+   affordance on the right, and the crop editor below. The palette is the
+   closed DESIGN §2.1 set; the crop mask is rgba() of text-primary. */
+
+.photo-compose {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  gap: 16px;
+  align-items: stretch;
+}
+.photo-current {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 18px 14px;
+  border-radius: 18px;
+  background-color: #F4F6F8;
+  text-align: center;
+}
+.photo-current .app-avatar {
+  width: 88px;
+  height: 88px;
+  font-size: 24px;
+}
+.photo-current-name {
+  overflow-wrap: anywhere;
+  color: #121721;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+.photo-current-sub {
+  overflow-wrap: anywhere;
+  color: #687182;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.photo-pick {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  justify-content: center;
+}
+.photo-drop {
+  display: flex;
+  min-height: 152px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 20px 16px;
+  border: 1.5px dashed #E2E6EB;
+  border-radius: 18px;
+  background-color: #FFFFFF;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.photo-drop:hover,
+.photo-drop[data-dragover="true"] {
+  border-color: #4274D9;
+  background-color: #EEF4FA;
+}
+.photo-drop[data-dragover="true"] {
+  border-color: #293681;
+}
+.photo-pick:focus-within .photo-drop {
+  outline: 3px solid rgba(66, 116, 217, 0.36);
+  outline-offset: 3px;
+}
+.photo-drop-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  margin-bottom: 4px;
+  border-radius: 50%;
+  background-color: #EEF4FA;
+  color: #293681;
+}
+.photo-drop-title {
+  color: #121721;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.photo-drop-sub {
+  color: #687182;
+  font-size: 13px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.photo-error {
+  margin: 10px 0 0;
+  color: #B42318;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+.photo-note {
+  margin: 10px 0 0;
+  color: #687182;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.photo-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  color: #687182;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.photo-spinner {
+  width: 16px;
+  height: 16px;
+  border-width: 2px;
+}
+
+.photo-editor {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(220px, 0.8fr);
+  gap: 20px;
+  align-items: start;
+  margin-top: 18px;
+  padding: 16px;
+  border-radius: 18px;
+  background-color: #F4F6F8;
+}
+.photo-crop-wrap {
+  width: 100%;
+  max-width: 440px;
+  min-width: 0;
+  margin-inline: auto;
+}
+.photo-stage {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 4 / 3;
+  border-radius: 14px;
+  background-color: #121721;
+  cursor: grab;
+  touch-action: none;
+}
+.photo-stage:active {
+  cursor: grabbing;
+}
+.photo-stage:focus-visible {
+  outline: 3px solid rgba(66, 116, 217, 0.36);
+  outline-offset: 3px;
+}
+.photo-crop {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: min(72%, 340px);
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  outline: 1px solid rgba(255, 255, 255, 0.75);
+}
+.photo-view {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  pointer-events: none;
+  user-select: none;
+}
+.photo-mask {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  box-shadow: 0 0 0 9999px rgba(18, 23, 33, 0.62);
+}
+.photo-grid {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.photo-grid span {
+  position: absolute;
+  background-color: rgba(255, 255, 255, 0.45);
+}
+.photo-grid span:nth-child(1),
+.photo-grid span:nth-child(2) {
+  top: 0;
+  bottom: 0;
+  width: 1px;
+}
+.photo-grid span:nth-child(1) {
+  left: 33.333%;
+}
+.photo-grid span:nth-child(2) {
+  left: 66.666%;
+}
+.photo-grid span:nth-child(3),
+.photo-grid span:nth-child(4) {
+  right: 0;
+  left: 0;
+  height: 1px;
+}
+.photo-grid span:nth-child(3) {
+  top: 33.333%;
+}
+.photo-grid span:nth-child(4) {
+  top: 66.666%;
+}
+.photo-hint {
+  max-width: 46ch;
+  margin: 8px auto 0;
+  color: #687182;
+  font-size: 12px;
+  line-height: 1.45;
+  text-align: center;
+}
+
+.photo-controls {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 16px;
+}
+.photo-result {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 14px;
+  background-color: #FFFFFF;
+}
+.photo-result-thumb {
+  display: block;
+  width: 64px;
+  height: 64px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background-color: #E2E7EC;
+}
+.photo-result-title {
+  display: block;
+  color: #121721;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.photo-result-meta {
+  display: block;
+  margin-top: 2px;
+  color: #687182;
+  font-size: 11px;
+  line-height: 1.4;
+}
+.photo-zoom-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.photo-zoom-head .form-label {
+  margin: 0;
+}
+.photo-zoom-value {
+  min-width: 44px;
+  color: #121721;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.photo-control-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.photo-remove {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--bs-border-subtle);
+}
+
+@media (max-width: 991.98px) {
+  .photo-editor {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 767.98px) {
+  .photo-compose {
+    grid-template-columns: 1fr;
+  }
+  .photo-current {
+    display: grid;
+    grid-template-columns: 56px minmax(0, 1fr);
+    align-items: center;
+    gap: 2px 12px;
+    padding: 14px;
+    text-align: left;
+  }
+  .photo-current .app-avatar {
+    grid-row: 1 / span 2;
+    width: 56px;
+    height: 56px;
+    font-size: 18px;
+  }
+  .photo-drop {
+    min-height: 132px;
+    padding: 16px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .photo-drop {
+    transition: none;
+  }
+}
+{{end}}

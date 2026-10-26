@@ -1,4 +1,6 @@
 {{define "partials/title"}}Profil — Twisty Quiz{{end}}
+{{define "partials/page-style"}}{{template "partials/photo-style.html" .}}{{end}}
+{{define "partials/page-script"}}<script type="module" src="/static/js/photo-editor.js"></script>{{end}}
 {{define "content"}}
 <div class="page-stack">
 
@@ -21,41 +23,103 @@
   <div class="row g-7">
     <div class="col-12 xl:col-8">
 
-      <div class="card p-7 d-flex align-items-center gap-5 mb-7">
-        {{with .User}}{{template "partials/avatar.html" .Avatar}}{{else}}<span class="app-avatar" aria-hidden="true"></span>{{end}}
-        <div class="min-w-0">
-          <span class="d-block fw-semibold">{{.Data.FullName}}</span>
-          <span class="page-sub d-block">Guru · {{.Data.Email}}</span>
-        </div>
-      </div>
-
-      {{/* The photo card owns its own multipart form with the token first
-           (AVT-090/AVT-091); the name/email form below stays urlencoded and
-           untouched. Removing the photo is a second, urlencoded form so it
-           never competes with a selected file in one body (AVT-092). */}}
+      {{/* The photo card is also the account anchor: one avatar badge for the
+           page body (AVT-083), so the separate identity strip is gone. The
+           card owns its own multipart form with the token first (AVT-090/
+           AVT-091); the name/email form below stays urlencoded and untouched.
+           Removing the photo is a second, urlencoded form so it never competes
+           with a selected file in one body (AVT-092). */}}
       <div class="card p-7 mb-7">
         <h2 class="section-title">Foto profil</h2>
         <p class="page-sub">Foto Anda tampil di daftar guru sekolah.</p>
-        <form method="post" action="/profile/photo" enctype="multipart/form-data">
+
+        <form method="post" data-photo-form action="/profile/photo" enctype="multipart/form-data">
           <input type="hidden" name="csrf_token" value="{{.CSRF}}">
-          <label class="form-label" for="teacher-profile-photo">Pilih foto</label>
-          <input class="form-control" type="file" id="teacher-profile-photo" name="photo" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif" aria-describedby="teacher-profile-photo-help">
-          <p class="field-help" id="teacher-profile-photo-help">Foto dipotong persegi dan diperkecil otomatis. Maksimal 200 MB.</p>
-          <div class="form-actions">
-            <button type="submit" class="btn btn-outline theme-primary">Unggah foto</button>
+
+          <div class="photo-compose">
+            <div class="photo-current">
+              {{with .User}}{{template "partials/avatar.html" .Avatar}}{{else}}<span class="app-avatar" aria-hidden="true"></span>{{end}}
+              <span class="photo-current-name">{{.Data.FullName}}</span>
+              <span class="photo-current-sub">Guru · {{.Data.Email}}</span>
+            </div>
+
+            <div class="photo-pick">
+              <label class="photo-drop" for="teacher-profile-photo" data-photo-drop>
+                <span class="photo-drop-icon" aria-hidden="true"><svg width="20" height="20" aria-hidden="true"><use href="#i-upload"></use></svg></span>
+                <span class="photo-drop-title" data-photo-drop-title>Tarik foto ke sini</span>
+                <span class="photo-drop-sub" data-photo-drop-sub>atau pilih file dari perangkat</span>
+              </label>
+              <input class="visually-hidden" type="file" id="teacher-profile-photo" name="photo" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif" aria-describedby="teacher-profile-photo-help teacher-profile-photo-error" data-photo-input>
+              <p class="field-help" id="teacher-profile-photo-help">Foto dipotong persegi dan diperkecil otomatis. Maksimal 200 MB. Anda dapat mengatur posisi dan zoom sebelum mengunggah.</p>
+            </div>
+          </div>
+
+          <p class="photo-error" id="teacher-profile-photo-error" data-photo-error role="alert" hidden></p>
+          <p class="photo-note" data-photo-note role="status" hidden></p>
+          <div class="photo-loading" data-photo-loading role="status" hidden>
+            <span class="spinner-border photo-spinner" aria-hidden="true"></span>
+            <span>Menyiapkan pratinjau…</span>
+          </div>
+
+          <div class="photo-editor" data-photo-editor role="group" aria-label="Editor foto profil" hidden>
+            <div class="photo-crop-wrap">
+              <div class="photo-stage" data-photo-stage tabindex="0" role="group" aria-label="Atur posisi foto. Tarik untuk menggeser, atau gunakan tombol panah." aria-describedby="teacher-profile-photo-hint">
+                <div class="photo-crop" data-photo-crop>
+                  <canvas class="photo-view" data-photo-view aria-hidden="true"></canvas>
+                  <span class="photo-mask" aria-hidden="true"></span>
+                  <span class="photo-grid" aria-hidden="true"><span></span><span></span><span></span><span></span></span>
+                </div>
+              </div>
+              <p class="photo-hint" id="teacher-profile-photo-hint">Tarik foto untuk mengatur posisi. Gunakan penggeser zoom untuk memperbesar.</p>
+            </div>
+
+            <div class="photo-controls">
+              <div class="photo-result">
+                <canvas class="photo-result-thumb" data-photo-thumb width="96" height="96" aria-hidden="true"></canvas>
+                <div>
+                  <span class="photo-result-title">Pratinjau hasil</span>
+                  <span class="photo-result-meta">Tampil bulat di aplikasi</span>
+                </div>
+              </div>
+
+              <div class="field-group mb-0">
+                <div class="photo-zoom-head">
+                  <label class="form-label" for="teacher-profile-photo-zoom">Zoom</label>
+                  <output class="photo-zoom-value" for="teacher-profile-photo-zoom" data-photo-zoom-value>100%</output>
+                </div>
+                <input class="form-range" type="range" id="teacher-profile-photo-zoom" min="1" max="4" step="0.01" value="1" data-photo-zoom>
+              </div>
+
+              <div class="photo-control-row">
+                <button type="button" class="btn btn-outline theme-primary btn-sm" data-photo-reset>
+                  <svg width="16" height="16" aria-hidden="true"><use href="#i-refresh"></use></svg>
+                  Atur ulang
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-actions photo-actions" data-photo-actions>
+            <button type="button" class="btn btn-outline theme-primary" data-photo-cancel>Batal</button>
+            <button type="submit" class="btn btn-outline theme-primary" data-photo-upload>
+              <svg width="17" height="17" aria-hidden="true"><use href="#i-upload"></use></svg>
+              Unggah foto
+            </button>
           </div>
         </form>
+
         {{with .User}}{{if .AvatarURL}}
-        <form method="post" action="/profile/photo/remove">
+        <form method="post" action="/profile/photo/remove" class="photo-remove">
           <input type="hidden" name="csrf_token" value="{{$.CSRF}}">
-          <div class="form-actions">
-            <button type="submit" class="btn btn-outline theme-danger">Hapus foto</button>
-          </div>
+          <button type="submit" class="btn btn-outline theme-danger">
+            <svg width="17" height="17" aria-hidden="true"><use href="#i-trash"></use></svg>
+            Hapus foto
+          </button>
         </form>
         {{end}}{{end}}
       </div>
 
-      <form class="card form-card" method="post" action="/teacher/profile" data-validate>
+      <form class="card form-card" method="post" action="/teacher/profile" data-validate data-dirty-form{{if .Errors.Has}} data-dirty-open{{end}}>
         <input type="hidden" name="csrf_token" value="{{.CSRF}}">
 
         <div class="form-section">
@@ -92,8 +156,8 @@
           </div>
         </div>
 
-        <div class="form-actions">
-          <button type="submit" class="btn btn-solid theme-primary">Simpan perubahan</button>
+        <div class="form-actions" data-dirty-actions>
+          <button type="submit" class="btn btn-solid theme-primary" data-dirty-submit>Simpan perubahan</button>
         </div>
       </form>
 
