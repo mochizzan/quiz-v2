@@ -129,7 +129,7 @@ func heifToJPEG(srcPath, dstPath string, quality int) error {
 		return fmt.Errorf("%w: %w", ErrFailed, err)
 	}
 	defer func() { _ = in.Close() }()
-	img, err := image.Decode(in)
+	img, _, err := image.Decode(in)
 	if err != nil {
 		return fmt.Errorf("%w: heif decode: %v", ErrUnreadable, err)
 	}
