@@ -29,29 +29,34 @@ func TestWorkbookStructure(t *testing.T) {
 	}
 
 	for ref, want := range map[string]string{
-		"Peserta!A1": "ID", "Peserta!B1": "Nama", "Peserta!C1": "Jenis",
+		"Peserta!A1": "No", "Peserta!B1": "Nama", "Peserta!C1": "Jenis",
 		"Peserta!D1": "Kelas", "Peserta!E1": "Jurusan", "Peserta!F1": "Terdaftar",
 		"Peserta!G1": "Percobaan", "Peserta!H1": "Rata-rata", "Peserta!I1": "Status nilai",
-		"Soal!A1": "No", "Soal!B1": "Tipe", "Soal!C1": "Soal", "Soal!D1": "Gambar",
+		"Peserta!J1": "ID",
+		"Soal!A1":    "No", "Soal!B1": "Tipe", "Soal!C1": "Soal", "Soal!D1": "Gambar",
 		"Soal!E1": "Pilihan", "Soal!F1": "Kunci",
-		"Penilaian!A1": "ID peserta", "Penilaian!B1": "Nama", "Penilaian!C1": "Kelas",
+		"Penilaian!A1": "No", "Penilaian!B1": "Nama", "Penilaian!C1": "Kelas",
 		"Penilaian!D1": "Percobaan", "Penilaian!E1": "Dikirim", "Penilaian!F1": "Status",
-		"Penilaian!K1": "Skor akhir",
+		"Penilaian!K1": "Skor akhir", "Penilaian!L1": "ID",
 	} {
 		parts := strings.SplitN(ref, "!", 2)
 		wantCell(t, f, parts[0], parts[1], want)
 	}
 
 	// Data rows, plus the one blank row every zero-count range reserves.
-	wantCell(t, f, "Peserta", "A2", "201")
-	wantCell(t, f, "Peserta", "A4", "203")
+	wantCell(t, f, "Peserta", "A2", "1")
+	wantCell(t, f, "Peserta", "A4", "3")
 	wantCell(t, f, "Peserta", "A5", "")
+	wantCell(t, f, "Peserta", "J2", "201")
+	wantCell(t, f, "Peserta", "J4", "203")
 	wantCell(t, f, "Soal", "A2", "1")
 	wantCell(t, f, "Soal", "A3", "2")
 	wantCell(t, f, "Soal", "A4", "")
-	wantCell(t, f, "Penilaian", "A2", "201")
-	wantCell(t, f, "Penilaian", "A4", "202")
+	wantCell(t, f, "Penilaian", "A2", "1")
+	wantCell(t, f, "Penilaian", "A4", "3")
 	wantCell(t, f, "Penilaian", "A5", "")
+	wantCell(t, f, "Penilaian", "L2", "201")
+	wantCell(t, f, "Penilaian", "L4", "202")
 	wantCell(t, f, "Ringkasan", "A18", "Peringkat")
 	wantCell(t, f, "Ringkasan", "F18", "Kunci")
 	wantCell(t, f, "Ringkasan", "A19", "1")
@@ -93,23 +98,33 @@ func TestWorkbookStructure(t *testing.T) {
 		}
 	}
 
-	for _, ref := range []string{`autoFilter ref="$A$18:$E$20"`, `autoFilter ref="$A$1:$K$4"`} {
+	for _, ref := range []string{`autoFilter ref="$A$18:$E$20"`, `autoFilter ref="$A$1:$I$4"`, `autoFilter ref="$A$1:$K$4"`} {
 		if !workbookZipContains(t, workbook, ref) {
 			t.Errorf("workbook has no %s", ref)
 		}
 	}
 
-	for _, col := range []string{"F", "J", "K", "L", "M", "N", "O"} {
-		visible, err := f.GetColVisible("Ringkasan", col)
+	for _, tc := range []struct {
+		sheet, col string
+	}{
+		{"Ringkasan", "F"}, {"Ringkasan", "J"}, {"Ringkasan", "K"},
+		{"Ringkasan", "L"}, {"Ringkasan", "M"}, {"Ringkasan", "N"}, {"Ringkasan", "O"},
+		{"Peserta", "J"},
+		{"Penilaian", "L"},
+	} {
+		visible, err := f.GetColVisible(tc.sheet, tc.col)
 		if err != nil {
-			t.Fatalf("GetColVisible(Ringkasan, %s): %v", col, err)
+			t.Fatalf("GetColVisible(%s, %s): %v", tc.sheet, tc.col, err)
 		}
 		if visible {
-			t.Errorf("Ringkasan column %s is visible, want hidden", col)
+			t.Errorf("%s column %s is visible, want hidden", tc.sheet, tc.col)
 		}
 	}
 	if visible, _ := f.GetColVisible("Ringkasan", "A"); !visible {
 		t.Error("Ringkasan column A is hidden, want visible")
+	}
+	if visible, _ := f.GetColVisible("Peserta", "A"); !visible {
+		t.Error("Peserta column A is hidden, want visible")
 	}
 }
 
@@ -126,22 +141,22 @@ func TestWorkbookFormulas(t *testing.T) {
 	wantFormula(t, f, "Ringkasan", "B15", `IFERROR(SUM($N$2:$N$3),"")`)
 	wantFormula(t, f, "Ringkasan", "B16", `IFERROR(AVERAGE($N$2:$N$3),"")`)
 
-	wantFormula(t, f, "Peserta", "G2", `COUNTIFS(Penilaian!$A$2:$A$4,$A2)`)
+	wantFormula(t, f, "Peserta", "G2", `COUNTIFS(Penilaian!$L$2:$L$4,$J2)`)
 	wantFormula(t, f, "Peserta", "H2",
-		`IFERROR(AVERAGEIFS(Penilaian!$K$2:$K$4,Penilaian!$A$2:$A$4,$A2),"")`)
+		`IFERROR(AVERAGEIFS(Penilaian!$K$2:$K$4,Penilaian!$L$2:$L$4,$J2),"")`)
 	wantFormula(t, f, "Peserta", "I2",
 		`IF($G2=0,"Belum ada nilai",IF($H2="","Menunggu","Sudah dinilai"))`)
 
 	// The hidden helper reads Peserta only; the rank key is the mean minus a
 	// row term small enough to leave every real average distinct.
 	wantFormula(t, f, "Ringkasan", "K2",
-		`IF($J2="","",INDEX(Peserta!$B$2:$B$4,MATCH($J2,Peserta!$A$2:$A$4,0)))`)
+		`IF($J2="","",INDEX(Peserta!$B$2:$B$4,MATCH($J2,Peserta!$J$2:$J$4,0)))`)
 	wantFormula(t, f, "Ringkasan", "L2",
-		`IF($J2="","",INDEX(Peserta!$D$2:$D$4,MATCH($J2,Peserta!$A$2:$A$4,0)))`)
+		`IF($J2="","",INDEX(Peserta!$D$2:$D$4,MATCH($J2,Peserta!$J$2:$J$4,0)))`)
 	wantFormula(t, f, "Ringkasan", "M2",
-		`IF($J2="","",INDEX(Peserta!$G$2:$G$4,MATCH($J2,Peserta!$A$2:$A$4,0)))`)
+		`IF($J2="","",INDEX(Peserta!$G$2:$G$4,MATCH($J2,Peserta!$J$2:$J$4,0)))`)
 	wantFormula(t, f, "Ringkasan", "N2",
-		`IF($J2="","",INDEX(Peserta!$H$2:$H$4,MATCH($J2,Peserta!$A$2:$A$4,0)))`)
+		`IF($J2="","",INDEX(Peserta!$H$2:$H$4,MATCH($J2,Peserta!$J$2:$J$4,0)))`)
 	wantFormula(t, f, "Ringkasan", "O2", `IF($N2="","",$N2-ROW()/1000000000000)`)
 
 	wantFormula(t, f, "Ringkasan", "F19", `IFERROR(LARGE($O$2:$O$3,$A19),"")`)
@@ -159,9 +174,9 @@ func TestWorkbookFormulas(t *testing.T) {
 	wantFormula(t, f, "Penilaian", "I1", `"N"&Soal!$A$2`)
 	wantFormula(t, f, "Penilaian", "J1", `"N"&Soal!$A$3`)
 	wantFormula(t, f, "Penilaian", "B2",
-		`IF($A2="","",INDEX(Peserta!$B$2:$B$4,MATCH($A2,Peserta!$A$2:$A$4,0)))`)
+		`IF($L2="","",INDEX(Peserta!$B$2:$B$4,MATCH($L2,Peserta!$J$2:$J$4,0)))`)
 	wantFormula(t, f, "Penilaian", "C2",
-		`IF($A2="","",INDEX(Peserta!$D$2:$D$4,MATCH($A2,Peserta!$A$2:$A$4,0)))`)
+		`IF($L2="","",INDEX(Peserta!$D$2:$D$4,MATCH($L2,Peserta!$J$2:$J$4,0)))`)
 	wantFormula(t, f, "Penilaian", "F2", `IF(K2="","Menunggu","Selesai")`)
 	wantFormula(t, f, "Penilaian", "K2", finalScoreFormula("I2:J2"))
 	wantFormula(t, f, "Penilaian", "K4", finalScoreFormula("I4:J4"))

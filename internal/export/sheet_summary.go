@@ -30,6 +30,7 @@ func (b *builder) buildSummary() {
 	b.setNumber(sheet, "B10", effectiveMaxAttempts(b.data.Quiz.MaxAttempts))
 
 	b.styleRange(sheet, "B3", "B5", b.st.body)
+	b.styleCell(sheet, "B3", b.st.title)
 	b.styleRange(sheet, "B6", "B8", b.st.date)
 	b.styleCell(sheet, "B9", b.st.integer)
 	b.styleCell(sheet, "B10", b.st.integer)
@@ -53,7 +54,7 @@ func (b *builder) buildSummary() {
 		b.setStr(sheet, columnName(i+1)+"18", h)
 	}
 	b.styleRange(sheet, "A18", "F18", b.st.header)
-	b.rowHeight(sheet, 18, 24)
+	b.rowHeight(sheet, 18, 26)
 
 	b.styleRange(sheet, "A19", fmt.Sprintf("F%d", b.rankLast), b.st.body)
 	for k := 0; k < b.h; k++ {
@@ -74,7 +75,9 @@ func (b *builder) buildSummary() {
 
 	b.buildRankingHelper()
 
+	b.gridlines(sheet)
 	b.autoFilter(sheet, fmt.Sprintf("A18:E%d", b.rankLast))
+	b.zebra(sheet, fmt.Sprintf("A19:F%d", b.rankLast))
 	b.width(sheet, "A", "A", 24)
 	b.width(sheet, "B", "B", 44)
 	b.width(sheet, "C", "C", 18)
@@ -114,16 +117,16 @@ func (b *builder) buildRankingHelper() {
 		row := 2 + i
 		b.setNumber(sheet, fmt.Sprintf("J%d", row), p.RegistrationID)
 		b.setFormula(sheet, fmt.Sprintf("K%d", row), fmt.Sprintf(
-			`IF($J%d="","",INDEX(Peserta!$B$2:$B$%d,MATCH($J%d,Peserta!$A$2:$A$%d,0)))`,
+			`IF($J%d="","",INDEX(Peserta!$B$2:$B$%d,MATCH($J%d,Peserta!$J$2:$J$%d,0)))`,
 			row, b.pLast, row, b.pLast))
 		b.setFormula(sheet, fmt.Sprintf("L%d", row), fmt.Sprintf(
-			`IF($J%d="","",INDEX(Peserta!$D$2:$D$%d,MATCH($J%d,Peserta!$A$2:$A$%d,0)))`,
+			`IF($J%d="","",INDEX(Peserta!$D$2:$D$%d,MATCH($J%d,Peserta!$J$2:$J$%d,0)))`,
 			row, b.pLast, row, b.pLast))
 		b.setFormula(sheet, fmt.Sprintf("M%d", row), fmt.Sprintf(
-			`IF($J%d="","",INDEX(Peserta!$G$2:$G$%d,MATCH($J%d,Peserta!$A$2:$A$%d,0)))`,
+			`IF($J%d="","",INDEX(Peserta!$G$2:$G$%d,MATCH($J%d,Peserta!$J$2:$J$%d,0)))`,
 			row, b.pLast, row, b.pLast))
 		b.setFormula(sheet, fmt.Sprintf("N%d", row), fmt.Sprintf(
-			`IF($J%d="","",INDEX(Peserta!$H$2:$H$%d,MATCH($J%d,Peserta!$A$2:$A$%d,0)))`,
+			`IF($J%d="","",INDEX(Peserta!$H$2:$H$%d,MATCH($J%d,Peserta!$J$2:$J$%d,0)))`,
 			row, b.pLast, row, b.pLast))
 		b.setFormula(sheet, fmt.Sprintf("O%d", row), fmt.Sprintf(
 			`IF($N%d="","",$N%d-ROW()/1000000000000)`, row, row))

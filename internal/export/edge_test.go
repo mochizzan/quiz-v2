@@ -168,8 +168,10 @@ func TestSanitizeCell(t *testing.T) {
 }
 
 // TestBestAttemptConditionalFormat covers design §6.4 and §11.9. The formula is
-// applied to every row of the grading table and groups by participant id, so a
-// tie leaves both equal best rows true.
+// applied to every row of the grading table and groups by the hidden
+// participant id column, so a tie leaves both equal best rows true. Banding
+// lives in the same conditionalFormatting range; the highlight rule must be
+// listed first so its fill wins where both are true.
 func TestBestAttemptConditionalFormat(t *testing.T) {
 	data := sampleExportData()
 	data.Attempts = append(data.Attempts, attempts.ExportAttempt{
@@ -190,14 +192,25 @@ func TestBestAttemptConditionalFormat(t *testing.T) {
 	if !ok {
 		t.Fatalf("conditional formats = %v, want range A2:K5", formats)
 	}
-	if len(opts) != 1 {
-		t.Fatalf("conditional format rules = %d, want 1", len(opts))
+	if len(opts) != 2 {
+		t.Fatalf("conditional format rules = %d, want the highlight plus banding", len(opts))
 	}
-	want := `AND($K2<>"",$K2=IFERROR(_xlfn.AGGREGATE(14,6,$K$2:$K$5/($A$2:$A$5=$A2),1),""))`
-	if opts[0].Type != "formula" || opts[0].Criteria != want {
-		t.Errorf("rule = %+v, want formula %q", opts[0], want)
+	want := `AND($K2<>"",$K2=IFERROR(_xlfn.AGGREGATE(14,6,$K$2:$K$5/($L$2:$L$5=$L2),1),""))`
+	var highlight, band *excelize.ConditionalFormatOptions
+	for i := range opts {
+		switch opts[i].Criteria {
+		case want:
+			highlight = &opts[i]
+		case `MOD(ROW(),2)=1`:
+			band = &opts[i]
+		}
 	}
-	if opts[0].Format == nil {
-		t.Error("best-attempt rule has no fill format")
+	if highlight == nil {
+		t.Errorf("no best-attempt rule matches %q; rules are %+v", want, opts)
+	} else if highlight.Type != "formula" || highlight.Format == nil {
+		t.Errorf("best-attempt rule = %+v, want a formula rule with fill format", *highlight)
+	}
+	if band == nil || band.Type != "formula" || band.Format == nil {
+		t.Error("banding rule missing or has no fill format")
 	}
 }

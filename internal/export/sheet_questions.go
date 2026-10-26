@@ -24,7 +24,7 @@ func (b *builder) buildQuestions() {
 		b.setStr(sheet, columnName(i+1)+"1", h)
 	}
 	b.styleRange(sheet, "A1", "F1", b.st.header)
-	b.rowHeight(sheet, 1, 24)
+	b.rowHeight(sheet, 1, 26)
 
 	b.styleRange(sheet, "A2", fmt.Sprintf("F%d", b.qLast), b.st.body)
 
@@ -86,6 +86,8 @@ func (b *builder) buildQuestions() {
 		b.styleCell(sheet, fmt.Sprintf("A%d", row), b.st.integer)
 	}
 
+	b.gridlines(sheet)
+	b.zebra(sheet, fmt.Sprintf("A2:F%d", b.qLast))
 	b.freeze(sheet, "A2", 0, 1, "bottomLeft")
 }
 

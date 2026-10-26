@@ -37,13 +37,20 @@ var defaultImageLimits = imageLimits{
 type styles struct {
 	header  int
 	body    int
+	center  int
 	label   int
 	date    int
 	score   int
 	average int
 	integer int
+	final   int
+	title   int
 	note    int
 	best    int
+	band    int
+	warn    int
+	done    int
+	idle    int
 }
 
 type builder struct {
@@ -53,14 +60,15 @@ type builder struct {
 	limits     imageLimits
 	st         styles
 
-	qLast    int
-	pLast    int
-	aLast    int
-	hLast    int
-	rankLast int
-	h        int
-	finalCol string
-	qOrder   []int
+	qLast      int
+	pLast      int
+	aLast      int
+	hLast      int
+	rankLast   int
+	h          int
+	finalCol   string
+	gradeIDCol string
+	qOrder     []int
 
 	totalImageBytes  int64
 	imageBudgetSpent bool
@@ -130,15 +138,30 @@ func (b *builder) initLayout() {
 	b.hLast = maxInt(2, h+1)
 	b.rankLast = 18 + maxInt(1, h)
 	b.finalCol = columnName(7 + 2*q)
+	// The participant id lives in a hidden helper column immediately after
+	// "Skor akhir" so the visible table starts with its own No column
+	// (layout-polish spec §1.2).
+	b.gradeIDCol = columnName(8 + 2*q)
 	b.qOrder = questionOrder(b.data.Questions)
 }
 
+// initStyles builds the workbook-wide formats from the app's design tokens
+// (docs/DESIGN.md). Tables carry their own borders and banding, so sheet
+// gridlines are hidden everywhere (layout-polish spec §1.3).
 func (b *builder) initStyles() {
 	border := []excelize.Border{
-		{Type: "left", Color: "#D9DCE3", Style: 1},
-		{Type: "right", Color: "#D9DCE3", Style: 1},
-		{Type: "top", Color: "#D9DCE3", Style: 1},
-		{Type: "bottom", Color: "#D9DCE3", Style: 1},
+		{Type: "left", Color: "#E2E6EB", Style: 1},
+		{Type: "right", Color: "#E2E6EB", Style: 1},
+		{Type: "top", Color: "#E2E6EB", Style: 1},
+		{Type: "bottom", Color: "#E2E6EB", Style: 1},
+	}
+	// The header reads as one bar: its separators match its own fill and the
+	// bottom edge anchors it onto the body.
+	headerBorder := []excelize.Border{
+		{Type: "left", Color: "#293681", Style: 1},
+		{Type: "right", Color: "#293681", Style: 1},
+		{Type: "top", Color: "#293681", Style: 1},
+		{Type: "bottom", Color: "#1E2864", Style: 2},
 	}
 	wrapTop := &excelize.Alignment{Vertical: "top", WrapText: true}
 	center := &excelize.Alignment{Vertical: "top", Horizontal: "center", WrapText: true}
@@ -147,10 +170,14 @@ func (b *builder) initStyles() {
 		Font:      &excelize.Font{Bold: true, Color: "#FFFFFF", Size: 11},
 		Fill:      excelize.Fill{Type: "pattern", Pattern: 1, Color: []string{"#293681"}},
 		Alignment: &excelize.Alignment{Horizontal: "center", Vertical: "center", WrapText: true},
-		Border:    border,
+		Border:    headerBorder,
 	})
 	b.st.body = b.newStyle(&excelize.Style{
 		Alignment: wrapTop,
+		Border:    border,
+	})
+	b.st.center = b.newStyle(&excelize.Style{
+		Alignment: center,
 		Border:    border,
 	})
 	b.st.label = b.newStyle(&excelize.Style{
@@ -178,12 +205,34 @@ func (b *builder) initStyles() {
 		Border:       border,
 		CustomNumFmt: strPtr("0"),
 	})
+	b.st.final = b.newStyle(&excelize.Style{
+		Font:         &excelize.Font{Bold: true, Color: "#293681"},
+		Alignment:    center,
+		Border:       border,
+		CustomNumFmt: strPtr("0"),
+	})
+	b.st.title = b.newStyle(&excelize.Style{
+		Font:      &excelize.Font{Bold: true, Color: "#121721", Size: 14},
+		Alignment: wrapTop,
+	})
 	b.st.note = b.newStyle(&excelize.Style{
-		Font:      &excelize.Font{Italic: true, Color: "#5A6172"},
+		Font:      &excelize.Font{Italic: true, Color: "#687182"},
 		Alignment: wrapTop,
 	})
 	b.st.best = b.newConditionalStyle(&excelize.Style{
 		Fill: excelize.Fill{Type: "pattern", Pattern: 1, Color: []string{"#FFF2CC"}},
+	})
+	b.st.band = b.newConditionalStyle(&excelize.Style{
+		Fill: excelize.Fill{Type: "pattern", Pattern: 1, Color: []string{"#F4F6F8"}},
+	})
+	b.st.warn = b.newConditionalStyle(&excelize.Style{
+		Font: &excelize.Font{Color: "#966000"},
+	})
+	b.st.done = b.newConditionalStyle(&excelize.Style{
+		Font: &excelize.Font{Color: "#237A57"},
+	})
+	b.st.idle = b.newConditionalStyle(&excelize.Style{
+		Font: &excelize.Font{Color: "#6B7B85"},
 	})
 }
 
@@ -326,6 +375,53 @@ func (b *builder) autoFilter(sheet, ref string) {
 		return
 	}
 	b.fail(b.f.AutoFilter(sheet, ref, nil))
+}
+
+// gridlines hides the sheet grid so the bordered tables read as objects.
+func (b *builder) gridlines(sheet string) {
+	if b.err != nil {
+		return
+	}
+	off := false
+	b.fail(b.f.SetSheetView(sheet, -1, &excelize.ViewOptions{ShowGridLines: &off}))
+}
+
+// zebra gives a data table alternating row shading. Odd rows shade: data
+// starts on row 2, so the first visible data row and the blank row reserved
+// for empty tables stay white.
+func (b *builder) zebra(sheet, rangeRef string) {
+	if b.err != nil {
+		return
+	}
+	b.fail(b.f.SetConditionalFormat(sheet, rangeRef, []excelize.ConditionalFormatOptions{{
+		Type:     "formula",
+		Criteria: `MOD(ROW(),2)=1`,
+		Format:   &b.st.band,
+	}}))
+}
+
+// statusFonts colors a status column's text with the app's semantics:
+// `Menunggu` is the warning tone, graded states are success, and "no attempt
+// yet" is muted. Each EXACT rule ties to the range's implicit top-left, so
+// every cell in the range compares its own text (layout-polish spec §1.3).
+func (b *builder) statusFonts(sheet, rangeRef, anchor string, formats []statusFormat) {
+	if b.err != nil {
+		return
+	}
+	rules := make([]excelize.ConditionalFormatOptions, 0, len(formats))
+	for _, f := range formats {
+		rules = append(rules, excelize.ConditionalFormatOptions{
+			Type:     "formula",
+			Criteria: fmt.Sprintf(`EXACT(%s,%q)`, anchor, f.label),
+			Format:   &f.style,
+		})
+	}
+	b.fail(b.f.SetConditionalFormat(sheet, rangeRef, rules))
+}
+
+type statusFormat struct {
+	label string
+	style int
 }
 
 func strPtr(s string) *string { return &s }
