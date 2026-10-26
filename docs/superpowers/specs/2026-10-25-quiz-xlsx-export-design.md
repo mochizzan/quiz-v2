@@ -1,6 +1,8 @@
 # Quiz XLSX export — design
 
 Status: final 2026-10-25. Approved. No open product questions.
+Amended 2026-10-26 by `2026-10-26-quiz-xlsx-export-layout-polish.md` for the
+workbook layout (§6) only; its changes carry authority there.
 Repo: `quiz-v2`. Build: `go build ./...`, `go test ./...`.
 
 ## 0. Summary
