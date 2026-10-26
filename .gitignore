@@ -15,3 +15,9 @@ coverage.out
 .superpowers/
 .opencode/
 .taste-skill/
+
+# local scratch space
+/tmp/
+
+# vendored source downloads (runtime copies live in static/)
+/assets/
