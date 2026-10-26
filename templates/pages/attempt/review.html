@@ -1,6 +1,9 @@
+{{/* The focus client is page-scoped so app.js stays network-free; the review
+     screen carries the same beacon endpoint as the question screen. */}}
+{{define "partials/page-script"}}{{if .Data.BeaconHref}}<script type="module" src="/static/js/beacon.js"></script>{{end}}{{end}}
 {{define "content"}}
 <div class="container py-7">
-  <div class="attempt-shell">
+  <div class="attempt-shell" data-beacon-href="{{.Data.BeaconHref}}">
 
     <header class="attempt-top">
       <div class="row-between">

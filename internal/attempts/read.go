@@ -540,6 +540,7 @@ func createQuestionPage(ctx context.Context, tx *sql.Tx, h attemptView, in Quest
 			Nav:        nav,
 			SubmitHref: base + "/review",
 			QuizHref:   quizHref(h.quizID),
+			BeaconHref: base + "/beacon",
 			IsLast:     pos == len(slots),
 			Action:     base + "/answer",
 		},
@@ -621,6 +622,7 @@ func (s *Service) ReviewPage(ctx context.Context, in ReviewInput) (viewmodel.Att
 		out.Unanswered = unansweredPositions(slots)
 		out.SubmitHref = base + "/submit"
 		out.BackHref = base
+		out.BeaconHref = base + "/beacon"
 		return nil
 	})
 	if err != nil {

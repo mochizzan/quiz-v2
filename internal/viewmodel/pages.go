@@ -176,7 +176,10 @@ type QuizIntro struct {
 
 // ---- Attempt --------------------------------------------------------------
 
-// AttemptQuestion is the one-question-at-a-time answer form.
+// AttemptQuestion is the one-question-at-a-time answer form. BeaconHref is
+// POST /attempt/:id/beacon (ATT-156): the page-scoped client posts one focus
+// event there whenever the surface leaves the screen, so the endpoint ships
+// with the page instead of being derived on the client.
 type AttemptQuestion struct {
 	Header           AttemptHeader
 	Progress         AttemptProgress
@@ -194,11 +197,14 @@ type AttemptQuestion struct {
 	NextHref         string
 	SubmitHref       string
 	QuizHref         string
+	BeaconHref       string
 	IsLast           bool
 	RandomizeAnswers bool
 }
 
-// AttemptReview is the pre-submit summary.
+// AttemptReview is the pre-submit summary. BeaconHref is the same focus
+// endpoint as on the question screen: the review surface shows every answer,
+// so it reports an absence for the same reason.
 type AttemptReview struct {
 	Header     AttemptHeader
 	Progress   AttemptProgress
@@ -206,6 +212,7 @@ type AttemptReview struct {
 	Unanswered []int
 	SubmitHref string
 	BackHref   string
+	BeaconHref string
 }
 
 // AttemptResult is the post-submit score and review screen. HistoryHref is

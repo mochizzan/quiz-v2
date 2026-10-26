@@ -7,7 +7,7 @@ Twisty Quiz (`quiz-v2`) is a server-rendered school quiz system. It is a Go mono
 - Go 1.26.4, Fiber v3.6.1, `html/template`, MariaDB 12.3.
 - Raw `database/sql`; there is no ORM and no query builder.
 - Vendored Bootstrap 6.0.0-alpha.1, jQuery 4, and Gotham Rounded. No frontend build step.
-- `static/js/app.js` is global behavior and must stay network-free. `static/js/monitor.js` is the only network module (SSE).
+- `static/js/app.js` is global behavior and must stay network-free. `static/js/monitor.js` (SSE) and `static/js/beacon.js` (focus beacon) are the only network modules.
 
 ## Commands
 

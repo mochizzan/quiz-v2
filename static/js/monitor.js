@@ -5,7 +5,8 @@
 // changes its score. Everything is guarded, so the file is inert on pages that
 // do not carry [data-monitor].
 //
-// This is the one page-scoped module allowed to open a network connection;
+// This is one of the two page-scoped modules allowed to open a network
+// connection (beacon.js posts the focus beacon on the attempt pages);
 // app.js stays network-free on purpose.
 export {};
 
