@@ -21,7 +21,7 @@ var pinnedPartials = []string{
 	"auth-style", "avatar", "banners", "breadcrumb", "dialogs",
 	"drawer-student", "drawer-teacher", "empty-state", "flash", "foot",
 	"head", "icons", "navbar-student", "navbar-style", "navbar-teacher",
-	"no-js-banner", "pagination", "progress-bar", "quiz-card", "score",
+	"no-js-banner", "pagination", "photo-style", "progress-bar", "quiz-card", "score",
 	"skeleton", "stepper", "tabs", "toasts", "ui-style",
 }
 

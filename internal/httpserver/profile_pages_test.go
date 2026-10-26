@@ -197,3 +197,135 @@ func TestStudentProfilePageRenders(t *testing.T) {
 	}
 	checkOnePrimaryButton(t, html)
 }
+
+// TestProfilePagesWirePhotoEditorAndDirtyGate pins the client contract the
+// redesign added: both account screens carry every hook photo-editor.js and
+// app.js look up, plus the page-scoped module. A typo in a data attribute
+// fails silently in the browser — the server render stays valid and the
+// interaction simply never appears — so the template is the right place to
+// catch it.
+func TestProfilePagesWirePhotoEditorAndDirtyGate(t *testing.T) {
+	pages := []struct {
+		name string
+		page string
+		data viewmodel.PageData
+	}{
+		{
+			name: "student",
+			page: "pages/profile.html",
+			data: viewmodel.PageData{
+				Base: viewmodel.Base{
+					Title: "Profil", Active: "profil", CSRF: "csrf-token",
+					User: &viewmodel.CurrentUser{
+						ID: 7, FullName: "Ayu Lestari", Email: "ayu@example.sch.id",
+						Role: viewmodel.RoleStudent, GradeLevel: 11,
+						MajorName: "Rekayasa Perangkat Lunak", Initials: "AL",
+					},
+				},
+				Data: viewmodel.ProfilePage{
+					FullName: "Ayu Lestari", Email: "ayu@example.sch.id",
+					GradeLevel: 11, MajorID: 3,
+				},
+			},
+		},
+		{
+			name: "teacher",
+			page: "pages/teacher/profile.html",
+			data: viewmodel.PageData{
+				Base: viewmodel.Base{
+					Title: "Profil", Active: "profil", CSRF: "csrf-token",
+					User: &viewmodel.CurrentUser{
+						ID: 1, FullName: "Budi Santoso", Email: "guru@sekolah.sch.id",
+						Role: viewmodel.RoleTeacher, Initials: "BS",
+					},
+				},
+				Data: viewmodel.TeacherProfilePage{
+					FullName: "Budi Santoso", Email: "guru@sekolah.sch.id",
+				},
+			},
+		},
+	}
+
+	for _, tc := range pages {
+		t.Run(tc.name, func(t *testing.T) {
+			html := renderPage(t, tc.page, tc.data)
+			for _, want := range []string{
+				`data-photo-form`,
+				`data-photo-input`,
+				`data-photo-drop`,
+				`data-photo-editor`,
+				`data-photo-stage`,
+				`data-photo-zoom`,
+				`data-photo-actions`,
+				`data-photo-cancel`,
+				`data-photo-upload`,
+				`data-dirty-form`,
+				`data-dirty-actions`,
+				`data-dirty-submit`,
+				`<script type="module" src="/static/js/photo-editor.js"></script>`,
+			} {
+				if !strings.Contains(html, want) {
+					t.Errorf("%s missing %q", tc.page, want)
+				}
+			}
+		})
+	}
+}
+
+// TestChangePasswordHelpIsOnDemand pins the redesign of the signed-in auth
+// screen: the standing explanation is gone, one labelled icon button beside
+// the title opens it in a native dialog, and the dialog sits outside the form
+// so it never joins the form's reading order.
+func TestChangePasswordHelpIsOnDemand(t *testing.T) {
+	const csrf = "csrf-token-789"
+	html := renderPage(t, "pages/auth/change-password.html", viewmodel.PageData{
+		Base: viewmodel.Base{
+			Title: "Ubah kata sandi", Active: "profil", CSRF: csrf,
+			User: &viewmodel.CurrentUser{
+				ID: 7, FullName: "Ayu Lestari", Email: "ayu@example.sch.id",
+				Role: viewmodel.RoleStudent, Initials: "AL",
+			},
+		},
+		Data: viewmodel.ChangePasswordPage{BackHref: "/profile"},
+	})
+
+	if strings.Contains(html, `<div class="auth-note">`) {
+		t.Error("the standing password note must not sit above the form")
+	}
+
+	trigger := strings.Index(html, `data-bs-target="#password-help"`)
+	form := strings.Index(html, `<form class="auth-form"`)
+	dialog := strings.Index(html, `<dialog class="dialog" id="password-help"`)
+	if trigger < 0 || form < 0 || dialog < 0 {
+		t.Fatalf("password help wiring missing (trigger=%d form=%d dialog=%d)", trigger, form, dialog)
+	}
+	if trigger > form {
+		t.Error("the info trigger must sit beside the title, before the form")
+	}
+	if dialog < form {
+		t.Error("the help dialog must follow the form, not interrupt it")
+	}
+
+	for _, want := range []string{
+		`class="btn btn-text auth-info-btn"`,
+		`type="button"`,
+		`data-bs-toggle="dialog"`,
+		`aria-label="Penjelasan halaman ini"`,
+		`aria-haspopup="dialog"`,
+		`aria-controls="password-help"`,
+		`aria-labelledby="password-help-title"`,
+		`aria-describedby="password-help-body"`,
+		`id="password-help-title">Bukan halaman lupa kata sandi</h2>`,
+		`>Mengerti<`,
+		`action="/change-password" method="post"`,
+		`name="csrf_token" value="` + csrf + `"`,
+		`name="current_password"`,
+		`name="new_password"`,
+		`name="password_confirm"`,
+		`href="/profile"`,
+	} {
+		if !strings.Contains(html, want) {
+			t.Errorf("change-password page missing %q", want)
+		}
+	}
+}

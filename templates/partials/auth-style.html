@@ -184,6 +184,38 @@
   gap: 10px;
   margin-bottom: 26px;
 }
+/* The on-demand explanation: a title that carries one icon button beside it.
+   The icon is the only permanent affordance; the paragraph it opens lives in
+   a dialog so the form keeps the screen's visual weight. */
+.auth-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+}
+.auth-title-row .auth-title {
+  flex: 0 1 auto;
+}
+.auth-info-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  min-height: 0;
+  flex: 0 0 auto;
+  padding: 0;
+  border-radius: 50%;
+  color: #293681;
+}
+.auth-info-btn:hover {
+  background-color: #EEF4FA;
+  color: #1E2864;
+}
+.auth-info-btn:focus-visible {
+  outline: 3px solid rgba(66, 116, 217, 0.36);
+  outline-offset: 2px;
+}
 .auth-title {
   margin: 0;
   color: #121721;

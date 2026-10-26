@@ -534,6 +534,23 @@ Inputs and selects are fully round (`9999px`), white, with `13px` medium
 labels in `text-secondary` and a visible focus ring. Validation errors are
 `danger` text with `invalid-feedback` copy directly under the field.
 
+**Act only when there is something to act on.** A save row is not furniture:
+the profile screen hides `Simpan perubahan` until a field differs from the
+server-rendered value, and hides `Unggah foto` until a file is selected. A
+rejected submit re-renders with the row visible; no-JS keeps it visible. The
+rule is progressive enhancement, not a security boundary.
+
+**Profile photo editor.** The photo card merges the identity anchor and the
+picker: the current avatar and account line sit beside a drag-and-drop target.
+A chosen file opens a square crop stage with a dark surround and a
+rule-of-thirds grid; pointer drag and arrow keys pan, the slider (plus wheel
+and `+`/`-`) zooms, and a thumbnail shows the exported result. The crop is
+exported into the same `photo` field, so the server's decode, crop, and encode
+remain authoritative and the no-JS multipart path still works. An explanation
+that the screen does not need on every visit lives behind one info icon beside
+the page title, not in a permanent note above the form; the dialog that opens
+uses the shared `dialog` component.
+
 ### Split auth panel
 A brand panel (navy gradient, decorative stat chips, product promise) beside
 a centred auth card (white, `24px` radius) containing the role toggle,

@@ -632,6 +632,55 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  // ---- Dirty-form save gates ------------------------------------------------
+  // A form opts in with [data-dirty-form]; its [data-dirty-actions] wrapper
+  // stays hidden while every field equals the value the server rendered, so the
+  // page does not offer a save action before there is anything to save. The
+  // whole wrapper goes, not just the button, so no empty action bar remains.
+  // A 422 re-render marks the form [data-dirty-open], and a browser without
+  // JavaScript never runs this block, so the submit stays available in both
+  // cases. Comparing against defaultValue/defaultChecked rather than a snapshot
+  // keeps autofill from being mistaken for a pristine form.
+  const isDirty = (form) => {
+    let dirty = false;
+    form.querySelectorAll("input, select, textarea").forEach((field) => {
+      if (!field.name || field.disabled) return;
+      if (["submit", "button", "reset", "file", "image", "hidden"].includes(field.type)) return;
+      if (field.type === "checkbox" || field.type === "radio") {
+        if (field.checked !== field.defaultChecked) dirty = true;
+        return;
+      }
+      if (field.tagName === "SELECT") {
+        const options = Array.from(field.options);
+        const initial = options.find((option) => option.defaultSelected);
+        const baseline = initial ? initial.value : options.length ? options[0].value : "";
+        if (field.value !== baseline) dirty = true;
+        return;
+      }
+      if (field.value !== field.defaultValue) dirty = true;
+    });
+    return dirty;
+  };
+
+  document.querySelectorAll("form[data-dirty-form]").forEach((form) => {
+    const actions = form.querySelector("[data-dirty-actions]");
+    const submit = form.querySelector("[data-dirty-submit]");
+    const surface = actions || submit;
+    if (!surface || form.hasAttribute("data-dirty-open")) return;
+
+    const sync = () => {
+      const dirty = isDirty(form);
+      surface.hidden = !dirty;
+      // An implicit submit (Enter in a text field) uses the form's default
+      // button even while its action row is hidden. Disable it with the row so
+      // a pristine form cannot post through the keyboard either.
+      if (submit) submit.disabled = !dirty;
+    };
+    form.addEventListener("input", sync);
+    form.addEventListener("change", sync);
+    sync();
+  });
+
   // ---- Bootstrap-style validation feedback --------------------------------
   document.querySelectorAll("form[data-validate]").forEach((form) => {
     form.addEventListener("submit", (event) => {
