@@ -15,3 +15,6 @@ uploads/
 .codegraph
 .omp
 .superpowers
+.taste-skill
+.opencode
+tmp/
