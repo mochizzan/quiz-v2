@@ -37,6 +37,9 @@ services:
   # server whose every page is a 500.
   migrate:
     build: .
+    # Same build as the app; the published image name makes pull-only deploys
+    # on a server work without a Go toolchain there.
+    image: ghcr.io/mochizzan/quiz-v2:latest
     # The image entrypoint is the server; the one-shot runner overrides it.
     entrypoint: ["./migrate", "bootstrap-teacher"]
     env_file: .env
@@ -46,6 +49,7 @@ services:
         condition: service_healthy
   app:
     build: .
+    image: ghcr.io/mochizzan/quiz-v2:latest
     env_file: .env
     ports:
       - "8080:8080"
