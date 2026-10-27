@@ -457,12 +457,13 @@ from the 29-route conformance fixture; the test is updated in the same change.
 
 ### 8.4 Navigation
 
-Teacher keys: `dasbor`, `kuis`, `siswa`, `penilaian`, `pengaturan`.
+Teacher keys: `dasbor`, `kuis`, `penilaian`, `manajemen`.
 Student keys: `dasbor`, `riwayat`, `profil`.
 
 Removed from the teacher nav: `Bank Soal` (no question bank), the inert global
-search box, and the notification bell (no notification model). "Pengaturan"
-continues to mean the teachers/majors management area.
+search box, and the notification bell (no notification model). `Manajemen` is
+the single entry point for the student roster, teacher approvals, majors, and
+anonymous participants; the management tab bar is its only sub-navigation.
 
 ## 9. Auth screens
 

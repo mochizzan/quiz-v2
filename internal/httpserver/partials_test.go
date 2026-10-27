@@ -474,8 +474,8 @@ func TestEveryPartialSubContracts(t *testing.T) {
 			`class="app-nav"`, `class="app-brand-mark"`, "TWISTY",
 			`class="app-brand-title-sub">QUIZ</span>`, `app-badge-role">Guru</span>`,
 			`href="/teacher"`, `href="/teacher/quizzes"`, `href="/teacher/students"`,
-			`href="/teacher/grading"`, `href="/teacher/teachers"`,
-			`href="/teacher/profile"`, `aria-label="Profil akun"`,
+			`href="/teacher/grading"`, `href="/teacher/profile"`,
+			`aria-label="Profil akun"`, "Manajemen",
 			`aria-current="page"`, `data-bs-toggle="drawer"`,
 			`data-bs-target="#nav-drawer"`, `aria-label="Buka menu"`,
 			`aria-expanded="false"`,
@@ -491,6 +491,13 @@ func TestEveryPartialSubContracts(t *testing.T) {
 		// only route to the profile screen at this width.
 		if n := strings.Count(body, `href="/teacher/profile"`); n != 1 {
 			t.Errorf("navbar-teacher.html must expose /teacher/profile once, found %d", n)
+		}
+		// The management section has one task-nav entry point; its tab bar owns
+		// the four pages, so no tab label is repeated beside it.
+		for _, gone := range []string{"Pengaturan", "Siswa", `href="/teacher/teachers"`} {
+			if strings.Contains(body, gone) {
+				t.Errorf("navbar-teacher.html must not repeat a management tab; found %q", gone)
+			}
 		}
 		// Sign-out is the md-and-up copy; below md the drawer owns it.
 		if !strings.Contains(body, `method="post" action="/logout" class="d-none md:d-inline-flex"`) {
@@ -538,8 +545,7 @@ func TestEveryPartialSubContracts(t *testing.T) {
 			`drawer-header`, `drawer-body`, `data-bs-dismiss="drawer"`,
 			`aria-label="Tutup"`, `href="/teacher"`, `href="/teacher/quizzes"`,
 			`href="/teacher/students"`, `href="/teacher/grading"`,
-			`href="/teacher/teachers"`, `href="/teacher/anonymous"`,
-			`href="/teacher/majors"`, `href="/teacher/profile"`,
+			`href="/teacher/profile"`, "Manajemen",
 			`class="drawer-account"`, `.Role.Label`,
 			`action="/logout"`, `value="{{.CSRF}}"`,
 		} {
@@ -551,6 +557,16 @@ func TestEveryPartialSubContracts(t *testing.T) {
 		// "Profil" nav row beside the account row (DESIGN §7).
 		if n := strings.Count(body, `href="/teacher/profile"`); n != 1 {
 			t.Errorf("drawer-teacher.html must expose /teacher/profile once, found %d", n)
+		}
+		// The management tab bar is the only sub-navigation; the drawer carries
+		// one entry point, not a second copy of its tabs.
+		for _, gone := range []string{
+			"Pengaturan", "Kelola", `href="/teacher/teachers"`,
+			`href="/teacher/anonymous"`, `href="/teacher/majors"`,
+		} {
+			if strings.Contains(body, gone) {
+				t.Errorf("drawer-teacher.html must not repeat a management tab; found %q", gone)
+			}
 		}
 		// Sign-out is a below-md copy only, so it never competes with the
 		// top-bar icon while the open drawer covers that icon.

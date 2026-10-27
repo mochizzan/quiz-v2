@@ -208,6 +208,40 @@ func TestRouteSurface(t *testing.T) {
 	}
 }
 
+// TestTeacherManagementUsesOneNavSection pins the management section to one
+// task-nav key: the four pages and their edit forms all mark "Manajemen"
+// current, and the tab bar is their only sub-navigation.
+func TestTeacherManagementUsesOneNavSection(t *testing.T) {
+	want := []string{
+		"/teacher/students",
+		"/teacher/students/:id",
+		"/teacher/anonymous",
+		"/teacher/anonymous/:id",
+		"/teacher/majors",
+		"/teacher/teachers",
+	}
+	seen := map[string]bool{}
+	for _, p := range httpserver.RegisteredPages() {
+		if p.Method != "GET" {
+			continue
+		}
+		for _, path := range want {
+			if p.Path != path {
+				continue
+			}
+			seen[path] = true
+			if p.Nav != "manajemen" {
+				t.Errorf("%s: Nav = %q, want %q", path, p.Nav, "manajemen")
+			}
+		}
+	}
+	for _, path := range want {
+		if !seen[path] {
+			t.Errorf("missing GET %s", path)
+		}
+	}
+}
+
 // TestEveryTemplateParses parses every file under ./templates on its own. A
 // template with a truncated block (an unclosed {{define}}/{{with}}) makes
 // ViewLoader fail for every page set that includes it, so it must fail here,

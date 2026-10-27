@@ -452,6 +452,11 @@ nav links centre-left, search and utilities right. The active nav item shows
 `#121721` text on a `#E2E7EC` pill with a coral underline marker; inactive
 items are `#687182`.
 
+The teacher task nav has four destinations: Dasbor, Kuis, Penilaian, and
+Manajemen. Manajemen is the single entry point to the management section; its
+tab bar (Siswa, Peserta anonim, Jurusan, Guru) is the only sub-navigation, so
+no management tab is repeated as a task-nav item.
+
 Account access is a utility, not a task destination, and exactly one control
 owns it per width: the avatar pill is the only route to the profile screen
 from `lg` (1024px) up, and the drawer's account row — avatar, name, class or

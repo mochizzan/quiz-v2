@@ -23,7 +23,7 @@ func init() {
 		Method:   "GET",
 		Path:     "/teacher/anonymous",
 		Template: "pages/teacher/anonymous.html",
-		Nav:      "siswa",
+		Nav:      "manajemen",
 		Auth:     ClassTeacher,
 		Load: func(x *Ctx) (viewmodel.PageData, error) {
 			// PAR-163…PAR-172: search and page are fallback parsers, never a
@@ -36,14 +36,14 @@ func init() {
 			if err != nil {
 				return viewmodel.PageData{}, err
 			}
-			return x.Page("Peserta anonim", "siswa", list), nil
+			return x.Page("Peserta anonim", "manajemen", list), nil
 		},
 	})
 	registerPage(PageRoute{
 		Method:   "GET",
 		Path:     "/teacher/anonymous/:id",
 		Template: "pages/teacher/anonymous-edit.html",
-		Nav:      "siswa",
+		Nav:      "manajemen",
 		Auth:     ClassTeacher,
 		Load: func(x *Ctx) (viewmodel.PageData, error) {
 			// PAR-173…PAR-178: a live anonymous_participants.id or the shared
@@ -55,7 +55,7 @@ func init() {
 			if err != nil {
 				return viewmodel.PageData{}, err
 			}
-			return x.Page("Ubah peserta anonim", "siswa", form), nil
+			return x.Page("Ubah peserta anonim", "manajemen", form), nil
 		},
 	})
 	registerPage(PageRoute{
@@ -75,7 +75,7 @@ func init() {
 			})
 			if err != nil {
 				if _, ok := participation.FieldErrorsOf(err); ok {
-					return catalogue422(x, "Ubah peserta anonim", "siswa", res.Form), Redirect{}, err
+					return catalogue422(x, "Ubah peserta anonim", "manajemen", res.Form), Redirect{}, err
 				}
 				return viewmodel.PageData{}, Redirect{}, err
 			}
@@ -105,7 +105,7 @@ func init() {
 		Method:   "GET",
 		Path:     "/teacher/majors",
 		Template: "pages/teacher/majors.html",
-		Nav:      "pengaturan",
+		Nav:      "manajemen",
 		Auth:     ClassTeacher,
 		Load: func(x *Ctx) (viewmodel.PageData, error) {
 			// PAR-179…PAR-188: no query parameters are read and the page is
@@ -116,7 +116,7 @@ func init() {
 			if err != nil {
 				return viewmodel.PageData{}, err
 			}
-			return x.Page("Jurusan", "pengaturan", page), nil
+			return x.Page("Jurusan", "manajemen", page), nil
 		},
 	})
 	registerPage(PageRoute{
@@ -133,7 +133,7 @@ func init() {
 			})
 			if err != nil {
 				if _, ok := participation.FieldErrorsOf(err); ok {
-					return catalogue422(x, "Jurusan", "pengaturan", res.Page), Redirect{}, err
+					return catalogue422(x, "Jurusan", "manajemen", res.Page), Redirect{}, err
 				}
 				return viewmodel.PageData{}, Redirect{}, err
 			}
@@ -158,7 +158,7 @@ func init() {
 			})
 			if err != nil {
 				if _, ok := participation.FieldErrorsOf(err); ok {
-					return catalogue422(x, "Jurusan", "pengaturan", res.Page), Redirect{}, err
+					return catalogue422(x, "Jurusan", "manajemen", res.Page), Redirect{}, err
 				}
 				return viewmodel.PageData{}, Redirect{}, err
 			}

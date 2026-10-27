@@ -25,7 +25,7 @@ func init() {
 		Method:   "GET",
 		Path:     "/teacher/students",
 		Template: "pages/teacher/students.html",
-		Nav:      "siswa",
+		Nav:      "manajemen",
 		Auth:     ClassTeacher,
 		Load: func(x *Ctx) (viewmodel.PageData, error) {
 			sess, serr := identitySession(x)
@@ -61,14 +61,14 @@ func init() {
 			if revealCookie != "" {
 				x.ClearCookie(identity.CookieReveal, identity.RevealCookiePath)
 			}
-			return identityPage(x, "Siswa", "siswa", list), nil
+			return identityPage(x, "Siswa", "manajemen", list), nil
 		},
 	})
 	registerPage(PageRoute{
 		Method:   "GET",
 		Path:     "/teacher/students/:id",
 		Template: "pages/teacher/student-edit.html",
-		Nav:      "siswa",
+		Nav:      "manajemen",
 		Auth:     ClassTeacher,
 		Load: func(x *Ctx) (viewmodel.PageData, error) {
 			if _, serr := identitySession(x); serr != nil {
@@ -80,7 +80,7 @@ func init() {
 			if err != nil {
 				return viewmodel.PageData{}, identityFailure(err)
 			}
-			return identityPage(x, "Ubah siswa", "siswa", form), nil
+			return identityPage(x, "Ubah siswa", "manajemen", form), nil
 		},
 	})
 	registerPage(PageRoute{
@@ -164,7 +164,7 @@ func init() {
 		Method:   "GET",
 		Path:     "/teacher/teachers",
 		Template: "pages/teacher/teachers.html",
-		Nav:      "pengaturan",
+		Nav:      "manajemen",
 		Auth:     ClassTeacher,
 		Load: func(x *Ctx) (viewmodel.PageData, error) {
 			if _, serr := identitySession(x); serr != nil {
@@ -176,7 +176,7 @@ func init() {
 			if err != nil {
 				return viewmodel.PageData{}, identityFailure(err)
 			}
-			return identityPage(x, "Guru", "pengaturan", teachers), nil
+			return identityPage(x, "Guru", "manajemen", teachers), nil
 		},
 	})
 	registerPage(PageRoute{
@@ -274,7 +274,7 @@ func studentEdit422(x *Ctx, id int64, fields map[string]string) (viewmodel.PageD
 			}
 		}
 	}
-	data := x.Page("Ubah siswa", "siswa", form)
+	data := x.Page("Ubah siswa", "manajemen", form)
 	// The template carries no per-field error slots, so the re-render keeps a
 	// form-level alert; per-field copy is a template delta recorded in the
 	// report (§12.2).
