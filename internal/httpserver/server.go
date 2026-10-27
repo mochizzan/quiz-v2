@@ -111,6 +111,11 @@ func NewWithDeps(cfg config.Config, deps Deps) (*fiber.App, error) {
 		return nil
 	})
 
+	// Compress text responses at best speed. Registered before /static so the
+	// vendored CSS and JS are compressed too; the exclusion rules live in
+	// newCompress (compress.go).
+	app.Use(newCompress())
+
 	// Serve the vendored carrier assets (Bootstrap 6, jQuery 4, Gotham
 	// Rounded, app.js) with a one-day cache. Registered first so a static
 	// request never pays for session or CSRF work (IDN-020 step 1).
