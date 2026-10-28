@@ -11,6 +11,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strconv"
 	"strings"
 	"testing"
@@ -20,6 +21,7 @@ import (
 	"quiz-v2/internal/config"
 	"quiz-v2/internal/httpserver"
 	"quiz-v2/internal/secure"
+	"quiz-v2/internal/store"
 	"quiz-v2/internal/store/storetest"
 )
 
@@ -186,6 +188,201 @@ func TestJoinHTTPCookieFlow(t *testing.T) {
 			t.Fatalf("closed redirect did not clear the ticket: %v", resp.Cookies())
 		}
 	})
+
+	t.Run("closed code returns not_open feedback", func(t *testing.T) {
+		if _, err := db.ExecContext(ctx,
+			"UPDATE quizzes SET state = 'closed', closed_at = UTC_TIMESTAMP() WHERE id = ?", quizID); err != nil {
+			t.Fatalf("close quiz: %v", err)
+		}
+
+		joinResp := getJoin(t, app, "/join")
+		csrf := findCookie(joinResp, httpserver.CookieCSRF)
+		if csrf == nil {
+			t.Fatal("GET /join issued no CSRF cookie")
+		}
+
+		form := url.Values{"csrf_token": {csrf.Value}, "code": {"123456"}}
+		req := httptest.NewRequest(http.MethodPost, "/join", strings.NewReader(form.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		req.AddCookie(csrf)
+		resp, err := app.Test(req)
+		if err != nil {
+			t.Fatalf("POST /join: %v", err)
+		}
+		if resp.StatusCode != http.StatusSeeOther {
+			t.Fatalf("status = %d, want 303", resp.StatusCode)
+		}
+		loc := resp.Header.Get("Location")
+		if loc != "/join?error=not_open" {
+			t.Fatalf("Location = %q, want not_open", loc)
+		}
+
+		page := getJoin(t, app, loc)
+		if page.StatusCode != http.StatusOK {
+			t.Fatalf("not_open page status = %d, want 200", page.StatusCode)
+		}
+		if body := bodyOf(t, page); !strings.Contains(body, "Kuis ini belum dibuka atau sudah ditutup.") {
+			t.Fatal("not_open page did not explain that the quiz is unavailable")
+		}
+	})
+}
+
+// TestJoinHTTPAnonymousIdentifyFlow walks the browser flow end to end: code,
+// identify form, registration, then the intro confirmation page. It posts to
+// the action the form actually rendered, so a missing ?quiz= fails here the way
+// it failed in the browser (PAR-054) instead of only in a domain test that
+// passes QuizID directly.
+func TestJoinHTTPAnonymousIdentifyFlow(t *testing.T) {
+	db := storetest.DB(t)
+	storetest.Reset(t, db)
+	ctx := context.Background()
+
+	res, err := db.ExecContext(ctx, `
+		INSERT INTO accounts (full_name, email, password_hash, role, status, approved_at)
+		VALUES ('Bu Guru', 'guru@join-flow.test', 'not-a-real-hash', 'teacher', 'active', UTC_TIMESTAMP())`)
+	if err != nil {
+		t.Fatalf("seed teacher: %v", err)
+	}
+	teacherID, _ := res.LastInsertId()
+
+	res, err = db.ExecContext(ctx,
+		"INSERT INTO majors (name, code) VALUES ('Rekayasa Perangkat Lunak', 'RPL')")
+	if err != nil {
+		t.Fatalf("seed major: %v", err)
+	}
+	majorID, _ := res.LastInsertId()
+
+	res, err = db.ExecContext(ctx, `
+		INSERT INTO quizzes
+			(owner_account_id, title, visibility, state, code, invite_token,
+			 allow_retake, max_attempts, show_score, review_mode, published_at, closed_at)
+		VALUES (?, 'Kuis Alur Tamu', 'public', 'open', '123456', 'flow-invite',
+			0, 0, 1, 'questions_no_answers', UTC_TIMESTAMP(), NULL)`, teacherID)
+	if err != nil {
+		t.Fatalf("seed quiz: %v", err)
+	}
+	quizID, _ := res.LastInsertId()
+	if _, err := db.ExecContext(ctx,
+		"INSERT INTO questions (quiz_id, position, type, prompt) VALUES (?, 1, 'essay', 'Soal')", quizID); err != nil {
+		t.Fatalf("seed question: %v", err)
+	}
+
+	app, err := httpserver.NewWithDeps(
+		config.Config{Addr: ":8080", SessionSigningKey: testSigningKey},
+		httpserver.Deps{DB: db})
+	if err != nil {
+		t.Fatalf("NewWithDeps: %v", err)
+	}
+
+	joinResp := getJoin(t, app, "/join")
+	csrf := findCookie(joinResp, httpserver.CookieCSRF)
+	if csrf == nil {
+		t.Fatal("GET /join issued no CSRF cookie")
+	}
+
+	codeForm := url.Values{"csrf_token": {csrf.Value}, "code": {"123456"}}
+	req := httptest.NewRequest(http.MethodPost, "/join", strings.NewReader(codeForm.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.AddCookie(csrf)
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("POST /join: %v", err)
+	}
+	if resp.StatusCode != http.StatusSeeOther {
+		t.Fatalf("POST /join status = %d, want 303", resp.StatusCode)
+	}
+	identifyPath := "/join/identify?quiz=" + itoa64(quizID)
+	if loc := resp.Header.Get("Location"); loc != identifyPath {
+		t.Fatalf("POST /join Location = %q, want %q", loc, identifyPath)
+	}
+	ticket := findCookie(resp, "quiz_join_ticket")
+	if ticket == nil || ticket.Value == "" {
+		t.Fatalf("code entry did not set quiz_join_ticket: %v", resp.Cookies())
+	}
+
+	identifyResp := getJoin(t, app, identifyPath, ticket)
+	if identifyResp.StatusCode != http.StatusOK {
+		t.Fatalf("GET identify status = %d, want 200", identifyResp.StatusCode)
+	}
+	if body := bodyOf(t, identifyResp); !strings.Contains(body, `action="`+identifyPath+`"`) {
+		t.Fatalf("identify form does not post back to %q", identifyPath)
+	}
+
+	identityForm := url.Values{
+		"csrf_token":  {csrf.Value},
+		"full_name":   {"Siti Aminah"},
+		"grade_level": {"10"},
+		"major_id":    {strconv.FormatInt(majorID, 10)},
+	}
+	req = httptest.NewRequest(http.MethodPost, identifyPath, strings.NewReader(identityForm.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.AddCookie(csrf)
+	req.AddCookie(ticket)
+	resp, err = app.Test(req)
+	if err != nil {
+		t.Fatalf("POST identify: %v", err)
+	}
+	if resp.StatusCode != http.StatusSeeOther {
+		t.Fatalf("POST identify status = %d, want 303", resp.StatusCode)
+	}
+	introPath := "/quiz/" + itoa64(quizID)
+	if loc := resp.Header.Get("Location"); loc != introPath {
+		t.Fatalf("POST identify Location = %q, want intro %q (not an attempt)", loc, introPath)
+	}
+	identity := findCookie(resp, "quiz_participant")
+	if identity == nil || identity.Value == "" {
+		t.Fatalf("identify did not set quiz_participant: %v", resp.Cookies())
+	}
+	if cleared := findCookie(resp, "quiz_join_ticket"); cleared == nil || cleared.Value != "" {
+		t.Fatalf("identify did not clear quiz_join_ticket: %v", resp.Cookies())
+	}
+
+	req = httptest.NewRequest(http.MethodGet, introPath, nil)
+	req.AddCookie(identity)
+	if flash := findCookie(resp, "quiz_flash"); flash != nil {
+		req.AddCookie(flash)
+	}
+	introResp, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("GET intro: %v", err)
+	}
+	if introResp.StatusCode != http.StatusOK {
+		t.Fatalf("GET intro status = %d, want 200", introResp.StatusCode)
+	}
+	introBody := bodyOf(t, introResp)
+	if !strings.Contains(introBody, "Anda terdaftar di kuis ini.") {
+		t.Fatal("intro did not confirm the registration")
+	}
+	if !strings.Contains(introBody, `action="`+introPath+`/attempts"`) {
+		t.Fatal("intro does not offer the explicit start action")
+	}
+
+	var identities, registrations, attempts int
+	if err := db.QueryRowContext(ctx,
+		"SELECT COUNT(*) FROM anonymous_participants WHERE display_name = 'Siti Aminah' AND deleted_at = ?",
+		store.LiveAt).Scan(&identities); err != nil {
+		t.Fatalf("count identities: %v", err)
+	}
+	if identities != 1 {
+		t.Fatalf("identities = %d, want 1", identities)
+	}
+	if err := db.QueryRowContext(ctx,
+		"SELECT COUNT(*) FROM registrations WHERE quiz_id = ? AND deleted_at = ?",
+		quizID, store.LiveAt).Scan(&registrations); err != nil {
+		t.Fatalf("count registrations: %v", err)
+	}
+	if registrations != 1 {
+		t.Fatalf("registrations = %d, want 1", registrations)
+	}
+	if err := db.QueryRowContext(ctx, `
+		SELECT COUNT(*) FROM quiz_attempts a
+		JOIN registrations r ON r.id = a.registration_id
+		WHERE r.quiz_id = ?`, quizID).Scan(&attempts); err != nil {
+		t.Fatalf("count attempts: %v", err)
+	}
+	if attempts != 0 {
+		t.Fatalf("attempts = %d, want 0 before the participant starts", attempts)
+	}
 }
 
 // itoa64 keeps the test's path building independent of the server package's

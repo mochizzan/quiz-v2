@@ -1,7 +1,8 @@
 {{define "partials/page-style"}}{{template "partials/auth-style.html" .}}{{end}}
 {{define "content"}}
-{{/* Anonymous participant identity. The quiz is fixed by the fixture, so the
-     card names it and the form only asks for name, grade, and major. */}}
+{{/* Anonymous participant identity. The quiz is fixed by the ticket, so the
+     card names it and the form only asks for name, grade, and major. The POST
+     resolves the quiz from ?quiz=; without it the submit is a 404 (PAR-054). */}}
 <div class="auth-head">
   <h2 class="auth-title">Lengkapi identitas Anda</h2>
   <p class="auth-sub">Nama dan kelas dipakai guru untuk mencocokkan jawaban dengan daftar siswa.</p>
@@ -18,7 +19,7 @@
 </div>
 {{end}}
 
-<form class="auth-form" action="/join/identify" method="post" data-validate>
+<form class="auth-form" action="/join/identify?quiz={{.Data.Quiz.ID}}" method="post" data-validate>
   <input type="hidden" name="csrf_token" value="{{.CSRF}}">
 
   <div class="field-group">
@@ -54,7 +55,7 @@
   </div>
 
   <button type="submit" class="btn btn-solid theme-primary auth-submit">
-    Mulai kuis
+    Daftar dan lanjutkan
     <svg width="16" height="16" aria-hidden="true"><use href="#i-arrow-right"></use></svg>
   </button>
 </form>
